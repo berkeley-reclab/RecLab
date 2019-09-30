@@ -29,7 +29,6 @@ class LibFM(object):
             if item_ids[i] not in self._items:
                 self._items[item_ids[i]] = item_data[i]
             else:
-                print(item_ids[i])
                 nonzero = item_data[i].nonzero()[1]
                 self._items[item_ids[i]][0, nonzero] = item_data[i, nonzero]
 

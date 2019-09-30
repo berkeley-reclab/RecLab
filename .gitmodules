@@ -1,0 +1,3 @@
+[submodule "deps/libfm"]
+	path = deps/libfm
+	url = git@github.com:Karl-Krauth/libfm.git

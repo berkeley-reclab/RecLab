@@ -45,13 +45,13 @@ class Recommender(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def clear_users(self, item_ids):
+    def clear_items(self, item_ids):
         """Remove a given set of users.
 
         Parameters
         ----------
-        user_ids : int or iterable of int
-            The ids of the user(s) to remove.
+        item_ids : int or iterable of int
+            The ids of the item(s) to remove.
         """
         pass
 
@@ -88,6 +88,12 @@ class Recommender(abc.ABC):
             to the item for which we are predicting the i-th rating.
         rating_data : sparse matrix
             A matrix where the i-th row represents the features of the i-th rating.
+
+        Returns
+        -------
+        predictions : 1d-array of float
+            The predictions where the i-th index corresponds to the predicted score on
+            the i-th rating.
         """
         pass
 
@@ -106,6 +112,11 @@ class Recommender(abc.ABC):
             the user would see the item.
         num_recommendations : int
             The number of items to recommend to the user.
+
+        Returns
+        -------
+        recommendations : 1d-array of int
+            The set of recommendations for the user.
         """
         pass
 

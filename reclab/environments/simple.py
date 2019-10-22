@@ -1,11 +1,14 @@
 import numpy as np
+import scipy
 
-import environment
+from reclab.environments.environment import Environment
 
 
-class Simple(environment.Environment):
+class Simple(Environment):
     def __init__(self, num_topics, num_users, num_items,
                  rating_frequency=0.2, num_init_ratings=0):
+        self._random = np.random.RandomState()
+        self._noise = 1.0
         self._num_topics = num_topics
         self._num_users = num_users = num_users
         self._num_items = num_items
@@ -21,16 +24,20 @@ class Simple(environment.Environment):
         Returns
         -------
         users : np.ndarray
-            This will always be a size 0 array since no users are ever added.
+            This will always be an array where every row has
+            size 0 since users don't have features.
         items : np.ndarray
-            This will always be a size 0 array since no items are ever added.
+            This will always be an array where every row has
+            size 0 since items don't have features.
         ratings : np.ndarray
-            New ratings and ratings whose information got updated this timestep.
+            The initial ratings where ratings[i, 0] corresponds to the id of the user that
+            made the rating, ratings[i, 1] corresponds to the id of the item that was rated
+            and ratings[i, 2] is the rating given to that item.
         """
         # Users have a 1-5 uniformly distributed preference for each topic.
         self._users = np.random.uniform(low=1, high=5.0, size=(self._num_users, self._num_topics))
         # Randomly sample a single topic for each item.
-        self._items = np.random.choice(self._num_topics, size=(self._num_items, self._num_topics))
+        self._items = np.random.choice(self._num_topics, size=self._num_items)
         # Create the initially empty matrix of user-item ratings.
         self._ratings = scipy.sparse.dok_matrix((self._num_users, self._num_items))
 
@@ -53,7 +60,15 @@ class Simple(environment.Environment):
         num_online = int(self._rating_frequency * self._num_users)
         self._online_users = np.random.choice(self._num_users, size=num_online, replace=False)
 
-        return np.zeros((self._num_users, 0)), np.zeros((self._num_items, 0)), init_ratings
+        users = {}
+        for i in range(self._num_users):
+            users[i] = np.zeros((0))
+
+        items = {}
+        for i in range(self._num_items):
+            items[i] = np.zeros((0))
+
+        return users, items, init_ratings
 
     def step(self, recommendations):
         """Run one timestep of the environment.
@@ -99,7 +114,7 @@ class Simple(environment.Environment):
                 "items": self._items,
                 "ratings": self._rating}
 
-        return np.zeros((0)), np.zeros((0)), ratings, info
+        return {}, {}, ratings, info
 
     def online_users(self):
         """Return the users that need a recommendation at the current timestep.
@@ -109,7 +124,10 @@ class Simple(environment.Environment):
         users : np.ndarray
             The user ids of the users that are online.
         """
-        return self._online_users
+        user_env = {}
+        for user_id in self._online_users:
+            user_env[user_id] = np.zeros(0)
+        return user_env
 
     def all_users(self):
         """Return all users currently in the environment.

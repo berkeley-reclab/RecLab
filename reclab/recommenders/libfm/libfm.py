@@ -3,72 +3,63 @@ import os
 import numpy as np
 import scipy.sparse
 
-from .. import recommender
-from ... import utils
 
-
-class LibFM(recommender.Recommender):
-    def __init__(self, num_user_features, num_item_features, num_rating_features):
+class LibFM(object):
+    def __init__(self, num_user_features, num_item_features, num_rating_features,
+                 max_num_users, max_num_items):
         self._users = {}
+        self._max_num_users = max_num_users
         self._items = {}
+        self._max_num_items = max_num_items
+        self._rated_items = {}
         # Each row of rating_X has the following structure:
         # (user_id, user_features, item_id, item_features, rating_features).
-        self._rating_X = scipy.sparse.csr_matrix((0, 1 + num_user_features + 1 +
-                                                  num_item_features + num_rating_features))
+        self._rating_X = scipy.sparse.csr_matrix((0, self._max_num_users + num_user_features +
+                                                  self._max_num_items + num_item_features +
+                                                  num_rating_features))
         # Each row of rating_y consists of the numerical value assigned to that interaction.
         self._rating_y = np.empty((0,))
 
-    def update_users(self, user_ids, user_data, sparse_update=False):
-        user_ids = utils.convert_to_iterable(user_ids)
-        assert(len(user_ids) == user_data.shape[0])
-        for i in range(len(user_ids)):
-            if user_ids[i] not in self._users or not sparse_update:
-                self._users[user_ids[i]] = user_data[i]
-            else:
-                nonzero = user_data[i].nonzero()[1]
-                self._users[user_ids[i]][0, nonzero] = user_data[i, nonzero]
+    def init(self, users, items, ratings):
+        self.update(users, items, ratings)
 
-    def clear_users(self, user_ids):
-        user_ids = utils.convert_to_iterable(user_ids)
-        for user_id in user_ids:
-            self._users.pop(user_id, None)
+    def update(self, users, items, ratings):
+        self._users.update(users)
+        for user_id in users:
+            if user_id not in self._rated_items:
+                self._rated_items[user_id] = set()
+        self._items.update(items)
+        self.observe_ratings(ratings)
 
-    def update_items(self, item_ids, item_data, sparse_update=False):
-        item_ids = utils.convert_to_iterable(item_ids)
-        assert(len(item_ids) == item_data.shape[0])
-        for i in range(len(item_ids)):
-            if item_ids[i] not in self._items or not sparse_update:
-                self._items[item_ids[i]] = item_data[i]
-            else:
-                nonzero = item_data[i].nonzero()[1]
-                self._items[item_ids[i]][0, nonzero] = item_data[i, nonzero]
+    def clear(self):
+        self._users = {}
+        self._items = {}
+        self._rated_items = {}
+        self._rating_X = scipy.sparse.csr_matrix((0, 1 + num_user_features + 1 +
+                                                  num_item_features + num_rating_features))
+        self._rating_y = np.empty((0,))
 
-    def clear_items(self, item_ids):
-        item_ids = utils.convert_to_iterable(item_ids)
-        for item_id in item_ids:
-            self._items.pop(item_id, None)
-
-    def observe_ratings(self, user_ids, item_ids, rating_data, rating_values):
-        user_ids = utils.convert_to_iterable(user_ids)
-        item_ids = utils.convert_to_iterable(item_ids)
-        rating_values = utils.convert_to_iterable(rating_values)
-        assert(len(user_ids) == len(item_ids))
-        assert(len(item_ids) == len(rating_values))
-        assert(len(rating_values) == rating_data.shape[0])
-        for i in range(len(user_ids)):
-            assert(user_ids[i] in self._users)
-            assert(item_ids[i] in self._items)
-            user_features = self._users[user_ids[i]]
-            item_features = self._items[item_ids[i]]
-            new_rating_x = scipy.sparse.hstack((user_ids[i], user_features,
-                                                item_ids[i], item_features,
-                                                rating_data[i]), format="csr")
+    def observe_ratings(self, ratings):
+        for i in range(len(ratings)):
+            user_id = int(ratings[i, 0])
+            item_id = int(ratings[i, 1])
+            self._rated_items[user_id].add(item_id)
+            assert(user_id in self._users)
+            assert(item_id in self._items)
+            user_features = self._users[user_id]
+            item_features = self._items[item_id]
+            one_hot_user_id = scipy.sparse.csr_matrix(([1], ([0], [user_id])),
+                                                      shape=(1, self._max_num_users))
+            one_hot_item_id = scipy.sparse.csr_matrix(([1], ([0], [item_id])),
+                                                      shape=(1, self._max_num_items))
+            new_rating_x = scipy.sparse.hstack((one_hot_user_id, user_features,
+                                                one_hot_item_id, item_features,
+                                                ratings[i, 2:-1]), format="csr")
             self._rating_X = scipy.sparse.vstack((self._rating_X, new_rating_x), format="csr")
-            self._rating_y = np.concatenate((self._rating_y, [rating_values[i]]))
+            self._rating_y = np.concatenate((self._rating_y, [ratings[i, -1]]))
 
     def predict_scores(self, user_ids, item_ids, rating_data):
-        user_ids = utils.convert_to_iterable(user_ids)
-        item_ids = utils.convert_to_iterable(item_ids)
+        import time
         assert(len(user_ids) == len(item_ids))
         assert(len(item_ids) == rating_data.shape[0])
 
@@ -79,19 +70,29 @@ class LibFM(recommender.Recommender):
             assert(item_ids[i] in self._items)
             user_features = self._users[user_ids[i]]
             item_features = self._items[item_ids[i]]
-            new_rating_x = scipy.sparse.hstack((user_ids[i], user_features,
-                                                item_ids[i], item_features,
+            one_hot_user_id = scipy.sparse.csr_matrix(([1], ([0], [user_ids[i]])),
+                                                      shape=(1, self._max_num_users))
+            one_hot_item_id = scipy.sparse.csr_matrix(([1], ([0], [item_ids[i]])),
+                                                      shape=(1, self._max_num_items))
+            new_rating_x = scipy.sparse.hstack((one_hot_user_id, user_features,
+                                                one_hot_item_id, item_features,
                                                 rating_data[i]), format="csr")
             test_X = scipy.sparse.vstack((test_X, new_rating_x), format="csr")
 
         # Now output both the train and test file.
+        s = time.time()
         self._write_libfm_file("train.libfm", self._rating_X, self._rating_y)
+        print("1", time.time() - s)
+        s = time.time()
         self._write_libfm_file("test.libfm", test_X, np.zeros(test_X.shape[0]))
+        print("2", time.time() - s)
 
         # Run libfm on the train and test files.
+        s = time.time()
         libfm_binary_path = os.path.join(os.path.dirname(__file__), "libfm_lib/bin/libFM")
         os.system("{} -task r -train train.libfm -test test.libfm -dim '1,1,8' -out predictions"
                   .format(libfm_binary_path))
+        print("3:", time.time() - s)
 
         # Finally read the prediction file back in as a numpy array.
         predictions = np.empty(test_X.shape[0])
@@ -101,12 +102,17 @@ class LibFM(recommender.Recommender):
 
         return predictions
 
-    def recommend_items(self, user_id, item_ids, rating_data, num_recommendations):
-        assert(len(item_ids) == rating_data.shape[0])
-        user_ids = np.ones(len(item_ids), dtype=np.int) * user_id
-        predictions = self.predict_scores(user_ids, item_ids, rating_data)
-        sorted_indices = np.argsort(predictions)
-        return item_ids[sorted_indices[-num_recommendations:]]
+    def recommend(self, user_envs, num_recommendations):
+        user_ids = list(user_envs.keys())
+        recs = np.zeros((len(user_ids), num_recommendations), dtype=np.int)
+        for i, user_id in enumerate(user_ids):
+            item_ids = np.array([i for i in self._items.keys() if i not in self._rated_items[user_id]])
+            rating_data = np.repeat(user_envs[user_id], len(item_ids), axis=0)
+            rating_data = np.zeros((len(item_ids), 0))
+            predictions = self.predict_scores(user_id * np.ones(len(item_ids)), item_ids, rating_data)
+            sorted_indices = np.argsort(predictions)
+            recs[i] = item_ids[sorted_indices[-num_recommendations:]]
+        return recs
 
     def _write_libfm_file(self, file_path, X, y):
         with open(file_path, "w") as f:

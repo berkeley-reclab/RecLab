@@ -6,7 +6,7 @@ from reclab.environments.environment import Environment
 
 class Simple(Environment):
     def __init__(self, num_topics, num_users, num_items,
-                 rating_frequency=0.2, num_init_ratings=0):
+                 rating_frequency=0.02, num_init_ratings=0):
         self._random = np.random.RandomState()
         self._noise = 1.0
         self._num_topics = num_topics
@@ -112,7 +112,7 @@ class Simple(Environment):
         # Create the info dict.
         info = {"users": self._users,
                 "items": self._items,
-                "ratings": self._rating}
+                "ratings": self._ratings}
 
         return {}, {}, ratings, info
 

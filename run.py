@@ -15,7 +15,7 @@ def main():
     # Now recommend items to users.
     for i in range(100):
         online_users = env.online_users()
-        recommendations = recommender.recommend(online_users, num_recommendations=5)
+        recommendations = recommender.recommend(online_users, num_recommendations=1)[:, 0]
         items, users, ratings, info = env.step(recommendations)
         recommender.update(users, items, ratings)
         print("AAAAAA", np.mean(ratings[:, -1]))

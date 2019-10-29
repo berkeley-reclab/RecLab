@@ -101,14 +101,32 @@ class LibFM(object):
 
     def recommend(self, user_envs, num_recommendations):
         user_ids = list(user_envs.keys())
-        recs = np.zeros((len(user_ids), num_recommendations), dtype=np.int)
+        all_user_ids = np.zeros(0, dtype=np.int)
+        all_item_ids = np.zeros(0, dtype=np.int)
+        all_rating_data = np.zeros((0, 0), dtype=np.int)
+        num_items_per_user = np.zeros(len(user_ids), dtype=np.int)
         for i, user_id in enumerate(user_ids):
-            item_ids = np.array([i for i in self._items.keys() if i not in self._rated_items[user_id]])
+            item_ids = np.array([j for j in self._items.keys()
+                                 if j not in self._rated_items[user_id]])
             rating_data = np.repeat(user_envs[user_id], len(item_ids), axis=0)
             rating_data = np.zeros((len(item_ids), 0))
-            predictions = self.predict_scores(user_id * np.ones(len(item_ids)), item_ids, rating_data)
-            sorted_indices = np.argsort(predictions)
+            all_user_ids = np.concatenate((all_user_ids,
+                                           user_id * np.ones(len(item_ids), dtype=np.int)))
+            all_item_ids = np.concatenate((all_item_ids, item_ids))
+            all_rating_data = np.concatenate((all_rating_data, rating_data))
+            num_items_per_user[i] = len(item_ids)
+
+        predictions = self.predict_scores(all_user_ids, all_item_ids, all_rating_data)
+        print(predictions.shape)
+        print(num_items_per_user)
+
+        last_idx = 0
+        recs = np.zeros((len(user_ids), num_recommendations), dtype=np.int)
+        for i, length in enumerate(num_items_per_user):
+            item_ids = all_item_ids[last_idx:last_idx + length]
+            sorted_indices = np.argsort(predictions[last_idx:last_idx + length])
             recs[i] = item_ids[sorted_indices[-num_recommendations:]]
+            last_idx += length
         return recs
 
     def _init_libfm_files(self):

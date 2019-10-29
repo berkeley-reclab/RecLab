@@ -162,7 +162,7 @@ class Simple(Environment):
             ratings[i, 1] corresponds to the item they rated, and ratings[i, 2] corresponds
             to the rating they gave on a scale of 1-5.
         """
-        ratings = np.zeros((self._ratings.nnz(), 3), dtype=np.int)
+        ratings = np.zeros((self._ratings.nnz, 3), dtype=np.int)
         for i, user_id, item_id in enumerate(self._ratings.nonzero()):
             ratings[i, 0] = user_id
             ratings[i, 1] = item_id

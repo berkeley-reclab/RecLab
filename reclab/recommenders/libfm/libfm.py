@@ -42,6 +42,7 @@ class LibFM(object):
         self._rating_y = np.empty((0,))
 
     def observe_ratings(self, ratings):
+        print('Observing ratings with one-hot')
         for i in range(len(ratings)):
             user_id = int(ratings[i, 0])
             item_id = int(ratings[i, 1])
@@ -65,6 +66,7 @@ class LibFM(object):
         assert(len(item_ids) == rating_data.shape[0])
 
         # Create a test_X array that can be parsed by our output function.
+        print("Constructing test_X")
         test_X = scipy.sparse.csr_matrix((0, self._rating_X.shape[1]))
         for i in range(len(user_ids)):
             assert(user_ids[i] in self._users)
@@ -81,17 +83,20 @@ class LibFM(object):
             test_X = scipy.sparse.vstack((test_X, new_rating_x), format="csr")
 
         # Now output both the train and test file.
+        print("Writing libfm files")
         self._write_libfm_file("train.libfm", self._rating_X, self._rating_y,
                                self._num_written_ratings)
         self._num_written_ratings = self._rating_X.shape[0]
         self._write_libfm_file("test.libfm", test_X, np.zeros(test_X.shape[0]))
 
         # Run libfm on the train and test files.
+        print("Running libfm")
         libfm_binary_path = os.path.join(os.path.dirname(__file__), "libfm_lib/bin/libFM")
-        os.system("{} -task r -train train.libfm -test test.libfm -dim '1,1,8' -out predictions"
+        os.system("{} -task r -train train.libfm -test test.libfm -dim '1,1,8' -out predictions -verbosity 1"
                   .format(libfm_binary_path))
 
         # Finally read the prediction file back in as a numpy array.
+        print("Reading in predicitions")
         predictions = np.empty(test_X.shape[0])
         with open("predictions", "r") as f:
             for i, line in enumerate(f):
@@ -104,7 +109,8 @@ class LibFM(object):
         all_user_ids = np.zeros(0, dtype=np.int)
         all_item_ids = np.zeros(0, dtype=np.int)
         all_rating_data = np.zeros((0, 0), dtype=np.int)
-        num_items_per_user = np.zeros(len(user_ids), dtype=np.int)
+        # TODO: make this a list of arrays instead of a flat list
+        num_unseen_items_per_user = np.zeros(len(user_ids), dtype=np.int)
         for i, user_id in enumerate(user_ids):
             item_ids = np.array([j for j in self._items.keys()
                                  if j not in self._rated_items[user_id]])
@@ -114,20 +120,24 @@ class LibFM(object):
                                            user_id * np.ones(len(item_ids), dtype=np.int)))
             all_item_ids = np.concatenate((all_item_ids, item_ids))
             all_rating_data = np.concatenate((all_rating_data, rating_data))
-            num_items_per_user[i] = len(item_ids)
+            num_unseen_items_per_user[i] = len(item_ids)
 
         predictions = self.predict_scores(all_user_ids, all_item_ids, all_rating_data)
-        print(predictions.shape)
-        print(num_items_per_user)
+        print('pred shape',predictions.shape)
+        print(num_unseen_items_per_user)
 
         last_idx = 0
         recs = np.zeros((len(user_ids), num_recommendations), dtype=np.int)
-        for i, length in enumerate(num_items_per_user):
+        predicted_ratings = []
+        for i, length in enumerate(num_unseen_items_per_user):
             item_ids = all_item_ids[last_idx:last_idx + length]
-            sorted_indices = np.argsort(predictions[last_idx:last_idx + length])
+            users_predictions = predictions[last_idx:last_idx + length]
+            sorted_indices = np.argsort(users_predictions)
+            sorted_ratings = users_predictions[sorted_indices]
+            predicted_ratings.append(sorted_ratings[-num_recommendations:])
             recs[i] = item_ids[sorted_indices[-num_recommendations:]]
             last_idx += length
-        return recs
+        return recs, np.array(predicted_ratings)
 
     def _init_libfm_files(self):
         if os.path.exists("train.libfm"):

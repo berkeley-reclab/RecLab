@@ -17,8 +17,10 @@ class LibFM(object):
         self._rating_X = scipy.sparse.csr_matrix((0, self._max_num_users + num_user_features +
                                                   self._max_num_items + num_item_features +
                                                   num_rating_features))
+        self._num_written_ratings = 0
         # Each row of rating_y consists of the numerical value assigned to that interaction.
         self._rating_y = np.empty((0,))
+        self._init_libfm_files()
 
     def init(self, users, items, ratings):
         self.update(users, items, ratings)
@@ -40,6 +42,7 @@ class LibFM(object):
         self._rating_y = np.empty((0,))
 
     def observe_ratings(self, ratings):
+        print('Observing ratings with one-hot')
         for i in range(len(ratings)):
             user_id = int(ratings[i, 0])
             item_id = int(ratings[i, 1])
@@ -59,11 +62,11 @@ class LibFM(object):
             self._rating_y = np.concatenate((self._rating_y, [ratings[i, -1]]))
 
     def predict_scores(self, user_ids, item_ids, rating_data):
-        import time
         assert(len(user_ids) == len(item_ids))
         assert(len(item_ids) == rating_data.shape[0])
 
         # Create a test_X array that can be parsed by our output function.
+        print("Constructing test_X")
         test_X = scipy.sparse.csr_matrix((0, self._rating_X.shape[1]))
         for i in range(len(user_ids)):
             assert(user_ids[i] in self._users)
@@ -80,21 +83,20 @@ class LibFM(object):
             test_X = scipy.sparse.vstack((test_X, new_rating_x), format="csr")
 
         # Now output both the train and test file.
-        s = time.time()
-        self._write_libfm_file("train.libfm", self._rating_X, self._rating_y)
-        print("1", time.time() - s)
-        s = time.time()
+        print("Writing libfm files")
+        self._write_libfm_file("train.libfm", self._rating_X, self._rating_y,
+                               self._num_written_ratings)
+        self._num_written_ratings = self._rating_X.shape[0]
         self._write_libfm_file("test.libfm", test_X, np.zeros(test_X.shape[0]))
-        print("2", time.time() - s)
 
         # Run libfm on the train and test files.
-        s = time.time()
+        print("Running libfm")
         libfm_binary_path = os.path.join(os.path.dirname(__file__), "libfm_lib/bin/libFM")
-        os.system("{} -task r -train train.libfm -test test.libfm -dim '1,1,8' -out predictions"
+        os.system("{} -task r -train train.libfm -test test.libfm -dim '1,1,8' -out predictions -verbosity 1"
                   .format(libfm_binary_path))
-        print("3:", time.time() - s)
 
         # Finally read the prediction file back in as a numpy array.
+        print("Reading in predicitions")
         predictions = np.empty(test_X.shape[0])
         with open("predictions", "r") as f:
             for i, line in enumerate(f):
@@ -104,25 +106,59 @@ class LibFM(object):
 
     def recommend(self, user_envs, num_recommendations):
         user_ids = list(user_envs.keys())
-        recs = np.zeros((len(user_ids), num_recommendations), dtype=np.int)
+        all_user_ids = np.zeros(0, dtype=np.int)
+        all_item_ids = np.zeros(0, dtype=np.int)
+        all_rating_data = np.zeros((0, 0), dtype=np.int)
+        # TODO: make this a list of arrays instead of a flat list
+        num_unseen_items_per_user = np.zeros(len(user_ids), dtype=np.int)
         for i, user_id in enumerate(user_ids):
-            item_ids = np.array([i for i in self._items.keys() if i not in self._rated_items[user_id]])
+            item_ids = np.array([j for j in self._items.keys()
+                                 if j not in self._rated_items[user_id]])
             rating_data = np.repeat(user_envs[user_id], len(item_ids), axis=0)
             rating_data = np.zeros((len(item_ids), 0))
-            predictions = self.predict_scores(user_id * np.ones(len(item_ids)), item_ids, rating_data)
-            sorted_indices = np.argsort(predictions)
-            recs[i] = item_ids[sorted_indices[-num_recommendations:]]
-        return recs
+            all_user_ids = np.concatenate((all_user_ids,
+                                           user_id * np.ones(len(item_ids), dtype=np.int)))
+            all_item_ids = np.concatenate((all_item_ids, item_ids))
+            all_rating_data = np.concatenate((all_rating_data, rating_data))
+            num_unseen_items_per_user[i] = len(item_ids)
 
-    def _write_libfm_file(self, file_path, X, y):
-        with open(file_path, "w") as f:
+        predictions = self.predict_scores(all_user_ids, all_item_ids, all_rating_data)
+        print('pred shape',predictions.shape)
+        print(num_unseen_items_per_user)
+
+        last_idx = 0
+        recs = np.zeros((len(user_ids), num_recommendations), dtype=np.int)
+        predicted_ratings = []
+        for i, length in enumerate(num_unseen_items_per_user):
+            item_ids = all_item_ids[last_idx:last_idx + length]
+            users_predictions = predictions[last_idx:last_idx + length]
+            sorted_indices = np.argsort(users_predictions)
+            sorted_ratings = users_predictions[sorted_indices]
+            predicted_ratings.append(sorted_ratings[-num_recommendations:])
+            recs[i] = item_ids[sorted_indices[-num_recommendations:]]
+            last_idx += length
+        return recs, np.array(predicted_ratings)
+
+    def _init_libfm_files(self):
+        if os.path.exists("train.libfm"):
+            os.remove("train.libfm")
+        if os.path.exists("test.libfm"):
+            os.remove("test.libfm")
+
+    def _write_libfm_file(self, file_path, X, y, start_idx=0):
+        if start_idx == X.shape[0]:
+            return
+        if start_idx == 0:
+            write_mode = "w+"
+        else:
+            write_mode = "a+"
+        with open(file_path, write_mode) as f:
             # TODO: We need to add classification.
-            for i in range(X.shape[0]):
+            for i in range(start_idx, X.shape[0]):
                 f.write("{} ".format(y[i]))
                 indices = X[i].nonzero()[1]
                 values = X[i, indices].todense().A1
                 index_value_strings = ["{}:{}".format(index, value)
                                        for index, value in zip(indices, values)]
-                f.write(" ".join(index_value_strings))
-                f.write("\n")
+                f.write(" ".join(index_value_strings) + "\n")
 

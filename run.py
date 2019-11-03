@@ -9,17 +9,21 @@ def main():
     recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=100000, max_num_items=100000)
 
     # First generate the items and users to seed the dataset.
+    print("Initializing environment and recommender")
     items, users, ratings = env.reset()
     recommender.init(items, users, ratings)
 
     # Now recommend items to users.
-    for i in range(100):
+    print("Making online recommendations")
+    for i in range(10):
         online_users = env.online_users()
-        recommendations = recommender.recommend(online_users, num_recommendations=5)
+        ret, predicted_ratings = recommender.recommend(online_users, num_recommendations=1)
+        recommendations = ret[:, 0]
         items, users, ratings, info = env.step(recommendations)
         recommender.update(users, items, ratings)
-        print("AAAAAA", np.mean(ratings[:, -1]))
+        errors = ratings[:,2] - predicted_ratings[:,0]
+        print("AAAAAA", i, np.mean(ratings[:, -1]), np.mean(errors**2))
 
-    ratings = env.get_all_ratings()
+    ratings = env.all_ratings()
     print(np.mean(ratings))
 main()

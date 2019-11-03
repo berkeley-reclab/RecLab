@@ -6,9 +6,9 @@ from reclab.environments.environment import Environment
 
 class Simple(Environment):
     def __init__(self, num_topics, num_users, num_items,
-                 rating_frequency=0.2, num_init_ratings=0):
+                 rating_frequency=0.02, num_init_ratings=0):
         self._random = np.random.RandomState()
-        self._noise = 1.0
+        self._noise = 0.0
         self._num_topics = num_topics
         self._num_users = num_users = num_users
         self._num_items = num_items
@@ -35,7 +35,8 @@ class Simple(Environment):
             and ratings[i, 2] is the rating given to that item.
         """
         # Users have a 1-5 uniformly distributed preference for each topic.
-        self._users = np.random.uniform(low=1, high=5.0, size=(self._num_users, self._num_topics))
+        self._users = np.random.uniform(low=0.5, high=5.5,
+                                        size=(self._num_users, self._num_topics))
         # Randomly sample a single topic for each item.
         self._items = np.random.choice(self._num_topics, size=self._num_items)
         # Create the initially empty matrix of user-item ratings.
@@ -112,7 +113,7 @@ class Simple(Environment):
         # Create the info dict.
         info = {"users": self._users,
                 "items": self._items,
-                "ratings": self._rating}
+                "ratings": self._ratings}
 
         return {}, {}, ratings, info
 
@@ -161,7 +162,7 @@ class Simple(Environment):
             ratings[i, 1] corresponds to the item they rated, and ratings[i, 2] corresponds
             to the rating they gave on a scale of 1-5.
         """
-        ratings = np.zeros((self._ratings.nnz(), 3), dtype=np.int)
+        ratings = np.zeros((self._ratings.nnz, 3), dtype=np.int)
         for i, user_id, item_id in enumerate(self._ratings.nonzero()):
             ratings[i, 0] = user_id
             ratings[i, 1] = item_id
@@ -189,6 +190,6 @@ class Simple(Environment):
         """
         topic = self._items[item_id]
         preference = self._users[user_id, topic]
-        rating = np.clip(preference + self._random.randn() * self._noise, 0, 5).astype(np.int)
+        rating = np.clip(np.round(preference + self._random.randn() * self._noise), 1, 6).astype(np.int)
         self._ratings[user_id, item_id] = rating
         return rating

@@ -48,7 +48,7 @@ class LibFM(object):
             item_id = int(ratings[i, 1])
             self._rated_items[user_id].add(item_id)
             assert(user_id in self._users)
-            assert(item_id in self._items)
+            assert(item_id in self._items), [item_id, self._items.keys()]
             user_features = self._users[user_id]
             item_features = self._items[item_id]
             one_hot_user_id = scipy.sparse.csr_matrix(([1], ([0], [user_id])),
@@ -103,6 +103,20 @@ class LibFM(object):
                 predictions[i] = float(line)
 
         return predictions
+
+    def train(self):
+        # Now output both the train and test file.
+        print("Writing libfm file")
+        self._write_libfm_file("train.libfm", self._rating_X, self._rating_y,
+                               self._num_written_ratings)
+        self._num_written_ratings = self._rating_X.shape[0]
+
+        # Run libfm on the train and test files.
+        print("Running libfm")
+        libfm_binary_path = os.path.join(os.path.dirname(__file__), "libfm_lib/bin/libFM")
+        os.system("{} -task r -train train.libfm -dim '1,1,8' -verbosity 1"
+                  .format(libfm_binary_path))
+        # TODO: read model
 
     def recommend(self, user_envs, num_recommendations):
         user_ids = list(user_envs.keys())

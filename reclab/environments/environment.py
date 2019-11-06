@@ -1,7 +1,15 @@
+"""Defines a set of base classes from which environments can inherit.
+
+Environment is the interface all environments must implement. The other classes represent
+specific environment variants that occur often enough to be abstract classes to inherit from.
+"""
 import abc
 
 
 class Environment(abc.ABC):
+    """The interface all environments must implement."""
+
+    @abc.abstractmethod
     def reset(self):
         """Reset the environment to its original state. Must be called before the first step.
 
@@ -16,8 +24,11 @@ class Environment(abc.ABC):
         info : dict
             Extra information that can be used for debugging but should not be made accessible to
             the recommender.
-        """
 
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def step(self, recommendations):
         """Run one timestep of the environment.
 
@@ -38,6 +49,7 @@ class Environment(abc.ABC):
         info : dict
             Extra information that can be used for debugging but should not be made accessible to
             the recommender.
+
         """
         raise NotImplementedError
 
@@ -49,6 +61,7 @@ class Environment(abc.ABC):
         -------
         users : iterable
             The users that are online.
+
         """
         raise NotImplementedError
 
@@ -60,6 +73,7 @@ class Environment(abc.ABC):
         -------
         users : iterable
             All users in the environment.
+
         """
         raise NotImplementedError
 
@@ -71,6 +85,7 @@ class Environment(abc.ABC):
         -------
         items : iterable
             All items in the environment.
+
         """
         raise NotImplementedError
 
@@ -82,6 +97,7 @@ class Environment(abc.ABC):
         -------
         ratings : iterable
             All ratings in the environment.
+
         """
         raise NotImplementedError
 
@@ -96,4 +112,3 @@ class Environment(abc.ABC):
     def __exit__(self, *args):
         self.close()
         return False
-

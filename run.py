@@ -1,11 +1,13 @@
 import numpy as np
 
 from reclab.environments.simple import Simple
+from reclab.environments.random_preferences import RandomPreferences
 from reclab.recommenders.libfm.libfm import LibFM
 
 
 def main():
-    env = Simple(num_topics=10, num_users=1000, num_items=1700, num_init_ratings=100000)
+    #env = Simple(num_topics=10, num_users=100, num_items=1700, num_init_ratings=10000)
+    env = RandomPreferences(num_topics=10, num_users=100, num_items=1700, num_init_ratings=10000)
     recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=100000, max_num_items=100000)
 
     # First generate the items and users to seed the dataset.
@@ -26,4 +28,5 @@ def main():
 
     ratings = env.all_ratings()
     print(np.mean(ratings))
+    print(np.std(ratings))
 main()

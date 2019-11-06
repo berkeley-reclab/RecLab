@@ -167,12 +167,20 @@ class RandomPreferences(Environment):
             to the rating they gave on a scale of 1-5.
         """
         ratings = np.zeros((self._ratings.nnz(), 3), dtype=np.int)
-        for i, user_id, item_id in enumerate(self._ratings.nonzero()): ratings[i, 0] = user_id ratings[i, 1] = item_id ratings[i, 2] = self._ratings[user_id, item_id]
+        for i, user_id, item_id in enumerate(self._ratings.nonzero()):
+            ratings[i, 0] = user_id
+            ratings[i, 1] = item_id
+            ratings[i, 2] = self._ratings[user_id, item_id]
         return ratings
 
     def seed(self, seed=None):
         """Set the seed for this environment's random number generator."""
         self._random.seed(seed)
+
+    def redistribute(self, preferences, topic, epsilon=0.1):
+        preferences = [i - epsilon/len(preferences) for i in preferences]
+        preferences[topic] = max(5.0, preferences[topic] + epsilon)
+        return preferences
 
     def _rate_item(self, user_id, item_id, epsilon=0.05):
         """Get a user to rate an item and update the internal rating state.
@@ -191,12 +199,8 @@ class RandomPreferences(Environment):
         """
         topic = self._items[item_id]
         preference = self._users[user_id, topic]
-        self._users[user_id, topic] = redistribute(self._users[user_id, topic], topic)
+        self._users[user_id] = self.redistribute(self._users[user_id], topic)
         rating = np.clip(preference + self._random.randn() * self._noise, 0, 5).astype(np.int)
         self._ratings[user_id, item_id] = rating
         return rating
 
-    def redistribute(self, preferences, topic, epsilon=0.1):
-        preferences = [i - epsilon/len(preferences) for i in preferences]
-        preferences[topic] = max(5.0, preferences[topic] + epsilon)
-        return preferences

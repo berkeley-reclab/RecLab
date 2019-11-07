@@ -1,4 +1,5 @@
 """A wrapper for the LibFM recommender. See www.libfm.org for implementation details."""
+import collections
 import itertools
 import os
 
@@ -7,15 +8,33 @@ import scipy.sparse
 
 
 class LibFM(object):
+    """The libFM recommendation model which is a factorization machine.
+
+    Parameters
+    ----------
+    num_user_features : int
+        The number of features that describe each user.
+    num_item_features : int
+        The number of features that describe each item.
+    num_rating_features : int
+        The number of features that describe the context in which each rating occurs.
+    max_num_users : int
+        The maximum number of users that we will be making predictions for. Note that
+        setting this value to be too large will lead to a degradation in performance.
+    max_num_items : int
+        The maximum number of items that we will be making predictions for. Note that
+        setting this value to be too large will lead to a degradation in performance.
+
     """
-    """
+
     def __init__(self, num_user_features, num_item_features, num_rating_features,
                  max_num_users, max_num_items):
+        """Create a LibFM recommender."""
         self._users = {}
         self._max_num_users = max_num_users
         self._items = {}
         self._max_num_items = max_num_items
-        self._rated_items = {}
+        self._rated_items = collections.defaultdict(set)
         # Each row of rating_inputs has the following structure:
         # (user_id, user_features, item_id, item_features, rating_features).
         # Where user_id and item_id are one hot encoded.
@@ -32,46 +51,92 @@ class LibFM(object):
         if os.path.exists("test.libfm"):
             os.remove("test.libfm")
 
-    def init(self, users, items, ratings):
-        self.update(users, items, ratings)
+    def reset(self, users=None, items=None, ratings=None):
+        """Reset the recommender with optional starting user, item, and rating data.
 
-    def update(self, users, items, ratings):
-        self._users.update(users)
-        for user_id in users:
-            if user_id not in self._rated_items:
-                self._rated_items[user_id] = set()
-        self._items.update(items)
-        self.observe_ratings(ratings)
+        Parameters
+        ----------
+        users : dict, optional
+            All starting users where the key is the user id while the value is the
+            user features.
+        items : dict, optional
+            All starting items where the key is the user id while the value is the
+            item features.
+        ratings : np.ndarray, optional
+            All starting ratings where ratings[i, 0] is the user id of the i-th rating,
+            ratings[i, 1] is the item id of the i-th rating, ratings[i, -1] is the rating
+            and the rest of the row represents the rating features.
 
-    def clear(self):
+        """
         self._users = {}
         self._items = {}
-        self._rated_items = {}
+        self._rated_items = collections.defaultdict(set)
         self._rating_inputs = scipy.sparse.csr_matrix((0, self._rating_inputs.shape[1]))
         self._rating_outputs = np.empty((0,))
+        self.update(users, items, ratings)
 
-    def observe_ratings(self, ratings):
-        print('Observing ratings with one-hot')
-        for i in range(len(ratings)):
-            user_id = int(ratings[i, 0])
-            item_id = int(ratings[i, 1])
-            self._rated_items[user_id].add(item_id)
-            assert user_id in self._users
-            assert item_id in self._items
-            user_features = self._users[user_id]
-            item_features = self._items[item_id]
-            one_hot_user_id = scipy.sparse.csr_matrix(([1], ([0], [user_id])),
-                                                      shape=(1, self._max_num_users))
-            one_hot_item_id = scipy.sparse.csr_matrix(([1], ([0], [item_id])),
-                                                      shape=(1, self._max_num_items))
-            new_rating_inputs = scipy.sparse.hstack((one_hot_user_id, user_features,
-                                                     one_hot_item_id, item_features,
-                                                     ratings[i, 2:-1]), format="csr")
-            self._rating_inputs = scipy.sparse.vstack((self._rating_inputs, new_rating_inputs),
-                                                      format="csr")
-            self._rating_outputs = np.concatenate((self._rating_outputs, [ratings[i, -1]]))
+    def update(self, users=None, items=None, ratings=None):
+        """Update the recommender with new user, item, and rating data.
 
-    def predict_scores(self, user_ids, item_ids, rating_data):
+        Parameters
+        ----------
+        users : dict, optional
+            All new users where the key is the user id while the value is the
+            user features.
+        items : dict, optional
+            All new items where the key is the user id while the value is the
+            item features.
+        ratings : np.ndarray, optional
+            All new ratings where ratings[i, 0] is the user id of the i-th rating,
+            ratings[i, 1] is the item id of the i-th rating, ratings[i, -1] is the rating
+            and the rest of the row represents the rating features.
+
+        """
+        if users is not None:
+            self._users.update(users)
+        if items is not None:
+            self._items.update(items)
+        if ratings is not None:
+            for i in range(len(ratings)):
+                user_id = int(ratings[i, 0])
+                item_id = int(ratings[i, 1])
+                self._rated_items[user_id].add(item_id)
+                assert user_id in self._users
+                assert item_id in self._items
+                user_features = self._users[user_id]
+                item_features = self._items[item_id]
+                one_hot_user_id = scipy.sparse.csr_matrix(([1], ([0], [user_id])),
+                                                          shape=(1, self._max_num_users))
+                one_hot_item_id = scipy.sparse.csr_matrix(([1], ([0], [item_id])),
+                                                          shape=(1, self._max_num_items))
+                new_rating_inputs = scipy.sparse.hstack((one_hot_user_id, user_features,
+                                                         one_hot_item_id, item_features,
+                                                         ratings[i, 2:-1]), format="csr")
+                self._rating_inputs = scipy.sparse.vstack((self._rating_inputs, new_rating_inputs),
+                                                          format="csr")
+                self._rating_outputs = np.concatenate((self._rating_outputs, [ratings[i, -1]]))
+
+    def predict(self, user_ids, item_ids, rating_data):
+        """Predict the ratings of user-item pairs.
+
+        Parameters
+        ----------
+        user_ids : iterable of int
+            The list of all user ids for which we wish to predict ratings.
+            user_ids[i] is the user id of the i-th pair.
+        item_ids : iterable of int
+            The list of all item ids for which we wish to predict ratings.
+            item_ids[i] is the item id of the i-th pair.
+        rating_data : np.ndarray
+            The rating features for all the user-item pairs. rating_data[i] is
+            the rating features for the i-th pair.
+
+        Returns
+        -------
+        predictions : np.ndarray
+            The rating predictions where predictions[i] is the prediction of the i-th pair.
+
+        """
         assert len(user_ids) == len(item_ids)
         assert len(item_ids) == rating_data.shape[0]
 
@@ -115,6 +180,26 @@ class LibFM(object):
         return predictions
 
     def recommend(self, user_envs, num_recommendations):
+        """Recommend items to users.
+
+        Parameters
+        ----------
+        user_envs : ordered dict
+            The setting each user is going to be recommended items. The key is the user id and
+            the value is the rating features.
+        num_recommendations : int
+            The number of items to recommend to each user.
+
+        Returns
+        -------
+        recs : np.ndarray of int
+            The recommendations made to each user. recs[i] is the array of item ids recommended
+            to the i-th user.
+        predicted_ratings : np.ndarray
+            The predicted ratings of the recommended items. recs[i] is the array of predicted
+            ratings for the items recommended to the i-th user.
+
+        """
         # Format the arrays to be passed to the prediction function. We need to predict all
         # items that have not been rated for each user.
         all_user_ids = []
@@ -129,9 +214,9 @@ class LibFM(object):
             all_item_ids.append(item_ids)
 
         # Predict the ratings and convert predictions into a list of arrays indexed by user.
-        all_predictions = self.predict_scores(np.concatenate(all_user_ids),
-                                              np.concatenate(all_item_ids),
-                                              np.concatenate(all_rating_data))
+        all_predictions = self.predict(np.concatenate(all_user_ids),
+                                       np.concatenate(all_item_ids),
+                                       np.concatenate(all_rating_data))
         item_lens = map(len, all_item_ids)
         all_predictions = np.split(all_predictions,
                                    list(itertools.accumulate(item_lens)))
@@ -147,6 +232,7 @@ class LibFM(object):
 
 
 def write_libfm_file(file_path, inputs, outputs, start_idx=0):
+    """Write out a train or test file to be used by libfm."""
     if start_idx == inputs.shape[0]:
         return
     if start_idx == 0:

@@ -3,6 +3,8 @@
 In this environment users have a hidden preference for each topic and each item has a
 hidden topic assigned to it.
 """
+import collections
+
 import numpy as np
 import scipy
 
@@ -10,8 +12,7 @@ from reclab.environments.environment import Environment
 
 
 class Topics(Environment):
-    """
-    An environment where items have a single topic and users prefer certain topics.
+    """An environment where items have a single topic and users prefer certain topics.
 
     The user preference for any given topic is initialized as Unif(0.5, 5.5) while
     topics are uniformly assigned to items. Users will rate items as clip(p + e, 0, 5)
@@ -32,10 +33,12 @@ class Topics(Environment):
         The number of ratings available from the start. User-item pairs are randomly selected.
     noise : float
         The standard deviation of the noise added to ratings.
+
     """
 
     def __init__(self, num_topics, num_users, num_items,
                  rating_frequency=0.02, num_init_ratings=0, noise=0.0):
+        """Create a Topics environment."""
         self._random = np.random.RandomState()
         self._num_topics = num_topics
         self._num_users = num_users = num_users
@@ -63,6 +66,7 @@ class Topics(Environment):
             The initial ratings where ratings[i, 0] corresponds to the id of the user that
             made the rating, ratings[i, 1] corresponds to the id of the item that was rated
             and ratings[i, 2] is the rating given to that item.
+
         """
         # Users have a 1-5 uniformly distributed preference for each topic.
         self._users = np.random.uniform(low=0.5, high=5.5,
@@ -109,7 +113,7 @@ class Topics(Environment):
         recommendations : np.ndarray
             The recommendations made to each user. recommendations[i] corresponds to the
             item id recommended to the i-th online user. This array must have the same size as
-            the array returned by online_users.
+            the ordered dict returned by online_users.
 
         Returns
         -------
@@ -125,6 +129,7 @@ class Topics(Environment):
             Extra information for debugging and evaluation. info["users"] will return the array
             of hidden user states, info["items"] will return the array of hidden item states, and
             info["ratings"] gets the sparse matrix of all ratings.
+
         """
         # Get online users to rate the recommended items.
         assert len(recommendations) == len(self._online_users)
@@ -152,10 +157,12 @@ class Topics(Environment):
 
         Returns
         -------
-        users : np.ndarray
-            The user ids of the users that are online.
+        users_env : ordered dict
+            The users that are online. The key is the user id and the value is the
+            features that represent the environment in which the rating will be made.
+
         """
-        user_env = {}
+        user_env = collections.OrderedDict()
         for user_id in self._online_users:
             user_env[user_id] = np.zeros(0)
         return user_env
@@ -168,6 +175,7 @@ class Topics(Environment):
         users : np.ndarray
             All users in the environment, since users don't have features this is just an
             array where each row has size 0.
+
         """
         return np.zeros((self._num_users, 0))
 
@@ -179,6 +187,7 @@ class Topics(Environment):
         items : np.ndarray
             All items in the environment, since items don't have features this is just an
             array where each row has size 0.
+
         """
         return np.zeros((self._num_items, 0))
 
@@ -191,6 +200,7 @@ class Topics(Environment):
             An array where ratings[i, 0] corresponds to the user that made rating i,
             ratings[i, 1] corresponds to the item they rated, and ratings[i, 2] corresponds
             to the rating they gave on a scale of 1-5.
+
         """
         ratings = np.zeros((self._ratings.nnz, 3), dtype=np.int)
         for i, user_id, item_id in enumerate(self._ratings.nonzero()):
@@ -217,6 +227,7 @@ class Topics(Environment):
         -------
         rating : int
             The rating the item was given by the user.
+
         """
         topic = self._items[item_id]
         preference = self._users[user_id, topic]

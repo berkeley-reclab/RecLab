@@ -110,5 +110,6 @@ class Environment(abc.ABC):
         pass
 
     def __exit__(self, *args):
+        """Perform any necessary cleanup when the object goes out of context."""
         self.close()
         return False

@@ -13,7 +13,7 @@ def main():
     # First generate the items and users to seed the dataset.
     print("Initializing environment and recommender")
     items, users, ratings = env.reset()
-    recommender.init(items, users, ratings)
+    recommender.reset(items, users, ratings)
 
     # Now recommend items to users.
     print("Making online recommendations")

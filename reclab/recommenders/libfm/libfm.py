@@ -7,7 +7,7 @@ import numpy as np
 import scipy.sparse
 
 
-class LibFM(object):
+class LibFM():
     """The libFM recommendation model which is a factorization machine.
 
     Parameters

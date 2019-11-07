@@ -1,23 +1,55 @@
+"""Contains the implementation for the RepeatTopics environment.
+
+In this environment users have a hidden preference for each topic and each item has a
+hidden topic assigned to it. When a user gets recommended a topic many times their
+preference for that topic will increase.
+"""
+
 import numpy as np
 import scipy
 
 from reclab.environments.environment import Environment
 
 
-class RandomPreferences(Environment):
+class RepeatTopics(Environment):
+    """
+    An environment where users will tend to prefer topics they have been recommended many times.
+
+    The user preference for any given topic is initialized as Unif(0.5, 5.5) while
+    topics are uniformly assigned to items. Users will rate items as clip(p + e, 0, 5)
+    where p is their preference for a given topic and e ~ N(0, self._noise). When a user gets
+    recommended a topic their preference for that topic increases at the cost of all other topics.
+
+    Parameters
+    ----------
+    num_topics : int
+        The number of topics items can be assigned to.
+    num_users : int
+        The number of users in the environment.
+    num_items : int
+        The number of items in the environment.
+    rating_frequency : float
+        The proportion of users that will need a recommendation at each step.
+        Must be between 0 and 1.
+    num_init_ratings : int
+        The number of ratings available from the start. User-item pairs are randomly selected.
+    noise : float
+        The standard deviation of the noise added to ratings.
+    """
+
     def __init__(self, num_topics, num_users, num_items,
-                 rating_frequency=0.2, num_init_ratings=0):
+                 rating_frequency=0.2, num_init_ratings=0, noise=0.0):
         self._random = np.random.RandomState()
-        self._noise = 1.0
+        self._noise = noise
         self._num_topics = num_topics
         self._num_users = num_users = num_users
         self._num_items = num_items
-        self._rating_frequency=rating_frequency
+        self._rating_frequency = rating_frequency
         self._num_init_ratings = num_init_ratings
         self._users = None
         self._items = None
         self._ratings = None
-        self._timestep = 0
+        self._online_users = None
 
     def reset(self):
         """Reset the environment to its original state. Must be called before the first step.
@@ -36,12 +68,11 @@ class RandomPreferences(Environment):
             and ratings[i, 2] is the rating given to that item.
         """
         # Users have a 1-5 uniformly distributed preference for each topic.
-        self._users = np.random.uniform(low=1, high=5.0, size=(self._num_users, self._num_topics))
+        self._users = np.random.uniform(low=0.5, high=5.5, size=(self._num_users, self._num_topics))
         # Randomly sample a single topic for each item.
         self._items = np.random.choice(self._num_topics, size=self._num_items)
         # Create the initially empty matrix of user-item ratings.
         self._ratings = scipy.sparse.dok_matrix((self._num_users, self._num_items))
-        self._timestep = 0
 
         # Fill the rating array with initial data.
         init_ratings = np.zeros((self._num_init_ratings, 3))
@@ -98,9 +129,9 @@ class RandomPreferences(Environment):
             info["ratings"] gets the sparse matrix of all ratings.
         """
         # Get online users to rate the recommended items.
-        assert(len(recommendations) == len(self._online_users))
+        assert len(recommendations) == len(self._online_users)
         ratings = np.zeros((len(recommendations), 3), dtype=np.int)
-        ratings[:, 0] = self._online_users 
+        ratings[:, 0] = self._online_users
         ratings[:, 1] = recommendations.squeeze()
         for i in range(len(recommendations)):
             user_id = ratings[i, 0]
@@ -108,7 +139,9 @@ class RandomPreferences(Environment):
             ratings[i, 2] = self._rate_item(user_id, item_id)
 
         if np.random.randint(low=1, high=100) < 25:
-            self._users = np.random.uniform(low=1, high=5.0, size=(self._num_users, self._num_topics))
+            self._users = np.random.uniform(low=1, high=5.0,
+                                            size=(self._num_users, self._num_topics))
+
         # Update the online users.
         num_online = int(self._rating_frequency * self._num_users)
         self._online_users = np.random.choice(self._num_users, size=num_online, replace=False)
@@ -117,7 +150,6 @@ class RandomPreferences(Environment):
         info = {"users": self._users,
                 "items": self._items,
                 "ratings": self._ratings}
-        self._timestep += 1
 
         return {}, {}, ratings, info
 
@@ -177,11 +209,6 @@ class RandomPreferences(Environment):
         """Set the seed for this environment's random number generator."""
         self._random.seed(seed)
 
-    def redistribute(self, preferences, topic, epsilon=0.1):
-        preferences = [i - epsilon/len(preferences) for i in preferences]
-        preferences[topic] = max(5.0, preferences[topic] + epsilon)
-        return preferences
-
     def _rate_item(self, user_id, item_id, epsilon=0.05):
         """Get a user to rate an item and update the internal rating state.
 
@@ -191,6 +218,9 @@ class RandomPreferences(Environment):
             The id of the user making the rating.
         item_id : int
             The id of the item being rated.
+        epsilon : float
+            The amount by which to increase the preference for the topic that is
+            being rated.
 
         Returns
         -------
@@ -198,9 +228,11 @@ class RandomPreferences(Environment):
             The rating the item was given by the user.
         """
         topic = self._items[item_id]
-        preference = self._users[user_id, topic]
-        self._users[user_id] = self.redistribute(self._users[user_id], topic)
+        preference = self._users[user_id][topic]
+        # Redistribute preferences from other topics to the topic recommended.
+        self._users[user_id][topic] = max(5.5, preference + epsilon)
+        self._users[user_id] = [i - epsilon / self._num_topics for i in self._users[user_id]]
+        # Rate the item.
         rating = np.clip(preference + self._random.randn() * self._noise, 0, 5).astype(np.int)
         self._ratings[user_id, item_id] = rating
         return rating
-

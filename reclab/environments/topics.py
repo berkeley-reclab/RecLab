@@ -1,22 +1,52 @@
+"""Contains the implementation for the Topics environment.
+
+In this environment users have a hidden preference for each topic and each item has a
+hidden topic assigned to it.
+"""
 import numpy as np
 import scipy
 
 from reclab.environments.environment import Environment
 
 
-class Simple(Environment):
+class Topics(Environment):
+    """
+    An environment where items have a single topic and users prefer certain topics.
+
+    The user preference for any given topic is initialized as Unif(0.5, 5.5) while
+    topics are uniformly assigned to items. Users will rate items as clip(p + e, 0, 5)
+    where p is their preference for a given topic and e ~ N(0, self._noise).
+
+    Parameters
+    ----------
+    num_topics : int
+        The number of topics items can be assigned to.
+    num_users : int
+        The number of users in the environment.
+    num_items : int
+        The number of items in the environment.
+    rating_frequency : float
+        The proportion of users that will need a recommendation at each step.
+        Must be between 0 and 1.
+    num_init_ratings : int
+        The number of ratings available from the start. User-item pairs are randomly selected.
+    noise : float
+        The standard deviation of the noise added to ratings.
+    """
+
     def __init__(self, num_topics, num_users, num_items,
-                 rating_frequency=0.02, num_init_ratings=0):
+                 rating_frequency=0.02, num_init_ratings=0, noise=0.0):
         self._random = np.random.RandomState()
-        self._noise = 0.0
         self._num_topics = num_topics
         self._num_users = num_users = num_users
         self._num_items = num_items
-        self._rating_frequency=rating_frequency
+        self._rating_frequency = rating_frequency
         self._num_init_ratings = num_init_ratings
+        self._noise = noise
         self._users = None
         self._items = None
         self._ratings = None
+        self._online_users = None
 
     def reset(self):
         """Reset the environment to its original state. Must be called before the first step.
@@ -97,9 +127,9 @@ class Simple(Environment):
             info["ratings"] gets the sparse matrix of all ratings.
         """
         # Get online users to rate the recommended items.
-        assert(len(recommendations) == len(self._online_users))
+        assert len(recommendations) == len(self._online_users)
         ratings = np.zeros((len(recommendations), 3), dtype=np.int)
-        ratings[:, 0] = self._online_users 
+        ratings[:, 0] = self._online_users
         ratings[:, 1] = recommendations
         for i in range(len(recommendations)):
             user_id = ratings[i, 0]
@@ -190,6 +220,6 @@ class Simple(Environment):
         """
         topic = self._items[item_id]
         preference = self._users[user_id, topic]
-        rating = np.clip(np.round(preference + self._random.randn() * self._noise), 1, 6).astype(np.int)
-        self._ratings[user_id, item_id] = rating
+        rating = np.clip(np.round(preference + self._random.randn() * self._noise), 1, 6)
+        self._ratings[user_id, item_id] = rating.astype(np.int)
         return rating

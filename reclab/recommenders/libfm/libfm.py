@@ -105,7 +105,7 @@ class LibFM(object):
         return predictions
 
     def train(self):
-        # Now output both the train and test file.
+        # only training, not predicting.
         print("Writing libfm file")
         self._write_libfm_file("train.libfm", self._rating_X, self._rating_y,
                                self._num_written_ratings)
@@ -117,6 +117,7 @@ class LibFM(object):
         os.system("{} -task r -train train.libfm -dim '1,1,8' -verbosity 1"
                   .format(libfm_binary_path))
         # TODO: read model
+        # a la https://github.com/jfloff/pywFM/blob/master/pywFM/__init__.py#L238
 
     def recommend(self, user_envs, num_recommendations):
         user_ids = list(user_envs.keys())

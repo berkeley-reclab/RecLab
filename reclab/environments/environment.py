@@ -103,11 +103,9 @@ class Environment(abc.ABC):
 
     def seed(self, seed=None):
         """Set the seed the seed for this environment's random number generator(s)."""
-        pass
 
     def close(self):
         """Perform any necessary cleanup."""
-        pass
 
     def __exit__(self, *args):
         """Perform any necessary cleanup when the object goes out of context."""

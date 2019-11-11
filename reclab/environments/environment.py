@@ -7,8 +7,7 @@ import abc
 
 
 class Environment(abc.ABC):
-    """The interface all environments 
-    must implement."""
+    """The interface all environments must implement."""
 
     @abc.abstractmethod
     def reset(self):

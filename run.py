@@ -17,7 +17,7 @@ def main():
 
     # Now recommend items to users.
     print("Making online recommendations")
-    for i in range(10):
+    for i in range(1):
         online_users = env.online_users()
         ret, predicted_ratings = recommender.recommend(online_users, num_recommendations=1)
         recommendations = ret[:, 0]

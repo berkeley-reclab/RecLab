@@ -77,19 +77,12 @@ class Topics(Environment):
         self._ratings = scipy.sparse.dok_matrix((self._num_users, self._num_items))
 
         # Fill the rating array with initial data.
-        init_ratings = np.zeros((self._num_init_ratings, 3))
-        rated_idxs = set()
-        for i in range(self._num_init_ratings):
-            # Keep sampling rating indices until we've reached an uninitialized one.
-            while True:
-                user_id = np.random.choice(self._num_users)
-                item_id = np.random.choice(self._num_items)
-                if (user_id, item_id) not in rated_idxs:
-                    break
-            rated_idxs.add((user_id, item_id))
-            init_ratings[i, 0] = user_id
-            init_ratings[i, 1] = item_id
-            init_ratings[i, 2] = self._rate_item(user_id, item_id)
+        init_ratings = np.zeros((self._num_init_ratings, 3), dtype=np.int)
+        idx_1d = np.random.choice(self._num_users * self._num_items, self._num_init_ratings,
+                                  replace=False)
+        init_ratings[:, 0] = idx_1d // self._num_items
+        init_ratings[:, 1] = idx_1d % self._num_items
+        init_ratings[:, 2] = list(map(self._rate_item, init_ratings[:, 0], init_ratings[:, 1]))
 
         # Finally, set the users that will be online for the first step.
         num_online = int(self._rating_frequency * self._num_users)
@@ -136,10 +129,7 @@ class Topics(Environment):
         ratings = np.zeros((len(recommendations), 3), dtype=np.int)
         ratings[:, 0] = self._online_users
         ratings[:, 1] = recommendations
-        for i in range(len(recommendations)):
-            user_id = ratings[i, 0]
-            item_id = ratings[i, 1]
-            ratings[i, 2] = self._rate_item(user_id, item_id)
+        ratings[:, 2] = list(map(self._rate_item, ratings[:, 1], ratings[:, 2]))
 
         # Update the online users.
         num_online = int(self._rating_frequency * self._num_users)
@@ -203,10 +193,10 @@ class Topics(Environment):
 
         """
         ratings = np.zeros((self._ratings.nnz, 3), dtype=np.int)
-        for i, user_id, item_id in enumerate(self._ratings.nonzero()):
-            ratings[i, 0] = user_id
-            ratings[i, 1] = item_id
-            ratings[i, 2] = self._ratings[user_id, item_id]
+        nonzero = self._ratings.nonzero()
+        ratings[:, 0] = nonzero[0]
+        ratings[:, 1] = nonzero[1]
+        ratings[:, 2] = list(map(lambda x, y: self._ratings[x, y], ratings[:, 0], ratings[:, 1]))
         return ratings
 
     def seed(self, seed=None):

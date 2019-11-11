@@ -92,7 +92,7 @@ class LibFM(object):
         # Run libfm on the train and test files.
         print("Running libfm")
         libfm_binary_path = os.path.join(os.path.dirname(__file__), "libfm_lib/bin/libFM")
-        os.system("{} -task r -train train.libfm -test test.libfm -dim '1,1,8' -out predictions -verbosity 1"
+        os.system("{} -task r -train train.libfm -test test.libfm -dim '1,1,8' -save_model saved_model -out predictions -verbosity 1"
                   .format(libfm_binary_path))
 
         # Finally read the prediction file back in as a numpy array.

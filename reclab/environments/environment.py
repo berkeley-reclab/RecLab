@@ -173,7 +173,7 @@ class DictEnvironment(Environment):
         item_ids = idx_1d % num_items
         self._ratings = {}
         for user_id, item_id in zip(user_ids, item_ids):
-            self._ratings[(user_id, item_id)] = self._rate_item(user_id, item_id)
+            self._ratings[user_id, item_id] = self._rate_item(user_id, item_id)
 
         # Finally, set the users that will be online for the first step.
         self._online_users = self._select_online_users()
@@ -214,7 +214,7 @@ class DictEnvironment(Environment):
         # Get online users to rate the recommended items.
         ratings = {}
         for user_id, item_id in zip(self._online_users, recommendations):
-            ratings[(user_id, item_id)] = self._rate_item(user_id, item_id)
+            ratings[user_id, item_id] = self._rate_item(user_id, item_id)
 
         # Update the online users.
         self._online_users = self._select_online_users()

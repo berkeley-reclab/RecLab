@@ -134,7 +134,7 @@ class DictEnvironment(Environment):
 
     def __init__(self, rating_frequency=0.02, num_init_ratings=0):
         """Create a Topics environment."""
-        self._timestep = 0
+        self._timestep = -1
         self._random = np.random.RandomState()
         self._rating_frequency = rating_frequency
         self._num_init_ratings = num_init_ratings
@@ -161,7 +161,7 @@ class DictEnvironment(Environment):
 
         """
         # Initialize the state of the environment.
-        self._timestep = 0
+        self._timestep = -1
         self._reset_state()
         num_users = len(self._users)
         num_items = len(self._items)
@@ -173,11 +173,13 @@ class DictEnvironment(Environment):
         item_ids = idx_1d % num_items
         self._ratings = {}
         for user_id, item_id in zip(user_ids, item_ids):
-            self._ratings[user_id, item_id] = self._rate_item(user_id, item_id)
+            self._ratings[user_id, item_id] = (self._rate_item(user_id, item_id),
+                                               self._rating_context(user_id))
 
         # Finally, set the users that will be online for the first step.
         self._online_users = self._select_online_users()
 
+        self._timestep += 1
         return self._users.copy(), self._items.copy(), self._ratings.copy()
 
     def step(self, recommendations):
@@ -209,12 +211,13 @@ class DictEnvironment(Environment):
 
         """
         assert len(recommendations) == len(self._online_users)
-        self._timestep += 1
         new_users, new_items = self._update_state()
         # Get online users to rate the recommended items.
         ratings = {}
         for user_id, item_id in zip(self._online_users, recommendations):
-            ratings[user_id, item_id] = self._rate_item(user_id, item_id)
+            ratings[user_id, item_id] = (self._rate_item(user_id, item_id),
+                                         self._rating_context(user_id))
+        self._ratings.update(ratings)
 
         # Update the online users.
         self._online_users = self._select_online_users()
@@ -224,6 +227,7 @@ class DictEnvironment(Environment):
                 "items": self._items,
                 "ratings": self._ratings}
 
+        self._timestep += 1
         return new_users, new_items, ratings, info
 
     def online_users(self):

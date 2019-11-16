@@ -13,14 +13,15 @@ def main():
     # env = RandomPreferences(num_topics=10, num_users=100, num_items=1700, num_init_ratings=10000)
     recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=100, max_num_items=170)
 
+
     # First generate the items and users to seed the dataset.
     print("Initializing environment and recommender")
     items, users, ratings = env.reset()
-    recommender.init(items, users, ratings)
+    recommender.reset(items, users, ratings)
 
     # Now recommend items to users.
     print("Making online recommendations")
-    for i in range(10):
+    for i in range(1):
         online_users = env.online_users()
         ret, predicted_ratings = recommender.recommend(online_users, num_recommendations=1)
         recommendations = ret[:, 0]

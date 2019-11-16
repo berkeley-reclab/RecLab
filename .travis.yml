@@ -48,4 +48,3 @@ script:
 
 notifications:
       email: false
-

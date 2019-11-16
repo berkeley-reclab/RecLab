@@ -68,11 +68,8 @@ class Topics(Environment):
             and ratings[i, 2] is the rating given to that item.
 
         """
-        # Users have a 1-5 uniformly distributed preference for each topic.
-        self._users = np.random.uniform(low=0.5, high=5.5,
-                                        size=(self._num_users, self._num_topics))
-        # Randomly sample a single topic for each item.
-        self._items = np.random.choice(self._num_topics, size=self._num_items)
+        # Initialize preference and topics for users and items
+        self._init_user_item_models()
         # Create the initially empty matrix of user-item ratings.
         self._ratings = scipy.sparse.dok_matrix((self._num_users, self._num_items))
 
@@ -203,6 +200,14 @@ class Topics(Environment):
         """Set the seed for this environment's random number generator."""
         self._random.seed(seed)
 
+
+    def _init_user_item_models(self):
+        # Users have a 1-5 uniformly distributed preference for each topic.
+        self._users = np.random.uniform(low=0.5, high=5.5,
+                                        size=(self._num_users, self._num_topics))
+        # Randomly sample a single topic for each item.
+        self._items = np.random.choice(self._num_topics, size=self._num_items)
+
     def _rate_item(self, user_id, item_id):
         """Get a user to rate an item and update the internal rating state.
 
@@ -224,3 +229,4 @@ class Topics(Environment):
         rating = np.clip(np.round(preference + self._random.randn() * self._noise), 1, 6)
         self._ratings[user_id, item_id] = rating.astype(np.int)
         return rating
+

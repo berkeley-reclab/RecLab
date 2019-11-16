@@ -74,8 +74,10 @@ class MovieLens100k(LatentFactorBehavior):
         recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, 
                             max_num_users=self._num_users, max_num_items=self._num_items)
         recommender.init(users, items, ratings)
-        recommender.train()
-
+        global_bias, weights, pairwise_interactions = recommender.train()
+        print(global_bias)
+        print(weights)
+        print(pairwise_interactions)
         # TODO: need to read these models out of LIBFM
         assert False
         self._users = (user_factors, user_bias)

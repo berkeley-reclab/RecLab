@@ -114,10 +114,38 @@ class LibFM(object):
         # Run libfm on the train and test files.
         print("Running libfm")
         libfm_binary_path = os.path.join(os.path.dirname(__file__), "libfm_lib/bin/libFM")
-        os.system("{} -task r -train train.libfm -dim '1,1,8' -verbosity 1"
+        os.system("{} -task r -train train.libfm -dim '1,1,8' -verbosity 1 -save_model saved_model"
                   .format(libfm_binary_path))
-        # TODO: read model
-        # a la https://github.com/jfloff/pywFM/blob/master/pywFM/__init__.py#L238
+
+        # a la https://github.com/jfloff/pywFM/blob/master/pywFM/__init__.py#L238 
+        global_bias = None
+        weights = []
+        pairwise_interactions = []
+        with open('saved_model', 'rb') as saved_model:
+            # if 0 its global bias; if 1, weights; if 2, pairwise interactions
+            out_iter = 0
+            for i, line in enumerate(saved_model):
+                # checks which line is starting with #
+                if line.startswith('#'):
+                    if "#global bias W0" in line:
+                        out_iter = 0
+                    elif "#unary interactions Wj" in line:
+                        out_iter = 1
+                    elif "#pairwise interactions Vj,f" in line:
+                        out_iter = 2
+                else:
+                    # check context get in previous step and adds accordingly
+                    if out_iter == 0:
+                        global_bias = float(line)
+                    elif out_iter == 1:
+                        weights.append(float(line))
+                    elif out_iter == 2:
+                        try:
+                            pairwise_interactions.append([float(x) for x in line.split(' ')])
+                        except ValueError as e:
+                            pairwise_interactions.append(0.0) #Case: no pairwise interactions used
+        pairwise_interactions = np.matrix(pairwise_interactions)
+        return global_bias, weights, pairwise_interactions
 
     def recommend(self, user_envs, num_recommendations):
         user_ids = list(user_envs.keys())

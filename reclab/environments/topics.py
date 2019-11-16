@@ -50,13 +50,6 @@ class Topics(environment.DictEnvironment):
         self._user_preferences = None
         self._item_topics = None
 
-    def _init_user_item_models(self):
-        # Users have a 1-5 uniformly distributed preference for each topic.
-        self._users = np.random.uniform(low=0.5, high=5.5,
-                                        size=(self._num_users, self._num_topics))
-        # Randomly sample a single topic for each item.
-        self._items = np.random.choice(self._num_topics, size=self._num_items)
-
     def _rate_item(self, user_id, item_id):
         """Get a user to rate an item and update the internal rating state."""
         topic = self._item_topics[item_id]

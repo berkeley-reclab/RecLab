@@ -3,40 +3,18 @@ import scipy
 import os
 import pandas as pd
 
-from reclab.environments.simple import Simple
+from . import environment
 from reclab.recommenders.libfm.libfm import LibFM
 
-class LatentFactorBehavior(Simple):
+class LatentFactorBehavior(environment.DictEnvironment):
     def __init__(self, latent_dim, num_users, num_items,
-                 rating_frequency=0.02, num_init_ratings=0):
-        self._random = np.random.RandomState()
-        self._noise = 0.0
+                 rating_frequency=0.02, num_init_ratings=0,
+                 noise=0.0):
+        super().__init__(rating_frequency, num_init_ratings)
         self._latent_dim = latent_dim
         self._num_users = num_users
         self._num_items = num_items
-        self._rating_frequency=rating_frequency
-        self._num_init_ratings = num_init_ratings
-        self._users = None
-        self._items = None
-        self._ratings = None
-
-    def _init_user_item_models(self):
-        # Initialization size determined such that ratings generally fall in 0-5 range
-        factor_sd = np.sqrt( np.sqrt(0.5 * self._latent_dim) )
-        # User latent factors are normally distributed
-        user_bias = np.random.normal(loc=0., scale=0.5, size=self._num_users)
-        user_factors = np.random.normal(loc=0., scale=factor_sd,
-                                        size=(self._num_users, self._latent_dim))
-        # Item latent factors are normally distributed
-        item_bias = np.random.normal(loc=0., scale=0.5, size=self._num_items)
-        item_factors = np.random.normal(loc=0., scale=factor_sd,
-                                        size=(self._num_items, self._latent_dim))
-        # Shift up the mean
-        offset = 2.5
-
-        self._users = (user_factors, user_bias)
-        self._items = (item_factors, item_bias)
-        self._offset = offset
+        self._noise = noise
 
     def _rate_item(self, user_id, item_id):
         """Get a user to rate an item and update the internal rating state.
@@ -53,23 +31,51 @@ class LatentFactorBehavior(Simple):
         rating : int
             The rating the item was given by the user.
         """
-        (user_factors, user_bias) = self._users
-        (item_factors, item_bias) = self._items
+        (user_factors, user_bias) = self._users_factor_bias
+        (item_factors, item_bias) = self._items_factor_bias
         raw_rating = np.dot(user_factors[user_id], item_factors[item_id]) + user_bias[user_id] + item_bias[item_id] + self._offset
         rating = np.clip(raw_rating + self._random.randn() * self._noise, 0, 5).astype(np.int)
         self._ratings[user_id, item_id] = rating
         return rating
 
+    def _reset_state(self):
+        """Reset the state of the environment."""
+
+        user_factors, user_bias, item_factors, item_bias, offset = self._generate_latent_factors()
+
+        self._users_factor_bias = (user_factors, user_bias)
+        self._items_factor_bias = (item_factors, item_bias)
+        self._offset = offset
+
+        self._users = {user_id: np.zeros(0) for user_id in range(self._num_users)}
+        self._items = {item_id: np.zeros(0) for item_id in range(self._num_items)}
+
+    def _generate_latent_factors(self):
+        # Initialization size determined such that ratings generally fall in 0-5 range
+        factor_sd = np.sqrt( np.sqrt(0.5 * self._latent_dim) )
+        # User latent factors are normally distributed
+        user_bias = np.random.normal(loc=0., scale=0.5, size=self._num_users)
+        user_factors = np.random.normal(loc=0., scale=factor_sd,
+                                        size=(self._num_users, self._latent_dim))
+        # Item latent factors are normally distributed
+        item_bias = np.random.normal(loc=0., scale=0.5, size=self._num_items)
+        item_factors = np.random.normal(loc=0., scale=factor_sd,
+                                        size=(self._num_items, self._latent_dim))
+        # Shift up the mean
+        offset = 2.5
+        return user_factors, user_bias, item_factors, item_bias, offset
+
 class MovieLens100k(LatentFactorBehavior):
     def __init__(self, latent_dim, datapath,
                  rating_frequency=0.02, num_init_ratings=0):
         self.datapath = os.path.expanduser(datapath)
+        # TODO: this should not be hardcoded
         num_users = 943
         num_items = 1682
         super().__init__(latent_dim, num_users, num_items,
                  rating_frequency, num_init_ratings)
 
-    def _init_user_item_models(self):
+    def _generate_latent_factors(self):
         users, items, ratings = self._read_datafile()
         recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, 
                             max_num_users=self._num_users, max_num_items=self._num_items)

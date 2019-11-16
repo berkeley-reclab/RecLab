@@ -1,6 +1,5 @@
 import numpy as np
 
-
 from reclab.environments.latent_factors import LatentFactorBehavior, MovieLens100k
 from reclab.recommenders.libfm.libfm import LibFM
 

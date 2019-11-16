@@ -1,4 +1,4 @@
-"""A wrapper for the LibFM recommender. See www.libfm.org for implementation details."""
+"""A wrapper for the LibFM riecommender. See www.libfm.org for implementation details."""
 import collections
 import itertools
 import os
@@ -63,9 +63,10 @@ class LibFM():
             All starting items where the key is the user id while the value is the
             item features.
         ratings : np.ndarray, optional
-            All starting ratings where ratings[i, 0] is the user id of the i-th rating,
-            ratings[i, 1] is the item id of the i-th rating, ratings[i, -1] is the rating
-            and the rest of the row represents the rating features.
+            All starting ratings where the key is a double is a double whose first index is the
+            id of the user making the rating and the second index is the id of the item being
+            rated. The value is a double whose first index is the rating value and the second
+            index is a numpy array that represents the context in which the rating was made.
 
         """
         self._users = {}
@@ -87,9 +88,10 @@ class LibFM():
             All new items where the key is the user id while the value is the
             item features.
         ratings : np.ndarray, optional
-            All new ratings where ratings[i, 0] is the user id of the i-th rating,
-            ratings[i, 1] is the item id of the i-th rating, ratings[i, -1] is the rating
-            and the rest of the row represents the rating features.
+            All new ratings where the key is a double is a double whose first index is the
+            id of the user making the rating and the second index is the id of the item being
+            rated. The value is a double whose first index is the rating value and the second
+            index is a numpy array that represents the context in which the rating was made.
 
         """
         if users is not None:
@@ -97,12 +99,10 @@ class LibFM():
         if items is not None:
             self._items.update(items)
         if ratings is not None:
-            for i in range(len(ratings)):
-                user_id = int(ratings[i, 0])
-                item_id = int(ratings[i, 1])
-                self._rated_items[user_id].add(item_id)
+            for (user_id, item_id), (rating, rating_context) in ratings.items():
                 assert user_id in self._users
                 assert item_id in self._items
+                self._rated_items[user_id].add(item_id)
                 user_features = self._users[user_id]
                 item_features = self._items[item_id]
                 one_hot_user_id = scipy.sparse.csr_matrix(([1], ([0], [user_id])),
@@ -111,10 +111,10 @@ class LibFM():
                                                           shape=(1, self._max_num_items))
                 new_rating_inputs = scipy.sparse.hstack((one_hot_user_id, user_features,
                                                          one_hot_item_id, item_features,
-                                                         ratings[i, 2:-1]), format="csr")
+                                                         rating_context), format="csr")
                 self._rating_inputs = scipy.sparse.vstack((self._rating_inputs, new_rating_inputs),
                                                           format="csr")
-                self._rating_outputs = np.concatenate((self._rating_outputs, [ratings[i, -1]]))
+                self._rating_outputs = np.concatenate((self._rating_outputs, [rating]))
 
     def predict(self, user_ids, item_ids, rating_data):
         """Predict the ratings of user-item pairs.
@@ -222,12 +222,12 @@ class LibFM():
         pairwise_interactions = np.matrix(pairwise_interactions)
         return global_bias, weights, pairwise_interactions
 
-    def recommend(self, user_envs, num_recommendations):
+    def recommend(self, user_contexts, num_recommendations):
         """Recommend items to users.
 
         Parameters
         ----------
-        user_envs : ordered dict
+        user_contexts : ordered dict
             The setting each user is going to be recommended items. The key is the user id and
             the value is the rating features.
         num_recommendations : int
@@ -248,11 +248,11 @@ class LibFM():
         all_user_ids = []
         all_rating_data = []
         all_item_ids = []
-        for i, user_id in enumerate(user_envs):
+        for i, user_id in enumerate(user_contexts):
             item_ids = np.array([j for j in self._items
                                  if j not in self._rated_items[user_id]])
             all_user_ids.append(user_id * np.ones(len(item_ids), dtype=np.int))
-            all_rating_data.append(np.repeat(user_envs[user_id][np.newaxis, :],
+            all_rating_data.append(np.repeat(user_contexts[user_id][np.newaxis, :],
                                              len(item_ids), axis=0))
             all_item_ids.append(item_ids)
 
@@ -265,9 +265,9 @@ class LibFM():
                                    list(itertools.accumulate(item_lens)))
 
         # Pick the top predicted items along with their predicted ratings.
-        recs = np.zeros((len(user_envs), num_recommendations), dtype=np.int)
+        recs = np.zeros((len(user_contexts), num_recommendations), dtype=np.int)
         predicted_ratings = np.zeros(recs.shape)
-        for i, (item_ids, predictions) in enumerate(zip(all_user_ids, all_predictions)):
+        for i, (item_ids, predictions) in enumerate(zip(all_item_ids, all_predictions)):
             best_indices = np.argsort(predictions)[-num_recommendations:]
             predicted_ratings[i] = predictions[best_indices]
             recs[i] = item_ids[best_indices]

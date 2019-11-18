@@ -25,7 +25,7 @@ class LatentFactorBehavior(environment.DictEnvironment):
             self._boredom_penalty /= self._memory_length
         self.name = 'latent'
 
-    def _rate_item(self, user_id, item_id):
+    def _rate_item(self, user_id, item_id, online=True):
         """Get a user to rate an item and update the internal rating state.
 
         Parameters
@@ -53,12 +53,13 @@ class LatentFactorBehavior(environment.DictEnvironment):
                 if similarity > self._boredom_threshold:
                     boredom_penalty += (similarity-self._boredom_threshold)
         boredom_penalty *= self._boredom_penalty
+        print("boredom penalty", boredom_penalty)
         rating = np.clip(raw_rating - boredom_penalty + self._random.randn() * self._noise, 0, 5)
         # Updating underlying affinity
         self._users_factor_bias[0][user_id] = (1.0 - self._affinity_change) \
             * user_factors[user_id] + self._affinity_change * item_factors[item_id]
         # Updating history
-        if self._memory_length > 0:
+        if self._memory_length > 0 and online:
             self._user_histories[user_id] = self._user_histories[user_id][1:] \
                 + [item_factors[item_id]]
         return rating

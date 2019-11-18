@@ -61,13 +61,14 @@ class Topics(environment.DictEnvironment):
         self._boredom_penalty = boredom_penalty
         self.name = 'topics'
 
-    def _rate_item(self, user_id, item_id):
+    def _rate_item(self, user_id, item_id, online=True):
         """Get a user to rate an item and update the internal rating state."""
         topic = self._item_topics[item_id]
         preference = self._user_preferences[user_id, topic]
         rating = np.clip(np.round(preference + self._random.randn() * self._noise), 1, 5)
         if self._user_histories[user_id].count(topic) > self._boredom_threshold:
             rating -= self._boredom_penalty
+            print("boredom penalty", rating)
         rating = np.clip(rating, 1, 5)
         # Updating underlying preference
         if preference <= 5:
@@ -75,7 +76,7 @@ class Topics(environment.DictEnvironment):
             self._user_preferences[user_id, np.arange(self._num_topics) != topic] -= (
                 self._topic_change / (self._num_topics - 1))
         # Updating history
-        if self._memory_length > 0:
+        if self._memory_length > 0 and online:
             self._user_histories[user_id] = self._user_histories[user_id][1:]+[topic]
         return rating
 

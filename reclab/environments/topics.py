@@ -42,6 +42,7 @@ class Topics(environment.DictEnvironment):
         penalty.
     boredom_penalty : float
         The penalty on the rating when a user is bored
+
     """
 
     def __init__(self, num_topics, num_users, num_items, rating_frequency=1.0,

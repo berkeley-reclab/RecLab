@@ -7,7 +7,37 @@ from . import environment
 from reclab.recommenders.libfm.libfm import LibFM
 
 class LatentFactorBehavior(environment.DictEnvironment):
-    """An environment where users and items have latent factors and biases."""
+    """An environment where users and items have latent factors and biases.
+
+    Ratings are generated as
+    r = clip( <p_u, q_i> + b_u + b_i + b_0 )
+
+    Parameters
+    ----------
+    latent_dim : int
+        size of latent factors p, q
+    num_users : int
+        The number of users in the environment.
+    num_items : int
+        The number of items in the environment.
+    rating_frequency : float
+        The proportion of users that will need a recommendation at each step.
+        Must be between 0 and 1.
+    num_init_ratings : int
+        The number of ratings available from the start. User-item pairs are randomly selected.
+    noise : float
+        The standard deviation of the noise added to ratings.
+    affinity_change : float
+        How much the user's latent factor is shifted towards that of an item
+    memory_length : int
+        The number of recent items a user remembers which affect the rating
+    boredom_threshold : int
+        The size of inner product that a new item has to be with one in history
+        to result in a boredom response
+    boredom_penalty : float
+        The factor on the penalty on the rating when a user is bored
+
+    """
 
     def __init__(self, latent_dim, num_users, num_items,
                  rating_frequency=0.02, num_init_ratings=0,

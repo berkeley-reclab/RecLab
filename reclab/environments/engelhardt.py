@@ -21,8 +21,8 @@ class User(object):
         Initialize user with features and known/unknown utility weight.
 
         Each user's fraction of known utility is drawn from a beta distribution parameterized by
-        a combination of the same known_weight and beta_var. known_weight and beta_var need to be manipulated
-        before becoming the alpha and beta parameters to each user's distribution.
+        a combination of the same known_weight and beta_var. known_weight and beta_var need to be
+        manipulated before becoming the alpha and beta parameters to each user's distribution.
 
         Parameters
         ----------

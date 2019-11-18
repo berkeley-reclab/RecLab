@@ -45,7 +45,7 @@ class Topics(environment.DictEnvironment):
     """
 
     def __init__(self, num_topics, num_users, num_items, rating_frequency=1.0,
-                 num_init_ratings=0, noise=0.0, topic_change=0.0, memory_length=0, 
+                 num_init_ratings=0, noise=0.0, topic_change=0.0, memory_length=0,
                  boredom_threshold=0, boredom_penalty=0.0):
         """Create a Topics environment."""
         super().__init__(rating_frequency, num_init_ratings, memory_length)
@@ -84,5 +84,6 @@ class Topics(environment.DictEnvironment):
                                                    size=(self._num_users, self._num_topics))
         self._item_topics = np.random.choice(self._num_topics, size=self._num_items)
         self._users = {user_id: np.zeros(0) for user_id in range(self._num_users)}
-        self._user_histories = {user_id: [None]*self._memory_length for user_id in range(self._num_users)}
+        self._user_histories = {user_id: [None]*self._memory_length for user_id in
+                                range(self._num_users)}
         self._items = {item_id: np.zeros(0) for item_id in range(self._num_items)}

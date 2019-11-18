@@ -180,11 +180,21 @@ class LibFM():
         return predictions
 
     def train(self):
-        # only training, not predicting.
+        """Uses libfm to train model and reads resulting model.
+
+        Returns
+        -------
+        global_bias : float
+            global bias term in model
+        weights : np.ndarray
+            linear term in model (user/item biases)
+        pairwise_interactions  : np.ndarray
+            interaction term in model
+        """
         print("Writing libfm file")
-        self._write_libfm_file("train.libfm", self._rating_X, self._rating_y,
-                               self._num_written_ratings)
-        self._num_written_ratings = self._rating_X.shape[0]
+        write_libfm_file("train.libfm", self._rating_inputs, self._rating_outputs,
+                         self._num_written_ratings)
+        self._num_written_ratings = self._rating_inputs.shape[0]
 
         # Run libfm on the train and test files.
         print("Running libfm")
@@ -192,14 +202,14 @@ class LibFM():
         os.system("{} -task r -train train.libfm -dim '1,1,8' -verbosity 1 -save_model saved_model"
                   .format(libfm_binary_path))
 
-        # a la https://github.com/jfloff/pywFM/blob/master/pywFM/__init__.py#L238 
+        # a la https://github.com/jfloff/pywFM/blob/master/pywFM/__init__.py#L238
         global_bias = None
         weights = []
         pairwise_interactions = []
         with open('saved_model', 'rb') as saved_model:
             # if 0 its global bias; if 1, weights; if 2, pairwise interactions
             out_iter = 0
-            for i, line in enumerate(saved_model):
+            for _, line in enumerate(saved_model):
                 # checks which line is starting with #
                 if line.startswith('#'):
                     if "#global bias W0" in line:
@@ -217,8 +227,9 @@ class LibFM():
                     elif out_iter == 2:
                         try:
                             pairwise_interactions.append([float(x) for x in line.split(' ')])
-                        except ValueError as e:
-                            pairwise_interactions.append(0.0) #Case: no pairwise interactions used
+                        except ValueError:
+                            # Case: no pairwise interactions used
+                            pairwise_interactions.append(0.0)
         pairwise_interactions = np.matrix(pairwise_interactions)
         return global_bias, weights, pairwise_interactions
 

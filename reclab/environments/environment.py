@@ -145,6 +145,7 @@ class DictEnvironment(Environment):
         self._ratings = None
         self._online_users = None
         self._memory_length = memory_length
+        self.name = ''
 
     def reset(self):
         """Reset the environment to its original state. Must be called before the first step.

@@ -58,6 +58,7 @@ class Topics(environment.DictEnvironment):
         self._item_topics = None
         self._boredom_threshold = boredom_threshold
         self._boredom_penalty = boredom_penalty
+        self.name = 'topics'
 
     def _rate_item(self, user_id, item_id):
         """Get a user to rate an item and update the internal rating state."""

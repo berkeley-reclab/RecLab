@@ -20,6 +20,7 @@ class LatentFactorBehavior(environment.DictEnvironment):
         self._boredom_threshold = boredom_threshold
         self._boredom_penalty = boredom_penalty 
         if self._memory_length > 0: self._boredom_penalty /= self._memory_length
+        self.name = 'latent'
 
     def _rate_item(self, user_id, item_id):
         """Get a user to rate an item and update the internal rating state.
@@ -43,7 +44,7 @@ class LatentFactorBehavior(environment.DictEnvironment):
         for item_factor in self._user_histories[user_id]:
             if item_factor is not None:
                 similarity = np.dot(item_factors[item_id],item_factor) / np.linalg.norm(item_factor) / np.linalg.norm(item_factors[item_id])
-                if similarity > self._boredom_threshold: boredom_penalty += (similarity-boredom_threshold)
+                if similarity > self._boredom_threshold: boredom_penalty += (similarity-self._boredom_threshold)
         boredom_penalty *= self._boredom_penalty
         rating = np.clip(raw_rating - boredom_penalty + self._random.randn() * self._noise, 0, 5)
         # Updating underlying affinity
@@ -90,6 +91,7 @@ class MovieLens100k(LatentFactorBehavior):
         num_items = 1682
         super().__init__(latent_dim, num_users, num_items,
                  rating_frequency, num_init_ratings)
+        self.name = 'ml100k'
 
     def _generate_latent_factors(self):
         users, items, ratings = self._read_datafile()

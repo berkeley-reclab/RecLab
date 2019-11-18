@@ -17,7 +17,25 @@ class User(object):
 
     def __init__(self, num_topics, known_weight,
                  user_topic_weights, beta_var):
-        """Initialize user with features and known/unknown utility weight."""
+        """
+        Initialize user with features and known/unknown utility weight.
+
+        Each user's fraction of known utility is drawn from a beta distribution parameterized by
+        a combination of the same known_weight and beta_var. known_weight and beta_var need to be manipulated
+        before becoming the alpha and beta parameters to each user's distribution.
+
+        Parameters
+        ----------
+        known_weight : float
+            the average fraction of the user's true utility known to the user and the recommender
+
+        user_topic_weights : float array
+            global parameters for each user's topic preferences
+
+        beta_var : int
+            variance of beta distribution
+
+        """
         self.num_topics = num_topics
         alpha = ((1 - known_weight) / (beta_var ** 2) - (1 / known_weight)) * (known_weight ** 2)
         beta = alpha * ((1 / known_weight) - 1)
@@ -25,7 +43,19 @@ class User(object):
         self.preferences = np.random.dirichlet(user_topic_weights)
 
     def rate(self, item_attributes):
-        """Return true utility and known utility from user."""
+        """
+        Return true utility and known utility from user.
+
+        Returns
+        ------
+        true_util : float
+            User's actual utility, including both known and unknown fractions
+
+        known_util: float
+            User's known utility, found by multiplying true utility
+            by the fraction of utility that is known
+
+        """
         true_util = np.dot(self.preferences, item_attributes) * 5
         return true_util, true_util * self.known_weight
 
@@ -84,7 +114,6 @@ class Engelhardt(environment.DictEnvironment):
                        for user_id in range(self._num_users)}
         self._items = {item_id: np.random.dirichlet(self.item_topic_weights)
                        for item_id in range(self._num_items)}
-        # self._util = scipy.sparse.dok_matrix((self._num_users, self._num_items))
 
     def _rate_item(self, user_id, item_id):
         """Get a user to rate an item and update the internal rating state.

@@ -90,3 +90,60 @@ class LatentFactorBehavior(environment.DictEnvironment):
         # Shift up the mean
         offset = 2.5
         return user_factors, user_bias, item_factors, item_bias, offset
+
+
+class MovieLens100k(LatentFactorBehavior):
+
+    def __init__(self, latent_dim, datapath,
+                 rating_frequency=0.02, num_init_ratings=0):
+        self.datapath = os.path.expanduser(datapath)
+        # TODO: this should not be hardcoded
+        num_users = 943
+        num_items = 1682
+        super().__init__(latent_dim, num_users, num_items,
+                         rating_frequency, num_init_ratings)
+        self.name = 'ml100k'
+
+    def _generate_latent_factors(self):
+        users, items, ratings = self._read_datafile()
+        recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0,
+                            max_num_users=self._num_users, max_num_items=self._num_items)
+        recommender.init(users, items, ratings)
+        global_bias, weights, pairwise_interactions = recommender.train()
+        print(global_bias)
+        print(weights)
+        print(pairwise_interactions)
+        # TODO: need to read these models out of LIBFM
+        assert False
+        self._users = (user_factors, user_bias)
+        self._items = (item_factors, item_bias)
+        self._offset = offset
+
+    def _read_datafile(self):
+        datafile = os.path.join(self.datapath, "u.data")
+        if not os.path.isfile(datafile):
+            raise OSError("Datafile u.data not found in {}. \
+                Download from https://grouplens.org/datasets/movielens/100k/ \
+                and follow README instructions for unzipping.".format(datafile))
+
+        data = pd.read_csv(datafile, sep='\t', header=None, usecols=[0, 1, 2],
+                           names=["user_id", "item_id", "rating"])
+        # shifting user and movie indexing
+        data["user_id"] -= 1
+        data["item_id"] -= 1
+        # validating data assumptions
+        assert len(data) == 100000
+        assert len(np.unique(data["user_id"])) == self._num_users
+        assert len(np.unique(data["item_id"])) == self._num_items
+
+        users = {}
+        for i in range(self._num_users):
+            users[i] = np.zeros((0))
+
+        items = {}
+        for i in range(self._num_items):
+            items[i] = np.zeros((0))
+
+        # Fill the rating array with initial data.
+        ratings = np.array(data)
+        return users, items, ratings

@@ -129,10 +129,12 @@ class DictEnvironment(Environment):
         Must be between 0 and 1.
     num_init_ratings : int
         The number of ratings available from the start. User-item pairs are randomly selected.
+    memory : int
+        The number of recent items a user remembers which affect the rating
 
     """
 
-    def __init__(self, rating_frequency=0.02, num_init_ratings=0):
+    def __init__(self, rating_frequency=0.02, num_init_ratings=0, memory_length=0):
         """Create a Topics environment."""
         self._timestep = -1
         self._random = np.random.RandomState()
@@ -142,6 +144,7 @@ class DictEnvironment(Environment):
         self._items = None
         self._ratings = None
         self._online_users = None
+        self._memory_length = memory_length
 
     def reset(self):
         """Reset the environment to its original state. Must be called before the first step.

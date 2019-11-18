@@ -9,12 +9,17 @@ from reclab.recommenders.libfm.libfm import LibFM
 class LatentFactorBehavior(environment.DictEnvironment):
     def __init__(self, latent_dim, num_users, num_items,
                  rating_frequency=0.02, num_init_ratings=0,
-                 noise=0.0):
-        super().__init__(rating_frequency, num_init_ratings)
+                 noise=0.0, memory_length=0, affinity_change=0.0, 
+                 boredom_threshold=0, boredom_penalty=0.0):
+        super().__init__(rating_frequency, num_init_ratings,memory_length)
         self._latent_dim = latent_dim
         self._num_users = num_users
         self._num_items = num_items
         self._noise = noise
+        self._affinity_change = affinity_change
+        self._boredom_threshold = boredom_threshold
+        self._boredom_penalty = boredom_penalty 
+        if self._memory_length > 0: self._boredom_penalty /= self._memory_length
 
     def _rate_item(self, user_id, item_id):
         """Get a user to rate an item and update the internal rating state.
@@ -34,8 +39,18 @@ class LatentFactorBehavior(environment.DictEnvironment):
         (user_factors, user_bias) = self._users_factor_bias
         (item_factors, item_bias) = self._items_factor_bias
         raw_rating = np.dot(user_factors[user_id], item_factors[item_id]) + user_bias[user_id] + item_bias[item_id] + self._offset
-        rating = np.clip(raw_rating + self._random.randn() * self._noise, 0, 5).astype(np.int)
-        self._ratings[user_id, item_id] = rating
+        boredom_penalty = 0
+        for item_factor in self._user_histories[user_id]:
+            if item_factor is not None:
+                similarity = np.dot(item_factors[item_id],item_factor) / np.linalg.norm(item_factor) / np.linalg.norm(item_factors[item_id])
+                if similarity > self._boredom_threshold: boredom_penalty += (similarity-boredom_threshold)
+        boredom_penalty *= self._boredom_penalty
+        rating = np.clip(raw_rating - boredom_penalty + self._random.randn() * self._noise, 0, 5)
+        # Updating underlying affinity
+        self._users_factor_bias[0][user_id] = (1.0 - self._affinity_change) * user_factors[user_id] + self._affinity_change * item_factors[item_id]
+        # Updating history
+        if self._memory_length > 0:
+            self._user_histories[user_id] = self._user_histories[user_id][1:]+[item_factors[item_id]]
         return rating
 
     def _reset_state(self):
@@ -49,6 +64,7 @@ class LatentFactorBehavior(environment.DictEnvironment):
 
         self._users = {user_id: np.zeros(0) for user_id in range(self._num_users)}
         self._items = {item_id: np.zeros(0) for item_id in range(self._num_items)}
+        self._user_histories = {user_id: [None]*self._memory_length for user_id in range(self._num_users)}
 
     def _generate_latent_factors(self):
         # Initialization size determined such that ratings generally fall in 0-5 range

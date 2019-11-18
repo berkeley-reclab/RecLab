@@ -35,13 +35,20 @@ class Topics(environment.DictEnvironment):
     topic_change : float
         How much the user's preference for a topic changes each time that topic is recommended
         to them. The negative of topic_change gets split across all other topics as well.
-
+    memory_length : int
+        The number of recent topics a user remembers which affect the rating
+    boredom_threshold : int
+        The number of times a topics has to be seen within the memory to gain a
+        penalty.
+    boredom_penalty : float
+        The penalty on the rating when a user is bored
     """
 
     def __init__(self, num_topics, num_users, num_items, rating_frequency=1.0,
-                 num_init_ratings=0, noise=0.0, topic_change=0.0):
+                 num_init_ratings=0, noise=0.0, topic_change=0.0, memory_length=0, 
+                 boredom_threshold=0, boredom_penalty=0.0):
         """Create a Topics environment."""
-        super().__init__(rating_frequency, num_init_ratings)
+        super().__init__(rating_frequency, num_init_ratings, memory_length)
         self._num_topics = num_topics
         self._num_users = num_users
         self._num_items = num_items
@@ -49,17 +56,25 @@ class Topics(environment.DictEnvironment):
         self._noise = noise
         self._user_preferences = None
         self._item_topics = None
+        self._boredom_threshold = boredom_threshold
+        self._boredom_penalty = boredom_penalty
 
     def _rate_item(self, user_id, item_id):
         """Get a user to rate an item and update the internal rating state."""
         topic = self._item_topics[item_id]
         preference = self._user_preferences[user_id, topic]
         rating = np.clip(np.round(preference + self._random.randn() * self._noise), 1, 5)
-        # Now adjust the user preferences.
+        if self._user_histories[user_id].count(topic) > self._boredom_threshold:
+            rating -= self._boredom_penalty
+        rating = np.clip(rating, 1, 5)
+        # Updating underlying preference
         if preference <= 5:
             self._user_preferences[user_id, topic] += self._topic_change
             self._user_preferences[user_id, np.arange(self._num_topics) != topic] -= (
                 self._topic_change / (self._num_topics - 1))
+        # Updating history
+        if self._memory_length > 0:
+            self._user_histories[user_id] = self._user_histories[user_id][1:]+[topic]
         return rating
 
     def _reset_state(self):
@@ -68,4 +83,5 @@ class Topics(environment.DictEnvironment):
                                                    size=(self._num_users, self._num_topics))
         self._item_topics = np.random.choice(self._num_topics, size=self._num_items)
         self._users = {user_id: np.zeros(0) for user_id in range(self._num_users)}
+        self._user_histories = {user_id: [None]*self._memory_length for user_id in range(self._num_users)}
         self._items = {item_id: np.zeros(0) for item_id in range(self._num_items)}

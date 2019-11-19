@@ -1,3 +1,9 @@
+"""Contains the implementation for the Latent Behavior environment.
+
+In this environment users and items both have latent vectors, and
+the rating is determined by the inner product. Users and item both
+have bias terms, and there is an underlying bias as well.
+"""
 import numpy as np
 import scipy
 import os
@@ -5,6 +11,7 @@ import pandas as pd
 
 from . import environment
 from reclab.recommenders.libfm.libfm import LibFM
+
 
 class LatentFactorBehavior(environment.DictEnvironment):
     """An environment where users and items have latent factors and biases.
@@ -43,6 +50,7 @@ class LatentFactorBehavior(environment.DictEnvironment):
                  rating_frequency=0.02, num_init_ratings=0,
                  noise=0.0, memory_length=0, affinity_change=0.0,
                  boredom_threshold=0, boredom_penalty=0.0):
+        """Create a Latent Factor environment."""
         super().__init__(rating_frequency, num_init_ratings, memory_length)
         self._latent_dim = latent_dim
         self._num_users = num_users

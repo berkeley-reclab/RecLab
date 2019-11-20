@@ -92,7 +92,6 @@ class Environment(abc.ABC):
         """
         raise NotImplementedError
 
-    @abc.abstractmethod
     def all_ratings(self):
         """Return all ratings that have been made in the environment.
 
@@ -102,6 +101,12 @@ class Environment(abc.ABC):
             All ratings in the environment.
 
         """
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def name(self):
+        """Name of environment, used for saving."""
         raise NotImplementedError
 
     def seed(self, seed=None):
@@ -145,7 +150,6 @@ class DictEnvironment(Environment):
         self._ratings = None
         self._online_users = None
         self._memory_length = memory_length
-        self.name = ''
 
     def reset(self):
         """Reset the environment to its original state. Must be called before the first step.
@@ -167,6 +171,8 @@ class DictEnvironment(Environment):
         # Initialize the state of the environment.
         self._timestep = -1
         self._reset_state()
+        self._user_histories = {user_id: [None]*self._memory_length for user_id in
+                                range(self._num_users)}
         num_users = len(self._users)
         num_items = len(self._items)
 
@@ -177,7 +183,7 @@ class DictEnvironment(Environment):
         item_ids = idx_1d % num_items
         self._ratings = {}
         for user_id, item_id in zip(user_ids, item_ids):
-            self._ratings[user_id, item_id] = (self._rate_item(user_id, item_id, online=False),
+            self._ratings[user_id, item_id] = (self._rate_item(user_id, item_id),
                                                self._rating_context(user_id))
 
         # Finally, set the users that will be online for the first step.
@@ -221,6 +227,9 @@ class DictEnvironment(Environment):
         for user_id, item_id in zip(self._online_users, recommendations):
             ratings[user_id, item_id] = (self._rate_item(user_id, item_id),
                                          self._rating_context(user_id))
+            if self._memory_length > 0:
+                self._user_histories[user_id] = self._user_histories[user_id][1:]+[item_id]
+
         self._ratings.update(ratings)
 
         # Update the online users.

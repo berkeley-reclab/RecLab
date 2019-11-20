@@ -92,6 +92,7 @@ class Environment(abc.ABC):
         """
         raise NotImplementedError
 
+    @abc.abstractmethod
     def all_ratings(self):
         """Return all ratings that have been made in the environment.
 

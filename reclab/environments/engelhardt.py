@@ -71,6 +71,7 @@ class Engelhardt(environment.DictEnvironment):
     def __init__(self, num_topics, num_users, num_items, rating_frequency=0.2,
                  num_init_ratings=0, known_weight=0.98, beta_var=10 ** -5):
         """Create an Engelhardt environment."""
+        super().__init__(rating_frequency, num_init_ratings)
         self.known_weight = known_weight
         self.beta_var = beta_var
         self.user_topic_weights = scipy.special.softmax(np.random.rand(num_topics))
@@ -78,13 +79,16 @@ class Engelhardt(environment.DictEnvironment):
         self._num_topics = num_topics
         self._num_users = num_users
         self._num_items = num_items
-        self._rating_frequency = rating_frequency
-        self._num_init_ratings = num_init_ratings
         self._users = None
         self._users_full = None
         self._items = None
         self._ratings = None
         self._timestep = 0
+
+    @property
+    def name(self):
+        """Name of environment, used for saving."""
+        return 'engelhardt'
 
     def _reset_state(self):
         """Reset the environment to its original state. Must be called before the first step.
@@ -110,10 +114,12 @@ class Engelhardt(environment.DictEnvironment):
         self._users_full = {user_id: User(self._num_topics, self.known_weight,
                                           self.user_topic_weights, self.beta_var)
                             for user_id in range(self._num_users)}
-        self._users = {user_id: self._users_full[user_id].preferences
+        self._users = {user_id: np.zeros(0)
                        for user_id in range(self._num_users)}
-        self._items = {item_id: np.random.dirichlet(self.item_topic_weights)
+        self._items = {item_id: np.zeros(0)
                        for item_id in range(self._num_items)}
+        self._item_attrs = {item_id: np.random.dirichlet(self.item_topic_weights)
+                            for item_id in range(self._num_items)}
 
     def _rate_item(self, user_id, item_id):
         """Get a user to rate an item and update the internal rating state.
@@ -131,7 +137,7 @@ class Engelhardt(environment.DictEnvironment):
             The rating the item was given by the user.
 
         """
-        item_attr = self._items[item_id]
+        item_attr = self._item_attrs[item_id]
         util, rating = self._users_full[user_id].rate(item_attr)
         print("Util is {} and rating is {}".format(util, rating))
         return rating

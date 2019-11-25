@@ -1,4 +1,4 @@
-"""Baseline recommender that randomly recommend item to user  """
+"""Baseline recommender that randomly recommend item to user."""
 import collections
 import itertools
 import os
@@ -9,7 +9,6 @@ import scipy.sparse
 
 
 class Randomrec():
-
     """The baseline recommendation model which is a random recommender.
 
     Parameters
@@ -28,6 +27,7 @@ class Randomrec():
         setting this value to be too large will lead to a degradation in performance.
 
     """
+
     def __init__(self, num_user_features, num_item_features, num_rating_features,
                  max_num_users, max_num_items):
         """Create a random recommender."""

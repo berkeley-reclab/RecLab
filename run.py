@@ -24,6 +24,7 @@ def main():
         rating_arr = []
         for (rating, _), pred in zip(ratings.values(), predicted_ratings):
             rating_arr.append([rating, pred])
+        print(rating_arr)
         rating_arr = np.array(rating_arr)
         errors = rating_arr[:,0] - rating_arr[:,1]
         print("Iter:", i, "Mean:", np.mean(rating_arr[:, 0]), "MSE:", np.mean(errors**2))

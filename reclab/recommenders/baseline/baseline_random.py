@@ -108,6 +108,33 @@ class Randomrec():
                 self._rating_inputs = scipy.sparse.vstack((self._rating_inputs, new_rating_inputs),
                                                           format="csr")
                 self._rating_outputs = np.concatenate((self._rating_outputs, [rating]))
+    
+    def predict(self, user_ids, item_ids, rating_data):
+        """Randomly predict the ratings of user-item pairs.
+
+        Parameters
+        ----------
+        user_ids : iterable of int
+            The list of all user ids for which we wish to predict ratings.
+            user_ids[i] is the user id of the i-th pair.
+        item_ids : iterable of int
+            The list of all item ids for which we wish to predict ratings.
+            item_ids[i] is the item id of the i-th pair.
+        rating_data : np.ndarray
+            The rating features for all the user-item pairs. rating_data[i] is
+            the rating features for the i-th pair.
+
+        Returns
+        -------
+        predictions : np.ndarray
+            The rating predictions where predictions[i] is the prediction of the i-th pair.
+
+        """
+        predictions = np.random.uniform(0, 5, item_ids.shape)
+        return predictions
+
+
+
 
     def recommend(self, user_contexts, num_recommendations):
         """Recommend random items to users.

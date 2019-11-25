@@ -1,6 +1,6 @@
 import numpy as np
 
-from reclab.environments import Topics
+from reclab.environments.topics import Topics
 from reclab.recommenders.libfm.libfm import LibFM
 
 

@@ -1,12 +1,12 @@
 import numpy as np
 
-from reclab.environments import Topics
-from reclab.recommenders.libfm.libfm import LibFM
+from reclab.environments.topics import Topics
+from reclab.recommenders.baseline.baseline_random import Randomrec
 
 
 def main():
     env = Topics(num_topics=10, num_users=100, num_items=170, num_init_ratings=5000)
-    recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=100, max_num_items=170)
+    recommender = Randomrec(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=100, max_num_items=170)
 
     # First generate the items and users to seed the dataset.
     print("Initializing environment and recommender")

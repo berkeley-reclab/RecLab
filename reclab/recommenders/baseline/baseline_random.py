@@ -7,7 +7,9 @@ import random
 import numpy as np
 import scipy.sparse
 
+
 class Randomrec():
+
     """The baseline recommendation model which is a random recommender.
 
     Parameters
@@ -43,7 +45,7 @@ class Randomrec():
         self._num_written_ratings = 0
         # Each row of rating_outputs consists of the numerical value assigned to that interaction.
         self._rating_outputs = np.empty((0,))
-    
+
     def reset(self, users=None, items=None, ratings=None):
         """Reset the recommender with optional starting user, item, and rating data.
 
@@ -68,7 +70,7 @@ class Randomrec():
         self._rating_inputs = scipy.sparse.csr_matrix((0, self._rating_inputs.shape[1]))
         self._rating_outputs = np.empty((0,))
         self.update(users, items, ratings)
-    
+
     def update(self, users=None, items=None, ratings=None):
         """Update the recommender with new user, item, and rating data.
 
@@ -108,7 +110,7 @@ class Randomrec():
                 self._rating_inputs = scipy.sparse.vstack((self._rating_inputs, new_rating_inputs),
                                                           format="csr")
                 self._rating_outputs = np.concatenate((self._rating_outputs, [rating]))
-    
+
     def predict(self, user_ids, item_ids, rating_data):
         """Randomly predict the ratings of user-item pairs.
 
@@ -132,9 +134,6 @@ class Randomrec():
         """
         predictions = np.random.uniform(0, 5, item_ids.shape)
         return predictions
-
-
-
 
     def recommend(self, user_contexts, num_recommendations):
         """Recommend random items to users.
@@ -182,9 +181,7 @@ class Randomrec():
         recs = np.zeros((len(user_contexts), num_recommendations), dtype=np.int)
         predicted_ratings = np.zeros(recs.shape)
         for i, (item_ids, predictions) in enumerate(zip(all_item_ids, all_predictions)):
-            #best_indices = np.argsort(predictions)[-num_recommendations:]
             random_indices = random.sample(range(0, len(predictions)-1), num_recommendations)
             predicted_ratings[i] = predictions[random_indices]
             recs[i] = item_ids[random_indices]
         return recs, predicted_ratings
-

@@ -1,5 +1,9 @@
-__pycache__/
+/**/__pycache__/
 
 train.libfm
 test.libfm
 predictions
+
+.ipynb_checkpoints
+
+experiments/data

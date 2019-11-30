@@ -171,7 +171,7 @@ class LibFM():
                    "-out predictions -verbosity 1").format(libfm_binary_path))
 
         # Read the prediction file back in as a numpy array.
-        print("Reading in predicitions")
+        print("Reading in predictions")
         predictions = np.empty(test_inputs.shape[0])
         with open("predictions", "r") as prediction_file:
             for i, line in enumerate(prediction_file):
@@ -179,7 +179,7 @@ class LibFM():
 
         return predictions
 
-    def recommend(self, user_contexts, num_recommendations):
+    def recommend(self, user_contexts, num_recommendations, strategy="greedy"):
         """Recommend items to users.
 
         Parameters
@@ -189,6 +189,13 @@ class LibFM():
             the value is the rating features.
         num_recommendations : int
             The number of items to recommend to each user.
+        strategy : string, optional
+            The type of strategy used to select recommended items, by default "greedy"
+            Valid strategies are:
+                "greedy" : chooses the unseen item with largest predicted rating
+                "eps_greedy" : with probability 1-eps chooses the unseen item with largest
+                               predicted rating, with probability eps chooses a random unseen item
+                "thompson": picks an item with probability proportional to the expected rating
 
         Returns
         -------
@@ -200,6 +207,11 @@ class LibFM():
             ratings for the items recommended to the i-th user.
 
         """
+
+        # Check that the strategy is of valid type
+        valid_strategies = ["greedy", "eps_greedy", "thompson"]
+        assert strategy in valid_strategies
+
         # Format the arrays to be passed to the prediction function. We need to predict all
         # items that have not been rated for each user.
         all_user_ids = []
@@ -221,14 +233,65 @@ class LibFM():
         all_predictions = np.split(all_predictions,
                                    list(itertools.accumulate(item_lens)))
 
-        # Pick the top predicted items along with their predicted ratings.
+        # Pick an item according to the strategy, along with their predicted ratings.
         recs = np.zeros((len(user_contexts), num_recommendations), dtype=np.int)
         predicted_ratings = np.zeros(recs.shape)
         for i, (item_ids, predictions) in enumerate(zip(all_item_ids, all_predictions)):
-            best_indices = np.argsort(predictions)[-num_recommendations:]
-            predicted_ratings[i] = predictions[best_indices]
-            recs[i] = item_ids[best_indices]
+            recs[i], predicted_ratings[i] = select_item(item_ids, predictions,
+                                                        num_recommendations, strategy)
         return recs, predicted_ratings
+
+
+def select_item(item_ids, predictions, num_recommendations, strategy="greedy"):
+    """ Helper function that selects items given a strategy
+
+    Parameters
+    ----------
+    item_ids : np.ndarray of int
+        ids of the items available for recommendation at this time step
+    predictions : np.ndarray
+        corresponding predicted ratings for these items
+    num_recommendations : int
+        number of items to select
+    strategy : str, optional
+        item selection strategy, by default "greedy"
+
+    Returns
+    -------
+    recs: np.ndarray of int
+        the indices of the items to be recommended
+    predicted_ratings: np.ndarray
+        predicted ratings for the selected items
+    """
+
+    assert len(item_ids) == len(predictions)
+    num_items = len(item_ids)
+    if strategy == "greedy":
+        selected_indices = np.argpartition(predictions,
+                                           num_items - num_recommendations)[-num_recommendations:]
+    elif strategy == "eps_greedy":
+        eps = 0.1
+        num_explore = np.random.binomial(num_recommendations, eps)
+        num_exploit = num_recommendations - num_explore
+        if num_exploit > 0:
+            exploit_indices = np.argpartition(predictions, num_items - num_exploit)[-num_exploit:]
+        else:
+            exploit_indices = []
+        explore_indices = np.random.choice([x for x in range(0, num_items)
+                                            if x not in exploit_indices], num_explore)
+        selected_indices = np.concatenate((exploit_indices, explore_indices))
+    elif strategy == "thompson":
+        # artificial parameter to boost the probability of the more likely items
+        power = np.ceil(np.log(len(predictions)))
+        selection_probs = np.power(predictions/sum(predictions), power)
+        selection_probs = selection_probs/sum(selection_probs)
+        selected_indices = np.random.choice(range(0, num_items),
+                                            num_recommendations, p=selection_probs)
+
+    selected_indices = selected_indices.astype('int')
+    predicted_ratings = predictions[selected_indices]
+    recs = item_ids[selected_indices]
+    return recs, predicted_ratings
 
 
 def write_libfm_file(file_path, inputs, outputs, start_idx=0):

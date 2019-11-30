@@ -2,14 +2,14 @@ import numpy as np
 
 from reclab.environments.latent_factors import LatentFactorBehavior
 from reclab.environments.topics import Topics
-from reclab.recommenders.libfm.libfm import LibFM
+from reclab.recommenders.libfm import LibFM
 
 
 def main():
-    params = {'topic_change': 0.1, 'memory_length': 5, 
+    params = {'topic_change': 0.1, 'memory_length': 5,
               'boredom_threshold': 2, 'boredom_penalty': 1.0}
     env = Topics(num_topics=10, num_users=100, num_items=170, num_init_ratings=5000, **params)
-    # params = {'affinity_change': 0.1, 'memory_length': 5, 
+    # params = {'affinity_change': 0.1, 'memory_length': 5,
     #           'boredom_threshold': 0.5, 'boredom_penalty': 1.0}
     # env = LatentFactorBehavior(latent_dim=8, num_users=100, num_items=170, num_init_ratings=1000, **params)
     # env = MovieLens100k(latent_dim=8, datapath="~/recsys/data/ml-100k/", num_init_ratings=1000)
@@ -25,7 +25,7 @@ def main():
     print("Making online recommendations")
     for i in range(100):
         online_users = env.online_users()
-        ret, predicted_ratings = recommender.recommend(online_users, num_recommendations=1)
+        ret, predicted_ratings = recommender.recommend(online_users, num_recommendations=1, strategy="greedy")
         recommendations = ret[:, 0]
         items, users, ratings, info = env.step(recommendations)
         recommender.update(users, items, ratings)

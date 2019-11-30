@@ -179,7 +179,7 @@ class DictEnvironment(Environment):
 
         # Fill the rating dict with initial data.
         idx_1d = self._random.choice(num_users * num_items, self._num_init_ratings,
-                                  replace=False)
+                                     replace=False)
         user_ids = idx_1d // num_items
         item_ids = idx_1d % num_items
         self._ratings = {}

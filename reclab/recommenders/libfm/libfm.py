@@ -243,7 +243,7 @@ class LibFM():
 
 
 def select_item(item_ids, predictions, num_recommendations, strategy="greedy"):
-    """ Helper function that selects items given a strategy
+    """Select items given a strategy.
 
     Parameters
     ----------
@@ -262,6 +262,7 @@ def select_item(item_ids, predictions, num_recommendations, strategy="greedy"):
         the indices of the items to be recommended
     predicted_ratings: np.ndarray
         predicted ratings for the selected items
+
     """
 
     assert len(item_ids) == len(predictions)

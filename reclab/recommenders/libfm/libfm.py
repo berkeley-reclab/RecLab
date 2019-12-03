@@ -24,6 +24,8 @@ class LibFM():
     max_num_items : int
         The maximum number of items that we will be making predictions for. Note that
         setting this value to be too large will lead to a degradation in performance.
+    seed : int
+        The seed for the random state of the recommender. Defaults to 0.
 
     """
 
@@ -44,6 +46,8 @@ class LibFM():
         self._num_written_ratings = 0
         # Each row of rating_outputs consists of the numerical value assigned to that interaction.
         self._rating_outputs = np.empty((0,))
+
+        self._seed = 0
 
         # Make sure the libfm files are empty.
         if os.path.exists("train.libfm"):
@@ -168,10 +172,10 @@ class LibFM():
         print("Running libfm")
         libfm_binary_path = os.path.join(os.path.dirname(__file__), "libfm_lib/bin/libFM")
         os.system(("{} -task r -train train.libfm -test test.libfm -dim '1,1,8' "
-                   "-out predictions -verbosity 1").format(libfm_binary_path))
+                   "-out predictions -verbosity 1 -seed {}").format(libfm_binary_path, self._seed))
 
         # Read the prediction file back in as a numpy array.
-        print("Reading in predicitions")
+        print("Reading in predictions")
         predictions = np.empty(test_inputs.shape[0])
         with open("predictions", "r") as prediction_file:
             for i, line in enumerate(prediction_file):

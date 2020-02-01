@@ -5,5 +5,6 @@ test.libfm
 predictions
 
 .ipynb_checkpoints
+.swp
 
 experiments/data

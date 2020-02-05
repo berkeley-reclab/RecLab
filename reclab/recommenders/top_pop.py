@@ -9,7 +9,9 @@ import scipy.sparse
 
 class TopPop():
     """The top popularity recommendation model."""
+
     def __init__(self):
+        """Create a TopPop recommender."""
         self._ratings = collections.defaultdict(dict)
         self._rated_items = collections.defaultdict(set)
         self._ranked_items = []
@@ -37,7 +39,7 @@ class TopPop():
         self._ranked_items = []
         self.update(users, items, ratings)
 
-    def update(self, users=None, items=None, ratings=None):
+    def update(self, users=None, items=None, ratings=None): # pylint: disable-unused-arguments
         """Update the recommender with new user, item, and rating data.
 
         Parameters
@@ -60,7 +62,7 @@ class TopPop():
         if items is not None:
             item_ids.update(items)
         if ratings is not None:
-            for (user_id, item_id), (rating, rating_context) in ratings.items():
+            for (user_id, item_id), (rating, _) in ratings.items():
                 self._ratings[item_id][user_id] = rating
                 self._rated_items[user_id].add(item_id)
 

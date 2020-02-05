@@ -44,7 +44,7 @@ install:
 # Command to run tests
 script:
     # Linting
-    - sh lint.sh
+    - bash lint.sh
 
 notifications:
       email: false

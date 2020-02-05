@@ -7,7 +7,6 @@ have bias terms, and there is an underlying bias as well.
 import numpy as np
 
 from . import environment
-from reclab.recommenders.libfm.libfm import LibFM
 
 
 class LatentFactorBehavior(environment.DictEnvironment):
@@ -91,8 +90,7 @@ class LatentFactorBehavior(environment.DictEnvironment):
         """
         raw_rating = (self._user_factors[user_id] @ self._item_factors[item_id]
                       + self._user_biases[user_id] + self._item_biases[item_id] + self._offset)
-        recent_item_factors = [self._item_factors[item] for item in self._user_histories[user_id]
-                               if item is not None]
+        recent_item_factors = [self._item_factors[item] for item in self._user_histories[user_id]]
         boredom_penalty = 0
         for item_factor in recent_item_factors:
             if item_factor is not None:

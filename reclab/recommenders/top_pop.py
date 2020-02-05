@@ -1,10 +1,7 @@
 """An implementation of the top popularity baseline recommender."""
 import collections
-import itertools
-import os
 
 import numpy as np
-import scipy.sparse
 
 
 class TopPop():
@@ -39,7 +36,7 @@ class TopPop():
         self._ranked_items = []
         self.update(users, items, ratings)
 
-    def update(self, users=None, items=None, ratings=None): # pylint: disable-unused-arguments
+    def update(self, users=None, items=None, ratings=None): # pylint: disable-unused-argument
         """Update the recommender with new user, item, and rating data.
 
         Parameters

@@ -70,8 +70,7 @@ class Topics(environment.DictEnvironment):
         topic = self._item_topics[item_id]
         preference = self._user_preferences[user_id, topic]
         rating = np.clip(np.round(preference + self._random.randn() * self._noise), 1, 5)
-        recent_topics = [self._item_topics[item] for item in self._user_histories[user_id]
-                         if item is not None]
+        recent_topics = [self._item_topics[item] for item in self._user_histories[user_id]]
         if recent_topics.count(topic) > self._boredom_threshold:
             rating -= self._boredom_penalty
         rating = np.clip(rating, 1, 5)

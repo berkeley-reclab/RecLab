@@ -83,7 +83,6 @@ class Engelhardt(environment.DictEnvironment):
         self._users_full = None
         self._items = None
         self._ratings = None
-        self._timestep = 0
 
     @property
     def name(self):

@@ -1,4 +1,4 @@
-"""A wrapper for the LibFM riecommender. See www.libfm.org for implementation details."""
+"""A wrapper for the LibFM recommender. See www.libfm.org for implementation details."""
 import collections
 import itertools
 import os
@@ -30,8 +30,9 @@ class LibFM():
     """
 
     def __init__(self, num_user_features, num_item_features, num_rating_features,
-                 max_num_users, max_num_items):
+                 max_num_users, max_num_items, seed=0):
         """Create a LibFM recommender."""
+        self._seed = seed
         self._users = {}
         self._max_num_users = max_num_users
         self._items = {}
@@ -46,8 +47,6 @@ class LibFM():
         self._num_written_ratings = 0
         # Each row of rating_outputs consists of the numerical value assigned to that interaction.
         self._rating_outputs = np.empty((0,))
-
-        self._seed = 0
 
         # Make sure the libfm files are empty.
         if os.path.exists("train.libfm"):
@@ -91,8 +90,8 @@ class LibFM():
         items : dict, optional
             All new items where the key is the user id while the value is the
             item features.
-        ratings : np.ndarray, optional
-            All new ratings where the key is a double is a double whose first index is the
+        ratings : dict, optional
+            All new ratings where the key is a double whose first index is the
             id of the user making the rating and the second index is the id of the item being
             rated. The value is a double whose first index is the rating value and the second
             index is a numpy array that represents the context in which the rating was made.
@@ -189,7 +188,7 @@ class LibFM():
         Parameters
         ----------
         user_contexts : ordered dict
-            The setting each user is going to be recommended items. The key is the user id and
+            The setting each user is going to be recommended items in. The key is the user id and
             the value is the rating features.
         num_recommendations : int
             The number of items to recommend to each user.

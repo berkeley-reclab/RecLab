@@ -69,7 +69,7 @@ class Recommender(abc.ABC):
         raise NotImplementedError
 
 class PredictRecommender(Recommender):
-    """A recommender that makes rating predictions and returns.
+    """A recommender that makes recommendations based on its rating predictions.
 
     Data is primarily passed around through dicts for any recommenders derived from this class.
 
@@ -80,7 +80,8 @@ class PredictRecommender(Recommender):
         self._users = {}
         self._items = {}
         self._ratings = {}
-        self._rated_items = collections.defaultdict(set)
+        self._user_items = collections.defaultdict(set)
+        self._item_users = collections.defaultdict(set)
 
     def reset(self, users=None, items=None, ratings=None):
         """Reset the recommender with optional starting user, item, and rating data.
@@ -103,7 +104,8 @@ class PredictRecommender(Recommender):
         self._users = {}
         self._items = {}
         self._ratings = {}
-        self._rated_items = collections.defaultdict(set)
+        self._user_items = collections.defaultdict(set)
+        self._item_users = collections.defaultdict(set)
         self.update(users, items, ratings)
 
     def update(self, users=None, items=None, ratings=None):
@@ -133,7 +135,8 @@ class PredictRecommender(Recommender):
             for (user_id, item_id), _ in ratings.items():
                 assert user_id in self._users
                 assert item_id in self._items
-                self._rated_items[user_id].add(item_id)
+                self._user_items[user_id].add(item_id)
+                self._item_users[item_id].add(user_id)
 
     def recommend(self, users_contexts, num_recommendations):
         """Recommend items to users.
@@ -162,7 +165,7 @@ class PredictRecommender(Recommender):
         all_item_ids = []
         for i, user_id in enumerate(user_contexts):
             item_ids = np.array([j for j in self._items
-                                 if j not in self._rated_items[user_id]])
+                                 if j not in self._user_items[user_id]])
             user_ids = user_id * np.ones(len(item_ids), dtype=np.int)
             contexts = len(item_ids) * [user_contexts[user_id]]
             ratings_to_predict += list(zip(user_ids, item_ids, contexts))
@@ -184,7 +187,7 @@ class PredictRecommender(Recommender):
         return recs, predicted_ratings
 
     @abc.abstractmethod
-    def predict(self, user_ids, item_ids, rating_data):
+    def predict(self, user_item):
         """Predict the ratings of user-item pairs.
 
         Parameters

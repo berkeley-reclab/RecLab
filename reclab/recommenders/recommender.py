@@ -80,8 +80,6 @@ class PredictRecommender(Recommender):
         self._users = {}
         self._items = {}
         self._ratings = {}
-        self._user_items = collections.defaultdict(set)
-        self._item_users = collections.defaultdict(set)
 
     def reset(self, users=None, items=None, ratings=None):
         """Reset the recommender with optional starting user, item, and rating data.
@@ -101,10 +99,17 @@ class PredictRecommender(Recommender):
             index is a numpy array that represents the context in which the rating was made.
 
         """
+        # The features associated with each user.
         self._users = {}
+        # The features associated with each item.
         self._items = {}
-        self._ratings = {}
+        # The matrix of all numerical ratings.
+        self._ratings = RatingMatrix()
+        # Keeps track of the history of contexts in which a user-item rating was made.
+        self._rating_contexts = collections.defaultdict(list)
+        # Keeps track of which items a given user has rated.
         self._user_items = collections.defaultdict(set)
+        # Keeps track of which users rated a given item.
         self._item_users = collections.defaultdict(set)
         self.update(users, items, ratings)
 
@@ -132,11 +137,13 @@ class PredictRecommender(Recommender):
             self._items.update(items)
         if ratings is not None:
             self._ratings.update(ratings)
-            for (user_id, item_id), _ in ratings.items():
+            for (user_id, item_id), (rating, context) in ratings.items():
                 assert user_id in self._users
                 assert item_id in self._items
                 self._user_items[user_id].add(item_id)
                 self._item_users[item_id].add(user_id)
+                self._rating_contexts[user_id, item_id].append(context)
+                self._ratings[user_id, item_id] = rating
 
     def recommend(self, users_contexts, num_recommendations):
         """Recommend items to users.
@@ -205,3 +212,86 @@ class PredictRecommender(Recommender):
 
         """
         raise NotImplementedError
+
+class RatingMatrix:
+    """A utility class that represents a sparse matrix of ratings.
+
+    A RatingMatrix is a thin wrapper around a scipy.sparse matrix that makes it possible to obtain
+    specific ratings using user and item ids instead of absolute indices.
+
+    """
+
+    def __init__(self):
+        """Create an empty RatingMatrix."""
+        self._ratings = scipy.sparse.dok_matrix((0, 0))
+        # Since outer ids passed to the recommender can be arbitrary hashable objects we
+        # use these four variables to keep track of which row/column (AKA inner ids) of our rating
+        # matrix correspond to each outer id.
+        self._outer_to_inner_uid = {}
+        self._inner_to_outer_uid = []
+        self._outer_to_inner_iid = {}
+        self._inner_to_outer_iid = []
+
+    def user_ordering(self):
+        """Get the order in which users are represented in a column slice.
+
+        Returns
+        -------
+        ordering : tuple
+            The order in which users are represented. user_ordering[i]
+            gives the user id of the user at the i-th row.
+
+        """
+        return tuple(self._inner_to_outer_iid)
+
+    def item_ordering(self):
+        """Get the order in which items are represented in a row slice.
+
+        Returns
+        -------
+        ordering : tuple
+            The order in which items are represented. ordering[i]
+            gives the id of the item at the i-th column.
+
+        """
+        return tuple(self._inner_to_outer_iid)
+
+    def __getitem__(self, index):
+        """Get a single ratings or ratings associated with a user/item."""
+        index = self._outer_to_inner_index(index)
+        return self._ratings[index]
+
+    def __setitem__(self, index, value):
+        """Set a single rating or ratings associated with a user/item."""
+        # If this is a new user we need to add it to the matrix.
+        if isintance(index[0], int) and index[0] not in self._outer_to_inner_uid:
+            self._outer_to_inner_uid[user_id] = self._ratings.shape[0]
+            self._inner_to_outer_uid.append(user_id)
+            self._ratings.resize((self._ratings.shape[0] + 1, self._rating.shape[1]))
+        # If this is a new item we need to add it to the matrix.
+        if isinstance(index[1], int) and index[1] not in self._outer_to_inner_iid:
+            self._outer_to_inner_iid[item_id] = self._ratings.shape[1]
+            self._inner_to_outer_iid.append(item_id)
+            self._ratings.resize((self._ratings.shape[0], self._rating.shape[1] + 1))
+        index = self._outer_to_inner_index(index)
+        self._ratings[index] = value
+
+    def _outer_to_inner_index(index):
+        """Convert an index represented with outer ids into inner ids."""
+        assert len(index) == 1 or len(index) == 2
+        if isinstance(index[0], slice):
+            # We don't support slicing except to get whole columns.
+            assert index[0].start is None and index[0].stop is None and index[0].step is None
+            user_id = index[0]
+        else:
+            user_id = self._outer_to_inner_uid[index[0]]
+
+        if len(index) == 2):
+            if isinstance(index[1], slice):
+            # We don't support slicing except to get whole rows.
+            assert index[1].start is None and index[1].stop is None and index[1].step is None
+            item_id = index[1]
+        else:
+            item_id = self._outer_to_inner_iid[index[1]]
+
+        return (user_id, item_id)

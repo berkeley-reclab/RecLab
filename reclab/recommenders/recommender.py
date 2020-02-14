@@ -6,6 +6,11 @@ Recommender base class. All the other classes represent specific recommender var
 often enough to be an abstract classes to inherit from.
 """
 import abc
+import collections
+import itertools
+
+import numpy as np
+import scipy
 
 
 class Recommender(abc.ABC):
@@ -73,8 +78,7 @@ class PredictRecommender(Recommender):
 
     Data is primarily passed around through dicts for any recommenders derived from this class.
     Each user is assumed to have a unique hashable id, likewise for all items. User and item
-    features as well as rating contexts can be any object although most derived classes will
-    assume either a numpy array or a sparse matrix.
+    features as well as rating contexts are assumed to be dense arrays.
 
     """
 
@@ -147,7 +151,7 @@ class PredictRecommender(Recommender):
                 if user_id not in self._outer_to_inner_uid:
                     self._outer_to_inner_uid[user_id] = len(self._users)
                     self._inner_to_outer_uid.append(user_id)
-                    self._ratings.resize((self._ratings.shape[0] + 1, self._rating.shape[1]))
+                    self._ratings.resize((self._ratings.shape[0] + 1, self._ratings.shape[1]))
                     self._users.append(features)
                 else:
                     inner_id = self._outer_to_inner_uid[user_id]
@@ -159,7 +163,7 @@ class PredictRecommender(Recommender):
                 if item_id not in self._outer_to_inner_iid:
                     self._outer_to_inner_iid[item_id] = len(self._items)
                     self._inner_to_outer_iid.append(item_id)
-                    self._ratings.resize((self._ratings.shape[0], self._rating.shape[1] + 1))
+                    self._ratings.resize((self._ratings.shape[0], self._ratings.shape[1] + 1))
                     self._items.append(features)
                 else:
                     inner_id = self._outer_to_inner_iid[item_id]
@@ -173,7 +177,7 @@ class PredictRecommender(Recommender):
                 self._ratings[inner_uid, inner_iid] = rating
                 self._rating_contexts[inner_uid, inner_iid].append(context)
 
-    def recommend(self, users_contexts, num_recommendations):
+    def recommend(self, user_contexts, num_recommendations):
         """Recommend items to users.
 
         Parameters
@@ -200,8 +204,8 @@ class PredictRecommender(Recommender):
         all_item_ids = []
         for user_id in user_contexts:
             inner_uid = self._outer_to_inner_uid[user_id]
-            item_ids = [j for j in range(len(self._users))
-                        if self._ratings[inner_uid, j] == 0]
+            item_ids = np.array([j for j in range(len(self._users))
+                                 if self._ratings[inner_uid, j] == 0])
             user_ids = inner_uid * np.ones(len(item_ids), dtype=np.int)
             contexts = len(item_ids) * [user_contexts[user_id]]
             ratings_to_predict += list(zip(user_ids, item_ids, contexts))
@@ -221,8 +225,9 @@ class PredictRecommender(Recommender):
             predicted_ratings.append(predictions[best_indices])
             recs = item_ids[best_indices]
             # Convert the recommendations to outer item ids.
-            all_recs.append(operator.itemgetter(*recs)(self._inner_to_outer))
-        return all_recs, predicted_ratings
+            all_recs.append([self._inner_to_outer_iid[rec] for rec in recs])
+        print(all_recs)
+        return np.array(all_recs), np.array(predicted_ratings)
 
     def predict(self, user_item):
         """Predict the ratings of user-item pairs.
@@ -242,9 +247,9 @@ class PredictRecommender(Recommender):
 
         """
         inner_user_item = []
-        for user_id, item_id, context:
+        for user_id, item_id, context in user_item:
             inner_uid = self._outer_to_inner_uid[user_id]
-            inner_iid = self._outer_to_inner_iid[[item_id]
+            inner_iid = self._outer_to_inner_iid[item_id]
             inner_user_item.append((inner_uid, inner_iid, context))
         return self._predict(inner_user_item)
 

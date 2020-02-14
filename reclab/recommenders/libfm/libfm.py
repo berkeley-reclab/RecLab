@@ -65,8 +65,8 @@ class LibFM():
         items : dict, optional
             All starting items where the key is the user id while the value is the
             item features.
-        ratings : np.ndarray, optional
-            All starting ratings where the key is a double is a double whose first index is the
+        ratings : dict, optional
+            All starting ratings where the key is a double whose first index is the
             id of the user making the rating and the second index is the id of the item being
             rated. The value is a double whose first index is the rating value and the second
             index is a numpy array that represents the context in which the rating was made.

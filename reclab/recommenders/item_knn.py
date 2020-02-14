@@ -28,11 +28,13 @@ def ItemKNN(recommender.PredictRecommender):
             if self._use_content:
                 self._feature_matrix = scipy.sparse.hstack([self._feature_matrix, self._users])
             self._similarity_matrix = cosine_similarity(X, X, self._shrinkage)
+            self._means = flatten(self._ratings.sum(axis=1)) / self._ratings.getnnz(axis=1)
         else:
             self._feature_matrix = scipy.sparse.csr_matrix(self._ratings.T)
             if self._use_content:
                 self._feature_matrix = scipy.sparse.hstack([self._feature_matrix, self._items])
             self._similarity_matrix = cosine_similarity(X, X, self._shrinkage)
+            self._means = flatten(self._ratings.sum(axis=0)) / self._ratings.getnnz(axis=0)
 
     def _predict(self, user_item):
         preds = []
@@ -42,14 +44,14 @@ def ItemKNN(recommender.PredictRecommender):
                                                  self._similarity_matrix[user_id])
                 similarities = self._similarity_matrix[relevant_users, user_id]
                 ratings = flatten(self._ratings[relevant_users, item_id])
-                mean = self._user_means[user_id]
+                mean = self._means[user_id]
                 relevant_means = self._user_means[relevant_users]
             else:
                 relevant_items = nlargest_indices(self._neighborhood_size,
                                                   self._similarity_matrix[item_id])
                 similarities = self._similarity_matrix[relevant_items, item_id]
                 ratings = flatten(self._ratings.T[relevant_items, user_id])
-                mean = self._item_means[item_id]
+                mean = self._means[item_id]
                 relevant_means = self._item_means[relevant_items]
 
             nonzero = ratings != 0

@@ -43,14 +43,14 @@ class KNNRecommender(recommender.PredictRecommender):
         self._similarity_matrix = np.empty((0, 0))
 
     def reset(self, users=None, items=None, ratings=None):
-        """Extends the parent method to reset to its initial state."""
+        """Reset the recommender to its initial state. Extends the corresponding parent method."""
         self._feature_matrix = scipy.sparse.csr_matrix((0, 0))
         self._similarity_matrix = np.empty((0, 0))
         self._means = np.empty(0)
         super().reset(users, items, ratings)
 
     def update(self, users=None, items=None, ratings=None):
-        """Extends the parent method to update the state."""
+        """Update the state. Extends the corresponding parent method."""
         super().update(users, items, ratings)
         if self._user_based:
             self._feature_matrix = scipy.sparse.csr_matrix(self._ratings)
@@ -67,7 +67,7 @@ class KNNRecommender(recommender.PredictRecommender):
                                                     self._shrinkage)
 
     def _predict(self, user_item):
-        """Implements the parent method to predict user-item ratings."""
+        """Predict user-item ratings. Implements the corresponding parent method."""
         preds = []
         for user_id, item_id, _ in user_item:
             if self._user_based:
@@ -77,8 +77,8 @@ class KNNRecommender(recommender.PredictRecommender):
                 ratings = flatten(self._ratings[relevant_idxs, item_id])
                 mean = self._means[user_id]
             else:
-                relevant_indexes = nlargest_indices(self._neighborhood_size,
-                                                    self._similarity_matrix[item_id])
+                relevant_idxs = nlargest_indices(self._neighborhood_size,
+                                                 self._similarity_matrix[item_id])
                 similarities = self._similarity_matrix[relevant_idxs, item_id]
                 ratings = flatten(self._ratings.T[relevant_idxs, user_id])
                 mean = self._means[item_id]
@@ -90,7 +90,7 @@ class KNNRecommender(recommender.PredictRecommender):
                 preds.append(mean + np.average(ratings - relevant_means[nonzero],
                                                weights=similarities))
             else:
-                preds.append(np.average(ratings, weigths=similarities))
+                preds.append(np.average(ratings, weights=similarities))
 
         return np.array(preds)
 
@@ -112,6 +112,7 @@ def cosine_similarity(X, Y, shrinkage):
     similarity : np.ndarray
         The similarity array between each pairs of row, where similarity[i, j]
         is the cosine similarity between X[i] and Y[j].
+
     """
     return (X @ Y.T).A / (scipy.sparse.linalg.norm(X, axis=1)[:, np.newaxis] *
                           scipy.sparse.linalg.norm(Y, axis=1)[np.newaxis, :] + shrinkage)
@@ -131,6 +132,7 @@ def nlargest_indices(n, iterable):
     -------
     largest : list of int
         The n largest indices where largest[i] is the index of the i-th largest index.
+
     """
     nlargest = heapq.nlargest(n, enumerate(iterable),
                               key=lambda x: x[1])

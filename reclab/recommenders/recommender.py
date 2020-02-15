@@ -33,7 +33,7 @@ class Recommender(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def update(self, users=None, items=None, ratings=None): # pylint: disable-unused-argument
+    def update(self, users=None, items=None, ratings=None):
         """Update the recommender with new user, item, and rating data.
 
         Parameters
@@ -73,6 +73,7 @@ class Recommender(abc.ABC):
         """
         raise NotImplementedError
 
+
 class PredictRecommender(Recommender):
     """A recommender that makes recommendations based on its rating predictions.
 
@@ -83,6 +84,7 @@ class PredictRecommender(Recommender):
     """
 
     def __init__(self):
+        """Create a new PredictRecommender object."""
         # The features associated with each user.
         self._users = []
         # The features associated with each item.

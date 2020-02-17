@@ -6,8 +6,10 @@ import os
 import numpy as np
 import scipy.sparse
 
+from .. import recommender
 
-class LibFM():
+
+class LibFM(recommender.PredictRecommender):
     """The libFM recommendation model which is a factorization machine.
 
     Parameters
@@ -79,8 +81,6 @@ class LibFM():
         print("Constructing test_inputs")
         test_inputs = scipy.sparse.csr_matrix((0, self._rating_inputs.shape[1]))
         for user_id, item_id, rating in user_item:
-            assert user_id in self._users
-            assert item_id in self._items
             user_features = self._users[user_id]
             item_features = self._items[item_id]
             one_hot_user_id = scipy.sparse.csr_matrix(([1], ([0], [user_id])),

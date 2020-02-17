@@ -150,7 +150,7 @@ class DictEnvironment(Environment):
         self._items = None
         self._ratings = None
         self._online_users = None
-        self._user_histories = None
+        self._user_histories = collections.defaultdict(list)
         self._memory_length = memory_length
 
     def reset(self):
@@ -228,7 +228,7 @@ class DictEnvironment(Environment):
         for user_id, item_id in zip(self._online_users, recommendations):
             ratings[user_id, item_id] = (self._rate_item(user_id, item_id),
                                          self._rating_context(user_id))
-            self._user_histories[user_id] = self._user_histories[user_id].append(item_id)
+            self._user_histories[user_id].append(item_id)
             if len(self._user_histories[user_id]) == self._memory_length + 1:
                 self._user_histories[user_id].pop(0)
             assert len(self._user_histories[user_id]) <= self._memory_length

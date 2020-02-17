@@ -4,6 +4,7 @@ from reclab.environments.latent_factors import LatentFactorBehavior
 from reclab.environments.topics import Topics
 from reclab.recommenders.libfm.libfm import LibFM
 from reclab.recommenders import TopPop
+from reclab.recommenders import KNNRecommender
 
 
 def main():
@@ -15,7 +16,7 @@ def main():
     # env = LatentFactorBehavior(latent_dim=8, num_users=100, num_items=170, num_init_ratings=1000, **params)
     # env = MovieLens100k(latent_dim=8, datapath="~/recsys/data/ml-100k/", num_init_ratings=1000)
     # env = RandomPreferences(num_topics=10, num_users=100, num_items=1700, num_init_ratings=10000)
-    recommender = TopPop() # LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=100, max_num_items=170)
+    recommender = KNNRecommender() # TopPop() # LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=100, max_num_items=170)
 
     # First generate the items and users to seed the dataset.
     print("Initializing environment and recommender")

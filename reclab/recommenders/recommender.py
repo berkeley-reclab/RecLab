@@ -178,6 +178,8 @@ class PredictRecommender(Recommender):
                 inner_iid = self._outer_to_inner_iid[item_id]
                 self._ratings[inner_uid, inner_iid] = rating
                 self._rating_contexts[inner_uid, inner_iid].append(context)
+                assert inner_uid in self._users
+                assert inner_iid in self._items
 
     def recommend(self, user_contexts, num_recommendations):
         """Recommend items to users.

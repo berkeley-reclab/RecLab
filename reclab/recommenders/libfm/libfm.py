@@ -32,12 +32,10 @@ class LibFM():
     def __init__(self, num_user_features, num_item_features, num_rating_features,
                  max_num_users, max_num_items, seed=0):
         """Create a LibFM recommender."""
+        super().__init__
         self._seed = seed
-        self._users = {}
         self._max_num_users = max_num_users
-        self._items = {}
         self._max_num_items = max_num_items
-        self._rated_items = collections.defaultdict(set)
         # Each row of rating_inputs has the following structure:
         # (user_id, user_features, item_id, item_features, rating_features).
         # Where user_id and item_id are one hot encoded.
@@ -54,58 +52,15 @@ class LibFM():
         if os.path.exists("test.libfm"):
             os.remove("test.libfm")
 
-    def reset(self, users=None, items=None, ratings=None):
-        """Reset the recommender with optional starting user, item, and rating data.
-
-        Parameters
-        ----------
-        users : dict, optional
-            All starting users where the key is the user id while the value is the
-            user features.
-        items : dict, optional
-            All starting items where the key is the user id while the value is the
-            item features.
-        ratings : dict, optional
-            All starting ratings where the key is a double whose first index is the
-            id of the user making the rating and the second index is the id of the item being
-            rated. The value is a double whose first index is the rating value and the second
-            index is a numpy array that represents the context in which the rating was made.
-
-        """
-        self._users = {}
-        self._items = {}
-        self._rated_items = collections.defaultdict(set)
+    def reset(self, users=None, items=None, ratings=None):  # noqa: D102
         self._rating_inputs = scipy.sparse.csr_matrix((0, self._rating_inputs.shape[1]))
         self._rating_outputs = np.empty((0,))
-        self.update(users, items, ratings)
+        super().reset(users, items, ratings)
 
-    def update(self, users=None, items=None, ratings=None):
-        """Update the recommender with new user, item, and rating data.
-
-        Parameters
-        ----------
-        users : dict, optional
-            All new users where the key is the user id while the value is the
-            user features.
-        items : dict, optional
-            All new items where the key is the user id while the value is the
-            item features.
-        ratings : dict, optional
-            All new ratings where the key is a double whose first index is the
-            id of the user making the rating and the second index is the id of the item being
-            rated. The value is a double whose first index is the rating value and the second
-            index is a numpy array that represents the context in which the rating was made.
-
-        """
-        if users is not None:
-            self._users.update(users)
-        if items is not None:
-            self._items.update(items)
+    def update(self, users=None, items=None, ratings=None):  # noqa: D102
+        super().update(users, items, ratings)
         if ratings is not None:
             for (user_id, item_id), (rating, rating_context) in ratings.items():
-                assert user_id in self._users
-                assert item_id in self._items
-                self._rated_items[user_id].add(item_id)
                 user_features = self._users[user_id]
                 item_features = self._items[item_id]
                 one_hot_user_id = scipy.sparse.csr_matrix(([1], ([0], [user_id])),
@@ -119,34 +74,11 @@ class LibFM():
                                                           format="csr")
                 self._rating_outputs = np.concatenate((self._rating_outputs, [rating]))
 
-    def predict(self, user_ids, item_ids, rating_data):
-        """Predict the ratings of user-item pairs.
-
-        Parameters
-        ----------
-        user_ids : iterable of int
-            The list of all user ids for which we wish to predict ratings.
-            user_ids[i] is the user id of the i-th pair.
-        item_ids : iterable of int
-            The list of all item ids for which we wish to predict ratings.
-            item_ids[i] is the item id of the i-th pair.
-        rating_data : np.ndarray
-            The rating features for all the user-item pairs. rating_data[i] is
-            the rating features for the i-th pair.
-
-        Returns
-        -------
-        predictions : np.ndarray
-            The rating predictions where predictions[i] is the prediction of the i-th pair.
-
-        """
-        assert len(user_ids) == len(item_ids)
-        assert len(item_ids) == rating_data.shape[0]
-
+    def _predict(self, user_item):  # noqa: D102
         # Create a test_inputs array that can be parsed by our output function.
         print("Constructing test_inputs")
         test_inputs = scipy.sparse.csr_matrix((0, self._rating_inputs.shape[1]))
-        for user_id, item_id, rating in zip(user_ids, item_ids, rating_data):
+        for user_id, item_id, rating in user_item:
             assert user_id in self._users
             assert item_id in self._items
             user_features = self._users[user_id]
@@ -182,57 +114,6 @@ class LibFM():
 
         return predictions
 
-    def recommend(self, user_contexts, num_recommendations):
-        """Recommend items to users.
-
-        Parameters
-        ----------
-        user_contexts : ordered dict
-            The setting each user is going to be recommended items in. The key is the user id and
-            the value is the rating features.
-        num_recommendations : int
-            The number of items to recommend to each user.
-
-        Returns
-        -------
-        recs : np.ndarray of int
-            The recommendations made to each user. recs[i] is the array of item ids recommended
-            to the i-th user.
-        predicted_ratings : np.ndarray
-            The predicted ratings of the recommended items. recs[i] is the array of predicted
-            ratings for the items recommended to the i-th user.
-
-        """
-        # Format the arrays to be passed to the prediction function. We need to predict all
-        # items that have not been rated for each user.
-        all_user_ids = []
-        all_rating_data = []
-        all_item_ids = []
-        for i, user_id in enumerate(user_contexts):
-            item_ids = np.array([j for j in self._items
-                                 if j not in self._rated_items[user_id]])
-            all_user_ids.append(user_id * np.ones(len(item_ids), dtype=np.int))
-            all_rating_data.append(np.repeat(user_contexts[user_id][np.newaxis, :],
-                                             len(item_ids), axis=0))
-            all_item_ids.append(item_ids)
-
-        # Predict the ratings and convert predictions into a list of arrays indexed by user.
-        all_predictions = self.predict(np.concatenate(all_user_ids),
-                                       np.concatenate(all_item_ids),
-                                       np.concatenate(all_rating_data))
-        item_lens = map(len, all_item_ids)
-        all_predictions = np.split(all_predictions,
-                                   list(itertools.accumulate(item_lens)))
-
-        # Pick the top predicted items along with their predicted ratings.
-        recs = np.zeros((len(user_contexts), num_recommendations), dtype=np.int)
-        predicted_ratings = np.zeros(recs.shape)
-        for i, (item_ids, predictions) in enumerate(zip(all_item_ids, all_predictions)):
-            best_indices = np.argsort(predictions)[-num_recommendations:]
-            predicted_ratings[i] = predictions[best_indices]
-            recs[i] = item_ids[best_indices]
-        return recs, predicted_ratings
-
 
 def write_libfm_file(file_path, inputs, outputs, start_idx=0):
     """Write out a train or test file to be used by libfm."""
@@ -243,7 +124,6 @@ def write_libfm_file(file_path, inputs, outputs, start_idx=0):
     else:
         write_mode = "a+"
     with open(file_path, write_mode) as out_file:
-        # TODO: We need to add classification.
         for i in range(start_idx, inputs.shape[0]):
             out_file.write("{} ".format(outputs[i]))
             indices = inputs[i].nonzero()[1]

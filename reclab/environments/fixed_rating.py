@@ -90,7 +90,7 @@ class FixedRating(Environment):
         # Get online users to rate the recommended items.
         assert(len(recommendations) == len(self._online_users))
         ratings = np.zeros((len(recommendations), 3), dtype=np.int)
-        ratings[:, 0] = self._online_users 
+        ratings[:, 0] = self._online_users
         ratings[:, 1] = recommendations
         for i in range(len(recommendations)):
             user_id = ratings[i, 0]

@@ -1,5 +1,6 @@
 import numpy as np
 
+from reclab.environments.fixed_rating import FixedRating
 from reclab.environments.latent_factors import LatentFactorBehavior
 from reclab.environments.topics import Topics
 from reclab.recommenders.libfm.libfm import LibFM

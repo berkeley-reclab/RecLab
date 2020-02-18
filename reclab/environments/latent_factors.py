@@ -6,8 +6,13 @@ have bias terms, and there is an underlying bias as well.
 """
 import numpy as np
 
-from . import environment
 
+from . import environment
+from reclab.recommenders.libfm.libfm import LibFM
+
+
+import os
+import pandas as pd
 
 class LatentFactorBehavior(environment.DictEnvironment):
     """An environment where users and items have latent factors and biases.
@@ -144,13 +149,20 @@ class MovieLens100k(LatentFactorBehavior):
         num_items = 1682
         super().__init__(latent_dim, num_users, num_items,
                          rating_frequency, num_init_ratings)
-        self.name = 'ml100k'
+
+    @property
+    def name(self):
+        """Name of environment, used for saving."""
+        return 'ml100k'
 
     def _generate_latent_factors(self):
+        print("Reading ml100k datafile")
         users, items, ratings = self._read_datafile()
+        print("Initializing latent factor model")
         recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0,
                             max_num_users=self._num_users, max_num_items=self._num_items)
-        recommender.init(users, items, ratings)
+        recommender.reset(users, items, ratings)
+        print("Training latent factor model")
         global_bias, weights, pairwise_interactions = recommender.train()
         print(global_bias)
         print(weights)
@@ -167,9 +179,10 @@ class MovieLens100k(LatentFactorBehavior):
             raise OSError("Datafile u.data not found in {}. \
                 Download from https://grouplens.org/datasets/movielens/100k/ \
                 and follow README instructions for unzipping.".format(datafile))
+        
+        data = pd.read_csv(datafile, sep='\t', header=None, usecols=[0, 1, 2, 3],
+                           names=["user_id", "item_id", "rating", "timestamp"])
 
-        data = pd.read_csv(datafile, sep='\t', header=None, usecols=[0, 1, 2],
-                           names=["user_id", "item_id", "rating"])
         # shifting user and movie indexing
         data["user_id"] -= 1
         data["item_id"] -= 1
@@ -177,15 +190,14 @@ class MovieLens100k(LatentFactorBehavior):
         assert len(data) == 100000
         assert len(np.unique(data["user_id"])) == self._num_users
         assert len(np.unique(data["item_id"])) == self._num_items
-
-        users = {}
-        for i in range(self._num_users):
-            users[i] = np.zeros((0))
-
-        items = {}
-        for i in range(self._num_items):
-            items[i] = np.zeros((0))
+        
+        users = {user_id: np.zeros(0) for user_id in np.unique(data["user_id"])}
+        items = {item_id: np.zeros(0) for item_id in np.unique(data["item_id"])}
 
         # Fill the rating array with initial data.
-        ratings = np.array(data)
+        ratings = {}
+        for user_id, item_id, rating in zip(data['user_id'], data['item_id'], data['rating']):
+            # TODO: may want to eventually add time as a rating context
+            ratings[user_id,item_id] = (rating, np.zeros(0))
+        
         return users, items, ratings

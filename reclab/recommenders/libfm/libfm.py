@@ -200,10 +200,12 @@ class LibFM():
                          self._num_written_ratings)
         self._num_written_ratings = self._rating_inputs.shape[0]
 
-        # Run libfm on the train and test files.
+        # Run libfm on the train file.
         print("Running libfm")
-        libfm_binary_path = os.path.join(os.path.dirname(__file__), "libfm_lib/bin/libFM")
-        os.system("{} -task r -train train.libfm -dim '1,1,8' -verbosity 1 -save_model saved_model"
+        # libfm_binary_path = os.path.join(os.path.dirname(__file__), "libfm_lib/bin/libFM")
+        libfm_binary_path = '/home/sarah/recsys/libfm/bin/libFM'
+        # We use SGD to 
+        os.system("{} -task r -train train.libfm -method sgd -dim '1,1,8' -verbosity 1 -save_model saved_model"
                   .format(libfm_binary_path))
 
         # a la https://github.com/jfloff/pywFM/blob/master/pywFM/__init__.py#L238

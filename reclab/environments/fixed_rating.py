@@ -1,3 +1,4 @@
+"""A simple environment for debugging. Each user will either always rate an item a 1 or a 5."""
 import numpy as np
 import scipy
 
@@ -5,6 +6,21 @@ from reclab.environments.environment import Environment
 
 
 class FixedRating(Environment):
+    """An environment in which half the users rate all items with a 1 and the other half with a 5.
+
+    Parameters
+    ----------
+    num_users : int
+        The number of users in the environment.
+    num_items : int
+        The number of items in the environment.
+    rating_frequency : float
+        What proportion of users will need a recommendation at each step.
+    num_init_ratings: : int
+        The number of initial ratings available when the environment is reset.
+
+    """
+
     def __init__(self, num_users, num_items,
                  rating_frequency=0.2, num_init_ratings=0):
         self._random = np.random.RandomState()
@@ -88,7 +104,7 @@ class FixedRating(Environment):
             info["ratings"] gets the sparse matrix of all ratings.
         """
         # Get online users to rate the recommended items.
-        assert(len(recommendations) == len(self._online_users))
+        assert len(recommendations) == len(self._online_users)
         ratings = np.zeros((len(recommendations), 3), dtype=np.int)
         ratings[:, 0] = self._online_users
         ratings[:, 1] = recommendations
@@ -102,7 +118,7 @@ class FixedRating(Environment):
         self._online_users = np.random.choice(self._num_users, size=num_online, replace=False)
 
         # Create the info dict.
-        info = {"ratings": self._ratings}
+        info = {'ratings': self._ratings}
 
         return {}, {}, ratings, info
 

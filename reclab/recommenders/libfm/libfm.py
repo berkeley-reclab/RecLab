@@ -78,7 +78,7 @@ class LibFM(recommender.PredictRecommender):
 
     def _predict(self, user_item):  # noqa: D102
         # Create a test_inputs array that can be parsed by our output function.
-        print("Constructing test_inputs")
+        print('Constructing test_inputs')
         test_inputs = scipy.sparse.csr_matrix((0, self._rating_inputs.shape[1]))
         for user_id, item_id, rating in user_item:
             user_features = self._users[user_id]
@@ -93,22 +93,22 @@ class LibFM(recommender.PredictRecommender):
             test_inputs = scipy.sparse.vstack((test_inputs, new_rating_inputs), format="csr")
 
         # Now output both the train and test file.
-        print("Writing libfm files")
+        print('Writing libfm files')
         write_libfm_file("train.libfm", self._rating_inputs, self._rating_outputs,
                          self._num_written_ratings)
         self._num_written_ratings = self._rating_inputs.shape[0]
         write_libfm_file("test.libfm", test_inputs, np.zeros(test_inputs.shape[0]))
 
         # Run libfm on the train and test files.
-        print("Running libfm")
-        libfm_binary_path = os.path.join(os.path.dirname(__file__), "libfm_lib/bin/libFM")
-        os.system(("{} -task r -train train.libfm -test test.libfm -dim '1,1,8' "
-                   "-out predictions -verbosity 1 -seed {}").format(libfm_binary_path, self._seed))
+        print('Running libfm')
+        libfm_binary_path = os.path.join(os.path.dirname(__file__), 'libfm_lib/bin/libFM')
+        os.system(('{} -task r -train train.libfm -test test.libfm -dim \'1,1,8\' '
+                   '-out predictions -verbosity 1 -seed {}').format(libfm_binary_path, self._seed))
 
         # Read the prediction file back in as a numpy array.
-        print("Reading in predictions")
+        print('Reading in predictions')
         predictions = np.empty(test_inputs.shape[0])
-        with open("predictions", "r") as prediction_file:
+        with open('predictions', 'r') as prediction_file:
             for i, line in enumerate(prediction_file):
                 predictions[i] = float(line)
 
@@ -120,14 +120,14 @@ def write_libfm_file(file_path, inputs, outputs, start_idx=0):
     if start_idx == inputs.shape[0]:
         return
     if start_idx == 0:
-        write_mode = "w+"
+        write_mode = 'w+'
     else:
-        write_mode = "a+"
+        write_mode = 'a+'
     with open(file_path, write_mode) as out_file:
         for i in range(start_idx, inputs.shape[0]):
-            out_file.write("{} ".format(outputs[i]))
+            out_file.write('{} '.format(outputs[i]))
             indices = inputs[i].nonzero()[1]
             values = inputs[i, indices].todense().A1
-            index_value_strings = ["{}:{}".format(index, value)
+            index_value_strings = ['{}:{}'.format(index, value)
                                    for index, value in zip(indices, values)]
-            out_file.write(" ".join(index_value_strings) + "\n")
+            out_file.write(' '.join(index_value_strings) + '\n')

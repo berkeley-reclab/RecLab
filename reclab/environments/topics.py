@@ -59,14 +59,19 @@ class Topics(environment.DictEnvironment):
         self._item_topics = None
         self._boredom_threshold = boredom_threshold
         self._boredom_penalty = boredom_penalty
-        self.name = 'topics'
+
+    @property
+    def name(self):
+        """Name of environment, used for saving."""
+        return 'topics'
 
     def _rate_item(self, user_id, item_id):
         """Get a user to rate an item and update the internal rating state."""
         topic = self._item_topics[item_id]
         preference = self._user_preferences[user_id, topic]
         rating = np.clip(np.round(preference + self._random.randn() * self._noise), 1, 5)
-        if self._user_histories[user_id].count(topic) > self._boredom_threshold:
+        recent_topics = [self._item_topics[item] for item in self._user_histories[user_id]]
+        if recent_topics.count(topic) > self._boredom_threshold:
             rating -= self._boredom_penalty
         rating = np.clip(rating, 1, 5)
         # Updating underlying preference
@@ -74,9 +79,6 @@ class Topics(environment.DictEnvironment):
             self._user_preferences[user_id, topic] += self._topic_change
             self._user_preferences[user_id, np.arange(self._num_topics) != topic] -= (
                 self._topic_change / (self._num_topics - 1))
-        # Updating history
-        if self._memory_length > 0:
-            self._user_histories[user_id] = self._user_histories[user_id][1:]+[topic]
         return rating
 
     def _reset_state(self):
@@ -85,6 +87,4 @@ class Topics(environment.DictEnvironment):
                                                    size=(self._num_users, self._num_topics))
         self._item_topics = np.random.choice(self._num_topics, size=self._num_items)
         self._users = {user_id: np.zeros(0) for user_id in range(self._num_users)}
-        self._user_histories = {user_id: [None]*self._memory_length for user_id in
-                                range(self._num_users)}
         self._items = {item_id: np.zeros(0) for item_id in range(self._num_items)}

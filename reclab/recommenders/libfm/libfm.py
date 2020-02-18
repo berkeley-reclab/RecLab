@@ -1,4 +1,4 @@
-"""A wrapper for the LibFM riecommender. See www.libfm.org for implementation details."""
+"""A wrapper for the LibFM recommender. See www.libfm.org for implementation details."""
 import collections
 import itertools
 import os
@@ -24,12 +24,15 @@ class LibFM():
     max_num_items : int
         The maximum number of items that we will be making predictions for. Note that
         setting this value to be too large will lead to a degradation in performance.
+    seed : int
+        The seed for the random state of the recommender. Defaults to 0.
 
     """
 
     def __init__(self, num_user_features, num_item_features, num_rating_features,
-                 max_num_users, max_num_items):
+                 max_num_users, max_num_items, seed=0):
         """Create a LibFM recommender."""
+        self._seed = seed
         self._users = {}
         self._max_num_users = max_num_users
         self._items = {}
@@ -62,8 +65,8 @@ class LibFM():
         items : dict, optional
             All starting items where the key is the user id while the value is the
             item features.
-        ratings : np.ndarray, optional
-            All starting ratings where the key is a double is a double whose first index is the
+        ratings : dict, optional
+            All starting ratings where the key is a double whose first index is the
             id of the user making the rating and the second index is the id of the item being
             rated. The value is a double whose first index is the rating value and the second
             index is a numpy array that represents the context in which the rating was made.
@@ -87,8 +90,8 @@ class LibFM():
         items : dict, optional
             All new items where the key is the user id while the value is the
             item features.
-        ratings : np.ndarray, optional
-            All new ratings where the key is a double is a double whose first index is the
+        ratings : dict, optional
+            All new ratings where the key is a double whose first index is the
             id of the user making the rating and the second index is the id of the item being
             rated. The value is a double whose first index is the rating value and the second
             index is a numpy array that represents the context in which the rating was made.
@@ -168,10 +171,10 @@ class LibFM():
         print("Running libfm")
         libfm_binary_path = os.path.join(os.path.dirname(__file__), "libfm_lib/bin/libFM")
         os.system(("{} -task r -train train.libfm -test test.libfm -dim '1,1,8' "
-                   "-out predictions -verbosity 1").format(libfm_binary_path))
+                   "-out predictions -verbosity 1 -seed {}").format(libfm_binary_path, self._seed))
 
         # Read the prediction file back in as a numpy array.
-        print("Reading in predicitions")
+        print("Reading in predictions")
         predictions = np.empty(test_inputs.shape[0])
         with open("predictions", "r") as prediction_file:
             for i, line in enumerate(prediction_file):
@@ -240,7 +243,7 @@ class LibFM():
         Parameters
         ----------
         user_contexts : ordered dict
-            The setting each user is going to be recommended items. The key is the user id and
+            The setting each user is going to be recommended items in. The key is the user id and
             the value is the rating features.
         num_recommendations : int
             The number of items to recommend to each user.

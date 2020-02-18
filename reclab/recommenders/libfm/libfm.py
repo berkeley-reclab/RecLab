@@ -199,13 +199,15 @@ class LibFM():
         write_libfm_file("train.libfm", self._rating_inputs, self._rating_outputs,
                          self._num_written_ratings)
         self._num_written_ratings = self._rating_inputs.shape[0]
+        # TODO: need to write a test file!
+        # write_libfm_file("test.libfm", self._rating_inputs, np.zeros(self._rating_inputs.shape[0]))
 
         # Run libfm on the train file.
         print("Running libfm")
         # libfm_binary_path = os.path.join(os.path.dirname(__file__), "libfm_lib/bin/libFM")
         libfm_binary_path = '/home/sarah/recsys/libfm/bin/libFM'
-        # We use SGD to 
-        os.system("{} -task r -train train.libfm -method sgd -dim '1,1,8' -verbosity 1 -save_model saved_model"
+        # We use SGD to access save_model (could also use ALS)
+        os.system("{} -task r -train train.libfm -test train.libfm -method sgd -dim '1,1,8' -verbosity 1 -save_model saved_model"
                   .format(libfm_binary_path))
 
         # a la https://github.com/jfloff/pywFM/blob/master/pywFM/__init__.py#L238

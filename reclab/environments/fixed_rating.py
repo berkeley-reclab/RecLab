@@ -1,6 +1,5 @@
 """A simple environment for debugging. Each user will either always rate an item a 1 or a 5."""
 import numpy as np
-import scipy
 
 from . import environment
 
@@ -24,9 +23,13 @@ class FixedRating(environment.DictEnvironment):
     def __init__(self, num_users, num_items,
                  rating_frequency=0.2, num_init_ratings=0):
         """Create a FixedRating environment."""
-        super.__init__(rating_frequency, num_init_ratings)
+        super().__init__(rating_frequency, num_init_ratings)
         self._num_users = num_users
         self._num_items = num_items
+
+    @property
+    def name(self):  # noqa: D102
+        return 'fixed'
 
     def _reset_state(self):  # noqa: D102
         self._users = [np.zeros(0)] * self._num_users

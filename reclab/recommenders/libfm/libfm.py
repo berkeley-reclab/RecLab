@@ -1,6 +1,4 @@
 """A wrapper for the LibFM recommender. See www.libfm.org for implementation details."""
-import collections
-import itertools
 import os
 
 import numpy as np
@@ -34,7 +32,7 @@ class LibFM(recommender.PredictRecommender):
     def __init__(self, num_user_features, num_item_features, num_rating_features,
                  max_num_users, max_num_items, seed=0):
         """Create a LibFM recommender."""
-        super().__init__
+        super().__init__()
         self._seed = seed
         self._max_num_users = max_num_users
         self._max_num_items = max_num_items
@@ -49,10 +47,10 @@ class LibFM(recommender.PredictRecommender):
         self._rating_outputs = np.empty((0,))
 
         # Make sure the libfm files are empty.
-        if os.path.exists("train.libfm"):
-            os.remove("train.libfm")
-        if os.path.exists("test.libfm"):
-            os.remove("test.libfm")
+        if os.path.exists('train.libfm'):
+            os.remove('train.libfm')
+        if os.path.exists('test.libfm'):
+            os.remove('test.libfm')
 
     def reset(self, users=None, items=None, ratings=None):  # noqa: D102
         self._rating_inputs = scipy.sparse.csr_matrix((0, self._rating_inputs.shape[1]))
@@ -71,9 +69,9 @@ class LibFM(recommender.PredictRecommender):
                                                           shape=(1, self._max_num_items))
                 new_rating_inputs = scipy.sparse.hstack((one_hot_user_id, user_features,
                                                          one_hot_item_id, item_features,
-                                                         rating_context), format="csr")
+                                                         rating_context), format='csr')
                 self._rating_inputs = scipy.sparse.vstack((self._rating_inputs, new_rating_inputs),
-                                                          format="csr")
+                                                          format='csr')
                 self._rating_outputs = np.concatenate((self._rating_outputs, [rating]))
 
     def _predict(self, user_item):  # noqa: D102
@@ -89,15 +87,15 @@ class LibFM(recommender.PredictRecommender):
                                                       shape=(1, self._max_num_items))
             new_rating_inputs = scipy.sparse.hstack((one_hot_user_id, user_features,
                                                      one_hot_item_id, item_features,
-                                                     rating), format="csr")
-            test_inputs = scipy.sparse.vstack((test_inputs, new_rating_inputs), format="csr")
+                                                     rating), format='csr')
+            test_inputs = scipy.sparse.vstack((test_inputs, new_rating_inputs), format='csr')
 
         # Now output both the train and test file.
         print('Writing libfm files')
-        write_libfm_file("train.libfm", self._rating_inputs, self._rating_outputs,
+        write_libfm_file('train.libfm', self._rating_inputs, self._rating_outputs,
                          self._num_written_ratings)
         self._num_written_ratings = self._rating_inputs.shape[0]
-        write_libfm_file("test.libfm", test_inputs, np.zeros(test_inputs.shape[0]))
+        write_libfm_file('test.libfm', test_inputs, np.zeros(test_inputs.shape[0]))
 
         # Run libfm on the train and test files.
         print('Running libfm')

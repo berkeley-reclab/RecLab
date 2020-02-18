@@ -1,3 +1,6 @@
 [submodule "deps/libfm"]
 	path = reclab/recommenders/libfm/libfm_lib
 	url = git@github.com:Karl-Krauth/libfm.git
+[submodule "reclab/recommenders/cf-nade/cf-nade_lib"]
+	path = reclab/recommenders/cf-nade/cf-nade_lib
+	url = git@github.com:AlexGidiotis/keras-CF-NADE.git

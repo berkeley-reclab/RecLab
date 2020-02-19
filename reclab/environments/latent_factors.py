@@ -137,6 +137,7 @@ class LatentFactorBehavior(environment.DictEnvironment):
         offset = 2.5
         return user_factors, user_bias, item_factors, item_bias, offset
 
+
 class MovieLens100k(LatentFactorBehavior):
     """An environment where user behavior is based on the ML-100k dataset.
 
@@ -169,17 +170,17 @@ class MovieLens100k(LatentFactorBehavior):
 
     def _generate_latent_factors(self):
         """Create latent factors based on ML100K dataset."""
-        model_file = os.path.join(self.datapath, "fm_model.npz")
+        model_file = os.path.join(self.datapath, 'fm_model.npz')
         if not os.path.isfile(model_file) or self._force_retrain:
-            print("Did not find model file at {}, loading data for training".format(model_file))
+            print('Did not find model file at {}, loading data for training'.format(model_file))
 
             users, items, ratings = self._read_datafile()
-            print("Initializing latent factor model")
+            print('Initializing latent factor model')
             recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0,
                                 max_num_users=self._num_users, max_num_items=self._num_items,
                                 latent_dim=self._latent_dim)
             recommender.reset(users, items, ratings)
-            print("Training latent factor model")
+            print('Training latent factor model')
 
             global_bias, weights, pairwise_interactions, train_command = recommender.train()
 
@@ -199,31 +200,31 @@ class MovieLens100k(LatentFactorBehavior):
             return user_factors, user_bias, item_factors, item_bias, offset
 
         model = np.load(model_file)
-        print("Loading model from {} trained via:\n{}".format(model_file,
+        print('Loading model from {} trained via:\n{}'.format(model_file,
                                                               model['params']))
         return (model['user_factors'], model['user_bias'], model['item_factors'],
                 model['item_bias'], model['offset'])
 
     def _read_datafile(self):
-        datafile = os.path.join(self.datapath, "u.data")
+        datafile = os.path.join(self.datapath, 'u.data')
         if not os.path.isfile(datafile):
-            raise OSError("Datafile u.data not found in {}. \
+            raise OSError('Datafile u.data not found in {}. \
                 Download from https://grouplens.org/datasets/movielens/100k/ \
-                and follow README instructions for unzipping.".format(datafile))
+                and follow README instructions for unzipping.'.format(datafile))
 
         data = pd.read_csv(datafile, sep='\t', header=None, usecols=[0, 1, 2, 3],
-                           names=["user_id", "item_id", "rating", "timestamp"])
+                           names=['user_id', 'item_id', 'rating', 'timestamp'])
 
         # shifting user and movie indexing
-        data["user_id"] -= 1
-        data["item_id"] -= 1
+        data['user_id'] -= 1
+        data['item_id'] -= 1
         # validating data assumptions
         assert len(data) == 100000
-        assert len(np.unique(data["user_id"])) == self._num_users
-        assert len(np.unique(data["item_id"])) == self._num_items
+        assert len(np.unique(data['user_id'])) == self._num_users
+        assert len(np.unique(data['item_id'])) == self._num_items
 
-        users = {user_id: np.zeros(0) for user_id in np.unique(data["user_id"])}
-        items = {item_id: np.zeros(0) for item_id in np.unique(data["item_id"])}
+        users = {user_id: np.zeros(0) for user_id in np.unique(data['user_id'])}
+        items = {item_id: np.zeros(0) for item_id in np.unique(data['item_id'])}
 
         # Fill the rating array with initial data.
         ratings = {}

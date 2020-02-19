@@ -101,10 +101,10 @@ class LibFM(recommender.PredictRecommender):
         write_libfm_file('test.libfm', test_inputs, np.zeros(test_inputs.shape[0]))
 
         # Run libfm on the train and test files.
-        print("Running libfm")
-        libfm_binary_path = os.path.join(os.path.dirname(__file__), "libfm_lib/bin/libFM")
-        os.system(("{} -task r -train train.libfm -test test.libfm -dim \'1,1,{}\' "
-                   "-out predictions -verbosity 1 -seed {}").format(libfm_binary_path,
+        print('Running libfm')
+        libfm_binary_path = os.path.join(os.path.dirname(__file__), 'libfm_lib/bin/libFM')
+        os.system(('{} -task r -train train.libfm -test test.libfm -dim \'1,1,{}\' '
+                   '-out predictions -verbosity 1 -seed {}').format(libfm_binary_path,
                                                                     self._latent_dim, self._seed))
 
         # Read the prediction file back in as a numpy array.
@@ -129,19 +129,19 @@ class LibFM(recommender.PredictRecommender):
             interaction term in model
 
         """
-        print("Writing libfm file")
-        write_libfm_file("train.libfm", self._rating_inputs, self._rating_outputs,
+        print('Writing libfm file')
+        write_libfm_file('train.libfm', self._rating_inputs, self._rating_outputs,
                          self._num_written_ratings)
         self._num_written_ratings = self._rating_inputs.shape[0]
         # Dummy test file
-        write_libfm_file("test.libfm", self._rating_inputs[0:1], np.zeros(1))
+        write_libfm_file('test.libfm', self._rating_inputs[0:1], np.zeros(1))
 
-        print("Running libfm")
-        libfm_binary_path = os.path.join(os.path.dirname(__file__), "libfm_lib/bin/libFM")
+        print('Running libfm')
+        libfm_binary_path = os.path.join(os.path.dirname(__file__), 'libfm_lib/bin/libFM')
         # We use SGD to access save_model (could also use ALS)
-        train_command = ("{} -task r -train train.libfm -test test.libfm -method sgd "
-                         "-learn_rate 0.01 -regular '0.04,0.04,0.04' -dim '1,1,{}' "
-                         "-verbosity 1 -save_model saved_model"
+        train_command = ('{} -task r -train train.libfm -test test.libfm -method sgd '
+                         '-learn_rate 0.01 -regular \'0.04,0.04,0.04\' -dim \'1,1,{}\' '
+                         '-verbosity 1 -save_model saved_model'
                          .format(libfm_binary_path, self._latent_dim))
         os.system(train_command)
 
@@ -153,14 +153,14 @@ class LibFM(recommender.PredictRecommender):
             # if 0 its global bias; if 1, weights; if 2, pairwise interactions
             out_iter = 0
             for _, line in enumerate(saved_model):
-                line = line.decode("utf-8")
+                line = line.decode('utf-8')
                 # checks which line is starting with #
                 if line.startswith('#'):
-                    if "#global bias W0" in line:
+                    if '#global bias W0' in line:
                         out_iter = 0
-                    elif "#unary interactions Wj" in line:
+                    elif '#unary interactions Wj' in line:
                         out_iter = 1
-                    elif "#pairwise interactions Vj,f" in line:
+                    elif '#pairwise interactions Vj,f' in line:
                         out_iter = 2
                 else:
                     # check context get in previous step and adds accordingly
@@ -178,9 +178,10 @@ class LibFM(recommender.PredictRecommender):
         pairwise_interactions = np.array(pairwise_interactions)
 
         # Remove the model file
-        os.remove("saved_model")
+        os.remove('saved_model')
 
         return global_bias, weights, pairwise_interactions, train_command
+
 
 def write_libfm_file(file_path, inputs, outputs, start_idx=0):
     """Write out a train or test file to be used by libfm."""

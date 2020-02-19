@@ -42,15 +42,13 @@ class KNNRecommender(recommender.PredictRecommender):
         self._means = np.empty(0)
         self._similarity_matrix = np.empty((0, 0))
 
-    def reset(self, users=None, items=None, ratings=None):
-        """Reset the recommender to its initial state. Extends the corresponding parent method."""
+    def reset(self, users=None, items=None, ratings=None):  # noqa: D102
         self._feature_matrix = scipy.sparse.csr_matrix((0, 0))
         self._similarity_matrix = np.empty((0, 0))
         self._means = np.empty(0)
         super().reset(users, items, ratings)
 
-    def update(self, users=None, items=None, ratings=None):
-        """Update the state. Extends the corresponding parent method."""
+    def update(self, users=None, items=None, ratings=None):  # noqa: D102
         super().update(users, items, ratings)
         if self._user_based:
             self._feature_matrix = scipy.sparse.csr_matrix(self._ratings)
@@ -66,8 +64,7 @@ class KNNRecommender(recommender.PredictRecommender):
         self._similarity_matrix = cosine_similarity(self._feature_matrix, self._feature_matrix,
                                                     self._shrinkage)
 
-    def _predict(self, user_item):
-        """Predict user-item ratings. Implements the corresponding parent method."""
+    def _predict(self, user_item):  # noqa: D102
         preds = []
         for user_id, item_id, _ in user_item:
             if self._user_based:

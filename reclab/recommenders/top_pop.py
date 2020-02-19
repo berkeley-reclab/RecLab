@@ -3,8 +3,10 @@ import collections
 
 import numpy as np
 
+from . import recommender
 
-class TopPop():
+
+class TopPop(recommender.Recommender):
     """The top popularity recommendation model."""
 
     def __init__(self):

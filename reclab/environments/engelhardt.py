@@ -138,5 +138,5 @@ class Engelhardt(environment.DictEnvironment):
         """
         item_attr = self._item_attrs[item_id]
         util, rating = self._users_full[user_id].rate(item_attr)
-        print("Util is {} and rating is {}".format(util, rating))
+        print('Util is {} and rating is {}'.format(util, rating))
         return rating

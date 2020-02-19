@@ -239,9 +239,9 @@ class DictEnvironment(Environment):
         self._online_users = self._select_online_users()
 
         # Create the info dict.
-        info = {"users": self._users,
-                "items": self._items,
-                "ratings": self._ratings}
+        info = {'users': self._users,
+                'items': self._items,
+                'ratings': self._ratings}
 
         self._timestep += 1
         return new_users, new_items, ratings, info

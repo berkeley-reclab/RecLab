@@ -24,15 +24,18 @@ class LibFM():
     max_num_items : int
         The maximum number of items that we will be making predictions for. Note that
         setting this value to be too large will lead to a degradation in performance.
+    latent_dim : int
+        The latent dimension of the factorization model
     seed : int
         The seed for the random state of the recommender. Defaults to 0.
 
     """
 
     def __init__(self, num_user_features, num_item_features, num_rating_features,
-                 max_num_users, max_num_items, seed=0):
+                 max_num_users, max_num_items, latent_dim=8, seed=0):
         """Create a LibFM recommender."""
         self._seed = seed
+        self._latent_dim = latent_dim
         self._users = {}
         self._max_num_users = max_num_users
         self._items = {}
@@ -170,8 +173,9 @@ class LibFM():
         # Run libfm on the train and test files.
         print("Running libfm")
         libfm_binary_path = os.path.join(os.path.dirname(__file__), "libfm_lib/bin/libFM")
-        os.system(("{} -task r -train train.libfm -test test.libfm -dim '1,1,8' "
-                   "-out predictions -verbosity 1 -seed {}").format(libfm_binary_path, self._seed))
+        os.system(("{} -task r -train train.libfm -test test.libfm -dim '1,1,{}' "
+                   "-out predictions -verbosity 1 -seed {}").format(libfm_binary_path,
+                                                                    self._latent_dim, self._seed))
 
         # Read the prediction file back in as a numpy array.
         print("Reading in predictions")
@@ -199,16 +203,17 @@ class LibFM():
         write_libfm_file("train.libfm", self._rating_inputs, self._rating_outputs,
                          self._num_written_ratings)
         self._num_written_ratings = self._rating_inputs.shape[0]
-        # TODO: need to write a test file!
-        # write_libfm_file("test.libfm", self._rating_inputs, np.zeros(self._rating_inputs.shape[0]))
+        # Dummy test file
+        write_libfm_file("test.libfm", self._rating_inputs[0:1], np.zeros(1))
 
-        # Run libfm on the train file.
         print("Running libfm")
-        # libfm_binary_path = os.path.join(os.path.dirname(__file__), "libfm_lib/bin/libFM")
-        libfm_binary_path = '/home/sarah/recsys/libfm/bin/libFM'
+        libfm_binary_path = os.path.join(os.path.dirname(__file__), "libfm_lib/bin/libFM")
         # We use SGD to access save_model (could also use ALS)
-        os.system("{} -task r -train train.libfm -test train.libfm -method sgd -dim '1,1,8' -verbosity 1 -save_model saved_model"
-                  .format(libfm_binary_path))
+        train_command = ("{} -task r -train train.libfm -test test.libfm -method sgd "
+                         "-learn_rate 0.01 -regular '0.04,0.04,0.04' -dim '1,1,{}' "
+                         "-verbosity 1 -save_model saved_model"
+                         .format(libfm_binary_path, self._latent_dim))
+        os.system(train_command)
 
         # a la https://github.com/jfloff/pywFM/blob/master/pywFM/__init__.py#L238
         global_bias = None
@@ -218,6 +223,7 @@ class LibFM():
             # if 0 its global bias; if 1, weights; if 2, pairwise interactions
             out_iter = 0
             for _, line in enumerate(saved_model):
+                line = line.decode("utf-8")
                 # checks which line is starting with #
                 if line.startswith('#'):
                     if "#global bias W0" in line:
@@ -238,8 +244,13 @@ class LibFM():
                         except ValueError:
                             # Case: no pairwise interactions used
                             pairwise_interactions.append(0.0)
-        pairwise_interactions = np.matrix(pairwise_interactions)
-        return global_bias, weights, pairwise_interactions
+        weights = np.array(weights)
+        pairwise_interactions = np.array(pairwise_interactions)
+
+        # Remove the model file
+        os.remove("saved_model")
+
+        return global_bias, weights, pairwise_interactions, train_command
 
     def recommend(self, user_contexts, num_recommendations):
         """Recommend items to users.

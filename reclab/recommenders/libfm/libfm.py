@@ -7,6 +7,9 @@ import scipy.sparse
 from .. import recommender
 
 
+LIBFM_BINARY_PATH = os.path.join(os.path.dirname(__file__), 'libfm_lib/bin/libFM')
+
+
 class LibFM(recommender.PredictRecommender):
     """The libFM recommendation model which is a factorization machine.
 
@@ -102,9 +105,8 @@ class LibFM(recommender.PredictRecommender):
 
         # Run libfm on the train and test files.
         print('Running libfm')
-        libfm_binary_path = os.path.join(os.path.dirname(__file__), 'libfm_lib/bin/libFM')
         os.system(('{} -task r -train train.libfm -test test.libfm -dim \'1,1,{}\' '
-                   '-out predictions -verbosity 1 -seed {}').format(libfm_binary_path,
+                   '-out predictions -verbosity 1 -seed {}').format(LIBFM_BINARY_PATH,
                                                                     self._latent_dim, self._seed))
 
         # Read the prediction file back in as a numpy array.
@@ -116,17 +118,24 @@ class LibFM(recommender.PredictRecommender):
 
         return predictions
 
-    def train(self):
-        """Use libfm to train model and reads resulting model.
+    def model_parameters(self):
+        """Train a libfm model and get the resulting model's parameters.
+
+        The factorization machine model predicts a rating by
+        r(x) = b_0 + w^T x + v^T V x
+        where b_0 is the global bias, w is the weights, and
+        V is the pairwise interactions.
+        Here, x are the features of the user, item, rating,
+        including one-hot encoding of their identity.
 
         Returns
         -------
         global_bias : float
             global bias term in model
         weights : np.ndarray
-            linear term in model (user/item biases)
+            linear term in model (related to user/item biases)
         pairwise_interactions  : np.ndarray
-            interaction term in model
+            interaction term in model (related to user/item factors)
 
         """
         print('Writing libfm file')
@@ -137,12 +146,11 @@ class LibFM(recommender.PredictRecommender):
         write_libfm_file('test.libfm', self._rating_inputs[0:1], np.zeros(1))
 
         print('Running libfm')
-        libfm_binary_path = os.path.join(os.path.dirname(__file__), 'libfm_lib/bin/libFM')
         # We use SGD to access save_model (could also use ALS)
         train_command = ('{} -task r -train train.libfm -test test.libfm -method sgd '
                          '-learn_rate 0.01 -regular \'0.04,0.04,0.04\' -dim \'1,1,{}\' '
                          '-verbosity 1 -save_model saved_model'
-                         .format(libfm_binary_path, self._latent_dim))
+                         .format(LIBFM_BINARY_PATH, self._latent_dim))
         os.system(train_command)
 
         # a la https://github.com/jfloff/pywFM/blob/master/pywFM/__init__.py#L238
@@ -150,12 +158,11 @@ class LibFM(recommender.PredictRecommender):
         weights = []
         pairwise_interactions = []
         with open('saved_model', 'rb') as saved_model:
-            # if 0 its global bias; if 1, weights; if 2, pairwise interactions
             out_iter = 0
             for _, line in enumerate(saved_model):
                 line = line.decode('utf-8')
-                # checks which line is starting with #
                 if line.startswith('#'):
+                    # if out_iter 0 its global bias; if 1, weights; if 2, pairwise interactions
                     if '#global bias W0' in line:
                         out_iter = 0
                     elif '#unary interactions Wj' in line:
@@ -163,7 +170,7 @@ class LibFM(recommender.PredictRecommender):
                     elif '#pairwise interactions Vj,f' in line:
                         out_iter = 2
                 else:
-                    # check context get in previous step and adds accordingly
+                    # appends to model parameter according to the flag outer_iter
                     if out_iter == 0:
                         global_bias = float(line)
                     elif out_iter == 1:

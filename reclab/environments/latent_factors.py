@@ -182,8 +182,10 @@ class MovieLens100k(LatentFactorBehavior):
             recommender.reset(users, items, ratings)
             print('Training latent factor model')
 
-            global_bias, weights, pairwise_interactions, train_command = recommender.train()
+            res = recommender.model_parameters()
+            global_bias, weights, pairwise_interactions, train_command = res
 
+            # TODO: this logic is only correct if there are no additional user/item/rating features
             user_indices = np.arange(self._num_users)
             item_indices = np.arange(self._num_users, self._num_users + self._num_items)
 
@@ -208,9 +210,9 @@ class MovieLens100k(LatentFactorBehavior):
     def _read_datafile(self):
         datafile = os.path.join(self.datapath, 'u.data')
         if not os.path.isfile(datafile):
-            raise OSError('Datafile u.data not found in {}. \
-                Download from https://grouplens.org/datasets/movielens/100k/ \
-                and follow README instructions for unzipping.'.format(datafile))
+            raise OSError('Datafile u.data not found in {}. '
+                          'Download from https://grouplens.org/datasets/movielens/100k/ '
+                          'and follow README instructions for unzipping.'.format(datafile))
 
         data = pd.read_csv(datafile, sep='\t', header=None, usecols=[0, 1, 2, 3],
                            names=['user_id', 'item_id', 'rating', 'timestamp'])
@@ -229,7 +231,7 @@ class MovieLens100k(LatentFactorBehavior):
         # Fill the rating array with initial data.
         ratings = {}
         for user_id, item_id, rating in zip(data['user_id'], data['item_id'], data['rating']):
-            # may want to eventually add time as a rating context
+            # TODO: may want to eventually add time as a rating context
             ratings[user_id, item_id] = (rating, np.zeros(0))
 
         return users, items, ratings

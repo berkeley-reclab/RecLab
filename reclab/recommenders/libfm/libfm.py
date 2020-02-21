@@ -1,13 +1,16 @@
 """A wrapper for the LibFM recommender. See www.libfm.org for implementation details."""
-import collections
-import itertools
 import os
 
 import numpy as np
 import scipy.sparse
 
+from .. import recommender
 
-class LibFM():
+
+LIBFM_BINARY_PATH = os.path.join(os.path.dirname(__file__), 'libfm_lib/bin/libFM')
+
+
+class LibFM(recommender.PredictRecommender):
     """The libFM recommendation model which is a factorization machine.
 
     Parameters
@@ -24,20 +27,21 @@ class LibFM():
     max_num_items : int
         The maximum number of items that we will be making predictions for. Note that
         setting this value to be too large will lead to a degradation in performance.
+    latent_dim : int
+        The latent dimension of the factorization model
     seed : int
         The seed for the random state of the recommender. Defaults to 0.
 
     """
 
     def __init__(self, num_user_features, num_item_features, num_rating_features,
-                 max_num_users, max_num_items, seed=0):
+                 max_num_users, max_num_items, latent_dim=8, seed=0):
         """Create a LibFM recommender."""
+        super().__init__()
         self._seed = seed
-        self._users = {}
+        self._latent_dim = latent_dim
         self._max_num_users = max_num_users
-        self._items = {}
         self._max_num_items = max_num_items
-        self._rated_items = collections.defaultdict(set)
         # Each row of rating_inputs has the following structure:
         # (user_id, user_features, item_id, item_features, rating_features).
         # Where user_id and item_id are one hot encoded.
@@ -49,63 +53,20 @@ class LibFM():
         self._rating_outputs = np.empty((0,))
 
         # Make sure the libfm files are empty.
-        if os.path.exists("train.libfm"):
-            os.remove("train.libfm")
-        if os.path.exists("test.libfm"):
-            os.remove("test.libfm")
+        if os.path.exists('train.libfm'):
+            os.remove('train.libfm')
+        if os.path.exists('test.libfm'):
+            os.remove('test.libfm')
 
-    def reset(self, users=None, items=None, ratings=None):
-        """Reset the recommender with optional starting user, item, and rating data.
-
-        Parameters
-        ----------
-        users : dict, optional
-            All starting users where the key is the user id while the value is the
-            user features.
-        items : dict, optional
-            All starting items where the key is the user id while the value is the
-            item features.
-        ratings : dict, optional
-            All starting ratings where the key is a double whose first index is the
-            id of the user making the rating and the second index is the id of the item being
-            rated. The value is a double whose first index is the rating value and the second
-            index is a numpy array that represents the context in which the rating was made.
-
-        """
-        self._users = {}
-        self._items = {}
-        self._rated_items = collections.defaultdict(set)
+    def reset(self, users=None, items=None, ratings=None):  # noqa: D102
         self._rating_inputs = scipy.sparse.csr_matrix((0, self._rating_inputs.shape[1]))
         self._rating_outputs = np.empty((0,))
-        self.update(users, items, ratings)
+        super().reset(users, items, ratings)
 
-    def update(self, users=None, items=None, ratings=None):
-        """Update the recommender with new user, item, and rating data.
-
-        Parameters
-        ----------
-        users : dict, optional
-            All new users where the key is the user id while the value is the
-            user features.
-        items : dict, optional
-            All new items where the key is the user id while the value is the
-            item features.
-        ratings : dict, optional
-            All new ratings where the key is a double whose first index is the
-            id of the user making the rating and the second index is the id of the item being
-            rated. The value is a double whose first index is the rating value and the second
-            index is a numpy array that represents the context in which the rating was made.
-
-        """
-        if users is not None:
-            self._users.update(users)
-        if items is not None:
-            self._items.update(items)
+    def update(self, users=None, items=None, ratings=None):  # noqa: D102
+        super().update(users, items, ratings)
         if ratings is not None:
             for (user_id, item_id), (rating, rating_context) in ratings.items():
-                assert user_id in self._users
-                assert item_id in self._items
-                self._rated_items[user_id].add(item_id)
                 user_features = self._users[user_id]
                 item_features = self._items[item_id]
                 one_hot_user_id = scipy.sparse.csr_matrix(([1], ([0], [user_id])),
@@ -114,41 +75,16 @@ class LibFM():
                                                           shape=(1, self._max_num_items))
                 new_rating_inputs = scipy.sparse.hstack((one_hot_user_id, user_features,
                                                          one_hot_item_id, item_features,
-                                                         rating_context), format="csr")
+                                                         rating_context), format='csr')
                 self._rating_inputs = scipy.sparse.vstack((self._rating_inputs, new_rating_inputs),
-                                                          format="csr")
+                                                          format='csr')
                 self._rating_outputs = np.concatenate((self._rating_outputs, [rating]))
 
-    def predict(self, user_ids, item_ids, rating_data):
-        """Predict the ratings of user-item pairs.
-
-        Parameters
-        ----------
-        user_ids : iterable of int
-            The list of all user ids for which we wish to predict ratings.
-            user_ids[i] is the user id of the i-th pair.
-        item_ids : iterable of int
-            The list of all item ids for which we wish to predict ratings.
-            item_ids[i] is the item id of the i-th pair.
-        rating_data : np.ndarray
-            The rating features for all the user-item pairs. rating_data[i] is
-            the rating features for the i-th pair.
-
-        Returns
-        -------
-        predictions : np.ndarray
-            The rating predictions where predictions[i] is the prediction of the i-th pair.
-
-        """
-        assert len(user_ids) == len(item_ids)
-        assert len(item_ids) == rating_data.shape[0]
-
+    def _predict(self, user_item):  # noqa: D102
         # Create a test_inputs array that can be parsed by our output function.
-        print("Constructing test_inputs")
+        print('Constructing test_inputs')
         test_inputs = scipy.sparse.csr_matrix((0, self._rating_inputs.shape[1]))
-        for user_id, item_id, rating in zip(user_ids, item_ids, rating_data):
-            assert user_id in self._users
-            assert item_id in self._items
+        for user_id, item_id, rating in user_item:
             user_features = self._users[user_id]
             item_features = self._items[item_id]
             one_hot_user_id = scipy.sparse.csr_matrix(([1], ([0], [user_id])),
@@ -157,81 +93,101 @@ class LibFM():
                                                       shape=(1, self._max_num_items))
             new_rating_inputs = scipy.sparse.hstack((one_hot_user_id, user_features,
                                                      one_hot_item_id, item_features,
-                                                     rating), format="csr")
-            test_inputs = scipy.sparse.vstack((test_inputs, new_rating_inputs), format="csr")
+                                                     rating), format='csr')
+            test_inputs = scipy.sparse.vstack((test_inputs, new_rating_inputs), format='csr')
 
         # Now output both the train and test file.
-        print("Writing libfm files")
-        write_libfm_file("train.libfm", self._rating_inputs, self._rating_outputs,
+        print('Writing libfm files')
+        write_libfm_file('train.libfm', self._rating_inputs, self._rating_outputs,
                          self._num_written_ratings)
         self._num_written_ratings = self._rating_inputs.shape[0]
-        write_libfm_file("test.libfm", test_inputs, np.zeros(test_inputs.shape[0]))
+        write_libfm_file('test.libfm', test_inputs, np.zeros(test_inputs.shape[0]))
 
         # Run libfm on the train and test files.
-        print("Running libfm")
-        libfm_binary_path = os.path.join(os.path.dirname(__file__), "libfm_lib/bin/libFM")
-        os.system(("{} -task r -train train.libfm -test test.libfm -dim '1,1,8' "
-                   "-out predictions -verbosity 1 -seed {}").format(libfm_binary_path, self._seed))
+        print('Running libfm')
+        os.system(('{} -task r -train train.libfm -test test.libfm -dim \'1,1,{}\' '
+                   '-out predictions -verbosity 1 -seed {}').format(LIBFM_BINARY_PATH,
+                                                                    self._latent_dim, self._seed))
 
         # Read the prediction file back in as a numpy array.
-        print("Reading in predictions")
+        print('Reading in predictions')
         predictions = np.empty(test_inputs.shape[0])
-        with open("predictions", "r") as prediction_file:
+        with open('predictions', 'r') as prediction_file:
             for i, line in enumerate(prediction_file):
                 predictions[i] = float(line)
 
         return predictions
 
-    def recommend(self, user_contexts, num_recommendations):
-        """Recommend items to users.
+    def model_parameters(self):
+        """Train a libfm model and get the resulting model's parameters.
 
-        Parameters
-        ----------
-        user_contexts : ordered dict
-            The setting each user is going to be recommended items in. The key is the user id and
-            the value is the rating features.
-        num_recommendations : int
-            The number of items to recommend to each user.
+        The factorization machine model predicts a rating by
+        r(x) = b_0 + w^T x + v^T V x
+        where b_0 is the global bias, w is the weights, and
+        V is the pairwise interactions.
+        Here, x are the features of the user, item, rating,
+        including one-hot encoding of their identity.
 
         Returns
         -------
-        recs : np.ndarray of int
-            The recommendations made to each user. recs[i] is the array of item ids recommended
-            to the i-th user.
-        predicted_ratings : np.ndarray
-            The predicted ratings of the recommended items. recs[i] is the array of predicted
-            ratings for the items recommended to the i-th user.
+        global_bias : float
+            global bias term in model
+        weights : np.ndarray
+            linear term in model (related to user/item biases)
+        pairwise_interactions  : np.ndarray
+            interaction term in model (related to user/item factors)
 
         """
-        # Format the arrays to be passed to the prediction function. We need to predict all
-        # items that have not been rated for each user.
-        all_user_ids = []
-        all_rating_data = []
-        all_item_ids = []
-        for i, user_id in enumerate(user_contexts):
-            item_ids = np.array([j for j in self._items
-                                 if j not in self._rated_items[user_id]])
-            all_user_ids.append(user_id * np.ones(len(item_ids), dtype=np.int))
-            all_rating_data.append(np.repeat(user_contexts[user_id][np.newaxis, :],
-                                             len(item_ids), axis=0))
-            all_item_ids.append(item_ids)
+        print('Writing libfm file')
+        write_libfm_file('train.libfm', self._rating_inputs, self._rating_outputs,
+                         self._num_written_ratings)
+        self._num_written_ratings = self._rating_inputs.shape[0]
+        # Dummy test file
+        write_libfm_file('test.libfm', self._rating_inputs[0:1], np.zeros(1))
 
-        # Predict the ratings and convert predictions into a list of arrays indexed by user.
-        all_predictions = self.predict(np.concatenate(all_user_ids),
-                                       np.concatenate(all_item_ids),
-                                       np.concatenate(all_rating_data))
-        item_lens = map(len, all_item_ids)
-        all_predictions = np.split(all_predictions,
-                                   list(itertools.accumulate(item_lens)))
+        print('Running libfm')
+        # We use SGD to access save_model (could also use ALS)
+        train_command = ('{} -task r -train train.libfm -test test.libfm -method sgd '
+                         '-learn_rate 0.01 -regular \'0.04,0.04,0.04\' -dim \'1,1,{}\' '
+                         '-verbosity 1 -save_model saved_model'
+                         .format(LIBFM_BINARY_PATH, self._latent_dim))
+        os.system(train_command)
 
-        # Pick the top predicted items along with their predicted ratings.
-        recs = np.zeros((len(user_contexts), num_recommendations), dtype=np.int)
-        predicted_ratings = np.zeros(recs.shape)
-        for i, (item_ids, predictions) in enumerate(zip(all_item_ids, all_predictions)):
-            best_indices = np.argsort(predictions)[-num_recommendations:]
-            predicted_ratings[i] = predictions[best_indices]
-            recs[i] = item_ids[best_indices]
-        return recs, predicted_ratings
+        # a la https://github.com/jfloff/pywFM/blob/master/pywFM/__init__.py#L238
+        global_bias = None
+        weights = []
+        pairwise_interactions = []
+        with open('saved_model', 'rb') as saved_model:
+            out_iter = 0
+            for _, line in enumerate(saved_model):
+                line = line.decode('utf-8')
+                if line.startswith('#'):
+                    # if out_iter 0 its global bias; if 1, weights; if 2, pairwise interactions
+                    if '#global bias W0' in line:
+                        out_iter = 0
+                    elif '#unary interactions Wj' in line:
+                        out_iter = 1
+                    elif '#pairwise interactions Vj,f' in line:
+                        out_iter = 2
+                else:
+                    # appends to model parameter according to the flag outer_iter
+                    if out_iter == 0:
+                        global_bias = float(line)
+                    elif out_iter == 1:
+                        weights.append(float(line))
+                    elif out_iter == 2:
+                        try:
+                            pairwise_interactions.append([float(x) for x in line.split(' ')])
+                        except ValueError:
+                            # Case: no pairwise interactions used
+                            pairwise_interactions.append(0.0)
+        weights = np.array(weights)
+        pairwise_interactions = np.array(pairwise_interactions)
+
+        # Remove the model file
+        os.remove('saved_model')
+
+        return global_bias, weights, pairwise_interactions, train_command
 
 
 def write_libfm_file(file_path, inputs, outputs, start_idx=0):
@@ -239,15 +195,14 @@ def write_libfm_file(file_path, inputs, outputs, start_idx=0):
     if start_idx == inputs.shape[0]:
         return
     if start_idx == 0:
-        write_mode = "w+"
+        write_mode = 'w+'
     else:
-        write_mode = "a+"
+        write_mode = 'a+'
     with open(file_path, write_mode) as out_file:
-        # TODO: We need to add classification.
         for i in range(start_idx, inputs.shape[0]):
-            out_file.write("{} ".format(outputs[i]))
+            out_file.write('{} '.format(outputs[i]))
             indices = inputs[i].nonzero()[1]
             values = inputs[i, indices].todense().A1
-            index_value_strings = ["{}:{}".format(index, value)
+            index_value_strings = ['{}:{}'.format(index, value)
                                    for index, value in zip(indices, values)]
-            out_file.write(" ".join(index_value_strings) + "\n")
+            out_file.write(' '.join(index_value_strings) + '\n')

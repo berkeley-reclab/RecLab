@@ -487,3 +487,8 @@ valid-metaclass-classmethod-first-arg=cls
 # Exceptions that will emit a warning when being caught. Defaults to
 # "Exception".
 overgeneral-exceptions=Exception
+
+# Set the linting for string quotes
+string-quote=single
+triple-quote=double
+docstring-quote=double

@@ -5,8 +5,8 @@ from reclab.environments.latent_factors import LatentFactorBehavior, MovieLens10
 from reclab.environments.topics import Topics
 from reclab.recommenders.libfm.libfm import LibFM
 from reclab.recommenders import TopPop
+from reclab.recommenders.autorec.autorec import Autorec
 from reclab.recommenders import KNNRecommender
-
 
 def main():
     params = {'topic_change': 0.1, 'memory_length': 5,
@@ -14,10 +14,12 @@ def main():
     # env = Topics(num_topics=10, num_users=100, num_items=170, num_init_ratings=5000, **params)
     params = {'affinity_change': 0.1, 'memory_length': 5,
               'boredom_threshold': 0.5, 'boredom_penalty': 1.0}
-    # env = LatentFactorBehavior(latent_dim=8, num_users=100, num_items=170, num_init_ratings=1000, **params)
-    env = MovieLens100k(latent_dim=8, datapath="~/recsys/data/ml-100k/", num_init_ratings=1000)
+    env = LatentFactorBehavior(latent_dim=8, num_users=100, num_items=170, num_init_ratings=1000, **params)
+    # env = MovieLens100k(latent_dim=8, datapath="~/recsys/data/ml-100k/", num_init_ratings=1000)
     # env = RandomPreferences(num_topics=10, num_users=100, num_items=1700, num_init_ratings=10000)
-    recommender = TopPop() # KNNRecommender() # LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=100, max_num_items=170)
+    # recommender = TopPop() # KNNRecommender() # LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=100, max_num_items=170)
+    # recommender = TopPop() # LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=100, max_num_items=170)
+    recommender = Autorec(None, 100, 170) # TopPop() # LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=100, max_num_items=170)
 
     # First generate the items and users to seed the dataset.
     print("Initializing environment and recommender")
@@ -33,7 +35,6 @@ def main():
         items, users, ratings, info = env.step(recommendations)
         recommender.update(users, items, ratings)
         rating_arr = []
-        print(predicted_ratings)
         if predicted_ratings is not None:
             for (rating, _), pred in zip(ratings.values(), predicted_ratings):
                 rating_arr.append([rating, pred])

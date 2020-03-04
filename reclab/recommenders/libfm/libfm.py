@@ -9,7 +9,7 @@ from .libfm_lib.bin import pyfm
 
 
 LIBFM_BINARY_PATH = os.path.join(os.path.dirname(__file__), 'libfm_lib/bin/libFM')
-
+import time
 
 class LibFM(recommender.PredictRecommender):
     """The libFM recommendation model which is a factorization machine.
@@ -65,40 +65,71 @@ class LibFM(recommender.PredictRecommender):
     def update(self, users=None, items=None, ratings=None):  # noqa: D102
         super().update(users, items, ratings)
         if ratings is not None:
-            new_rating_inputs = []
+            data = []
+            row_col = [[], []]
             new_rating_outputs = []
-            for (user_id, item_id), (rating, rating_context) in ratings.items():
+            for row, ((user_id, item_id), (rating, rating_context)) in enumerate(ratings.items()):
                 user_features = self._users[user_id]
                 item_features = self._items[item_id]
-                one_hot_user_id = scipy.sparse.csr_matrix(([1], ([0], [user_id])),
-                                                          shape=(1, self._max_num_users))
-                one_hot_item_id = scipy.sparse.csr_matrix(([1], ([0], [item_id])),
-                                                          shape=(1, self._max_num_items))
-                new_rating_inputs.append(scipy.sparse.hstack((one_hot_user_id, user_features,
-                                                              one_hot_item_id, item_features,
-                                                              rating_context), format='csr'))
+                row_col[0].append(row)
+                row_col[1].append(user_id)
+                data.append(1)
+                for i, feature in enumerate(user_features):
+                    row_col[0].append(row)
+                    row_col[1].append(self._max_num_users + i)
+                    data.append(feature)
+                row_col[0].append(row)
+                row_col[1].append(self._max_num_users + len(user_features) + item_id)
+                data.append(1)
+                for i, feature in enumerate(item_features):
+                    row_col[0].append(row)
+                    row_col[1].append(self._max_num_users + len(user_features) +
+                                      self._max_num_items + i)
+                    data.append(feature)
+                for i, feature in enumerate(rating_context):
+                    row_col[0].append(row)
+                    row_col[1].append(self._max_num_users + len(user_features) +
+                                      self._max_num_items + len(item_features) + i)
+                    data.append(feature)
+
                 new_rating_outputs.append(rating)
 
-            new_rating_inputs = scipy.sparse.vstack(new_rating_inputs, format='csr')
+            new_rating_inputs = scipy.sparse.csr_matrix((data, row_col),
+                                                        shape=(len(ratings), self._num_features))
             new_rating_outputs = np.array(new_rating_outputs)
             self._train_data.add_rows(new_rating_inputs, new_rating_outputs)
 
     def _predict(self, user_item):  # noqa: D102
         # Create a test_inputs array that can be parsed by our output function.
         test_inputs = []
-        for user_id, item_id, rating in user_item:
+        data = []
+        row_col = [[], []]
+        for row, (user_id, item_id, rating_context) in enumerate(user_item):
             user_features = self._users[user_id]
             item_features = self._items[item_id]
-            one_hot_user_id = scipy.sparse.csr_matrix(([1], ([0], [user_id])),
-                                                      shape=(1, self._max_num_users))
-            one_hot_item_id = scipy.sparse.csr_matrix(([1], ([0], [item_id])),
-                                                      shape=(1, self._max_num_items))
-            new_rating_inputs = scipy.sparse.hstack((one_hot_user_id, user_features,
-                                                     one_hot_item_id, item_features,
-                                                     rating), format='csr')
-            test_inputs.append(new_rating_inputs)
+            row_col[0].append(row)
+            row_col[1].append(user_id)
+            data.append(1)
+            for i, feature in enumerate(user_features):
+                row_col[0].append(row)
+                row_col[1].append(self._max_num_users + i)
+                data.append(feature)
+            row_col[0].append(row)
+            row_col[1].append(self._max_num_users + len(user_features) + item_id)
+            data.append(1)
+            for i, feature in enumerate(item_features):
+                row_col[0].append(row)
+                row_col[1].append(self._max_num_users + len(user_features) +
+                                  self._max_num_items + i)
+                data.append(feature)
+            for i, feature in enumerate(rating_context):
+                row_col[0].append(row)
+                row_col[1].append(self._max_num_users + len(user_features) +
+                                  self._max_num_items + len(item_features) + i)
+                data.append(feature)
 
-        test_inputs = scipy.sparse.vstack(test_inputs, format='csr')
+        test_inputs = scipy.sparse.csr_matrix((data, row_col),
+                                              shape=(len(user_item), self._num_features))
         test_data = pyfm.Data(test_inputs, np.zeros(test_inputs.shape[0]))
 
         self._model.train(self._train_data)

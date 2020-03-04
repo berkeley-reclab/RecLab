@@ -5,6 +5,7 @@ import numpy as np
 import scipy.sparse
 
 from .. import recommender
+from .libfm_lib.bin import pyfm
 
 
 LIBFM_BINARY_PATH = os.path.join(os.path.dirname(__file__), 'libfm_lib/bin/libFM')
@@ -42,30 +43,30 @@ class LibFM(recommender.PredictRecommender):
         self._latent_dim = latent_dim
         self._max_num_users = max_num_users
         self._max_num_items = max_num_items
+        self._train_data = None
+        self._num_features = (self._max_num_users + num_user_features + self._max_num_items +
+                              num_item_features + num_rating_features)
+        self._model = pyfm.PyFM(method="sgd", dim=[1, 1, 8], lr=[0.1])
+
         # Each row of rating_inputs has the following structure:
         # (user_id, user_features, item_id, item_features, rating_features).
         # Where user_id and item_id are one hot encoded.
-        self._rating_inputs = scipy.sparse.csr_matrix((0, self._max_num_users + num_user_features +
-                                                       self._max_num_items + num_item_features +
-                                                       num_rating_features))
-        self._num_written_ratings = 0
+        rating_inputs = scipy.sparse.csr_matrix((0, self._num_features))
         # Each row of rating_outputs consists of the numerical value assigned to that interaction.
-        self._rating_outputs = np.empty((0,))
-
-        # Make sure the libfm files are empty.
-        if os.path.exists('train.libfm'):
-            os.remove('train.libfm')
-        if os.path.exists('test.libfm'):
-            os.remove('test.libfm')
+        rating_outputs = np.empty((0,))
+        self._train_data = pyfm.Data(rating_inputs, rating_outputs)
 
     def reset(self, users=None, items=None, ratings=None):  # noqa: D102
-        self._rating_inputs = scipy.sparse.csr_matrix((0, self._rating_inputs.shape[1]))
-        self._rating_outputs = np.empty((0,))
+        rating_inputs = scipy.sparse.csr_matrix((0, self._num_features))
+        rating_outputs = np.empty((0,))
+        self._train_data = pyfm.Data(rating_inputs, rating_outputs)
         super().reset(users, items, ratings)
 
     def update(self, users=None, items=None, ratings=None):  # noqa: D102
         super().update(users, items, ratings)
         if ratings is not None:
+            new_rating_inputs = []
+            new_rating_outputs = []
             for (user_id, item_id), (rating, rating_context) in ratings.items():
                 user_features = self._users[user_id]
                 item_features = self._items[item_id]
@@ -73,17 +74,18 @@ class LibFM(recommender.PredictRecommender):
                                                           shape=(1, self._max_num_users))
                 one_hot_item_id = scipy.sparse.csr_matrix(([1], ([0], [item_id])),
                                                           shape=(1, self._max_num_items))
-                new_rating_inputs = scipy.sparse.hstack((one_hot_user_id, user_features,
-                                                         one_hot_item_id, item_features,
-                                                         rating_context), format='csr')
-                self._rating_inputs = scipy.sparse.vstack((self._rating_inputs, new_rating_inputs),
-                                                          format='csr')
-                self._rating_outputs = np.concatenate((self._rating_outputs, [rating]))
+                new_rating_inputs.append(scipy.sparse.hstack((one_hot_user_id, user_features,
+                                                              one_hot_item_id, item_features,
+                                                              rating_context), format='csr'))
+                new_rating_outputs.append(rating)
+
+            new_rating_inputs = scipy.sparse.vstack(new_rating_inputs, format='csr')
+            new_rating_outputs = np.array(new_rating_outputs)
+            self._train_data.add_rows(new_rating_inputs, new_rating_outputs)
 
     def _predict(self, user_item):  # noqa: D102
         # Create a test_inputs array that can be parsed by our output function.
-        print('Constructing test_inputs')
-        test_inputs = scipy.sparse.csr_matrix((0, self._rating_inputs.shape[1]))
+        test_inputs = []
         for user_id, item_id, rating in user_item:
             user_features = self._users[user_id]
             item_features = self._items[item_id]
@@ -94,27 +96,13 @@ class LibFM(recommender.PredictRecommender):
             new_rating_inputs = scipy.sparse.hstack((one_hot_user_id, user_features,
                                                      one_hot_item_id, item_features,
                                                      rating), format='csr')
-            test_inputs = scipy.sparse.vstack((test_inputs, new_rating_inputs), format='csr')
+            test_inputs.append(new_rating_inputs)
 
-        # Now output both the train and test file.
-        print('Writing libfm files')
-        write_libfm_file('train.libfm', self._rating_inputs, self._rating_outputs,
-                         self._num_written_ratings)
-        self._num_written_ratings = self._rating_inputs.shape[0]
-        write_libfm_file('test.libfm', test_inputs, np.zeros(test_inputs.shape[0]))
+        test_inputs = scipy.sparse.vstack(test_inputs, format='csr')
+        test_data = pyfm.Data(test_inputs, np.zeros(test_inputs.shape[0]))
 
-        # Run libfm on the train and test files.
-        print('Running libfm')
-        os.system(('{} -task r -train train.libfm -test test.libfm -dim \'1,1,{}\' '
-                   '-out predictions -verbosity 1 -seed {}').format(LIBFM_BINARY_PATH,
-                                                                    self._latent_dim, self._seed))
-
-        # Read the prediction file back in as a numpy array.
-        print('Reading in predictions')
-        predictions = np.empty(test_inputs.shape[0])
-        with open('predictions', 'r') as prediction_file:
-            for i, line in enumerate(prediction_file):
-                predictions[i] = float(line)
+        self._model.train(self._train_data)
+        predictions = self._model.predict(test_data)
 
         return predictions
 

@@ -11,14 +11,54 @@ class Autorec(recommender.PredictRecommender):
     """
     Auto-encoders meet collaborative filtering.
 
-    Parameters
-    ---------
-    num
-
     """
-    def __init__(self, ratings, num_users, num_items,
-            hidden_neuron=500, lambda_value=1, train_epoch=2000, batch_size=100,
-            optimizer_method='Adam', grad_clip=False, base_lr=1e-3, decay_epoch_step=50, random_seed=1000, display_step=1):
+
+    def __init__(self, num_users, num_items, ratings=None,
+            hidden_neuron=50, lambda_value=1, train_epoch=100, batch_size=100,
+            optimizer_method='Adam', grad_clip=False, base_lr=1e-4, decay_epoch_step=50, random_seed=1000, display_step=1):
+        """
+        Parameters
+        ---------
+        num_users : int
+            Number of users in the environment.
+
+        num_items : int
+            Number of items in the environment.
+
+        ratings : np.matrix
+            Matrix of shape (num_users, num_items) populated with user ratings.
+
+        hidden_neuron : int
+            Output dimension of hidden neuron.
+
+        lambda_value : float
+            Coefficient for regularization while training layers.
+
+        train_epoch : int
+            Number of epochs to train for each call.
+
+        batch_size : int
+            Batch size during initial training phase.
+
+        optimizer_method : str
+            Optimizer for training model; either Adam or RMSProp.
+
+        grad_clip : bool
+            Set to true to clip gradients to [-5, 5].
+
+        base_lr : float
+            Base learning rate for optimizer.
+
+        decay_epoch_step : int
+            Number of epochs before the optimizer decays the learning rate.
+
+        random_seed : int
+            Random seed to reproduce results.
+
+        display_step : int
+            Number of training steps before printing display text.
+
+        """
         super().__init__()
         config = tf.ConfigProto()
         config.gpu_options.allow_growth=True
@@ -53,6 +93,7 @@ class Autorec(recommender.PredictRecommender):
             self.model.seen_users.add(user)
         for item in items:
             self.model.seen_items.add(item)
-        for user_item in ratings:
-            self.model.R[user_item[0]][user_item[1]] = ratings[user_item][0]
+        # for user_item in ratings:
+         #   self.model.R[user_item[0]][user_item[1]] = ratings[user_item][0]
+        self.model.R = self._ratings.toarray()
         self.model.train_model(0)

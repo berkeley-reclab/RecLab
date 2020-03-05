@@ -12,7 +12,7 @@ import scipy.special
 from . import environment
 
 
-class User(object):
+class User:
     """Create custom User object for use in Engelhardt environment."""
 
     def __init__(self, num_topics, known_weight,

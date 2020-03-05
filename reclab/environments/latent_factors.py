@@ -178,7 +178,7 @@ class MovieLens100k(LatentFactorBehavior):
             print('Initializing latent factor model')
             recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0,
                                 max_num_users=self._num_users, max_num_items=self._num_items,
-                                latent_dim=self._latent_dim)
+                                num_two_way_factors=self._latent_dim)
             recommender.reset(users, items, ratings)
             print('Training latent factor model')
 

@@ -93,7 +93,5 @@ class Autorec(recommender.PredictRecommender):
             self.model.seen_users.add(user)
         for item in items:
             self.model.seen_items.add(item)
-        # for user_item in ratings:
-         #   self.model.R[user_item[0]][user_item[1]] = ratings[user_item][0]
         self.model.R = self._ratings.toarray()
         self.model.train_model(0)

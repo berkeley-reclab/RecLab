@@ -9,7 +9,7 @@ from .libfm_lib.bin import pyfm
 
 
 LIBFM_BINARY_PATH = os.path.join(os.path.dirname(__file__), 'libfm_lib/bin/libFM')
-import time
+
 
 class LibFM(recommender.PredictRecommender):
     """The libFM recommendation model which is a factorization machine.
@@ -28,25 +28,35 @@ class LibFM(recommender.PredictRecommender):
     max_num_items : int
         The maximum number of items that we will be making predictions for. Note that
         setting this value to be too large will lead to a degradation in performance.
+    method : str
+        The method to learn parameters. Can be one of: 'sgd', 'asgd', or 'mcmc'.
     latent_dim : int
         The latent dimension of the factorization model
-    seed : int
-        The seed for the random state of the recommender. Defaults to 0.
 
     """
 
     def __init__(self, num_user_features, num_item_features, num_rating_features,
-                 max_num_users, max_num_items, latent_dim=8, seed=0):
+                 max_num_users, max_num_items, method='sgd', latent_dim=(1, 1, 8),
+                 learning_rate=(0.1), regularization=(), init_stdev=0.1, num_iter=100,
+                 num_eval_cases=-1, do_sampling=True, do_multilevel=True, verbosity=0):
         """Create a LibFM recommender."""
         super().__init__()
-        self._seed = seed
         self._latent_dim = latent_dim
         self._max_num_users = max_num_users
         self._max_num_items = max_num_items
         self._train_data = None
         self._num_features = (self._max_num_users + num_user_features + self._max_num_items +
                               num_item_features + num_rating_features)
-        self._model = pyfm.PyFM(method="sgd", dim=[1, 1, 8], lr=[0.1])
+        self._model = pyfm.PyFM(method=method,
+                                dim=latent_dim,
+                                lr=learning_rate,
+                                reg=regularization,
+                                init_stdev=init_stdev,
+                                num_iter=num_iter,
+                                num_eval_cases=num_eval_cases,
+                                do_sampling=do_sampling,
+                                do_multilevel=do_multilevel,
+                                verbosity=verbosity)
 
         # Each row of rating_inputs has the following structure:
         # (user_id, user_features, item_id, item_features, rating_features).

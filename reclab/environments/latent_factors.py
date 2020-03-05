@@ -183,7 +183,7 @@ class MovieLens100k(LatentFactorBehavior):
             print('Training latent factor model')
 
             res = recommender.model_parameters()
-            global_bias, weights, pairwise_interactions, train_command = res
+            global_bias, weights, pairwise_interactions = res
 
             # TODO: this logic is only correct if there are no additional user/item/rating features
             user_indices = np.arange(self._num_users)
@@ -196,14 +196,12 @@ class MovieLens100k(LatentFactorBehavior):
             offset = global_bias
 
             np.savez(model_file, user_factors=user_factors, user_bias=user_bias,
-                     item_factors=item_factors, item_bias=item_bias, offset=offset,
-                     params=train_command)
+                     item_factors=item_factors, item_bias=item_bias, offset=offset)
 
             return user_factors, user_bias, item_factors, item_bias, offset
 
         model = np.load(model_file)
-        print('Loading model from {} trained via:\n{}'.format(model_file,
-                                                              model['params']))
+        print('Loading model from {}.'.format(model_file))
         return (model['user_factors'], model['user_bias'], model['item_factors'],
                 model['item_bias'], model['offset'])
 

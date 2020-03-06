@@ -14,12 +14,12 @@ def read_movielens100k():
     movielens_dir = os.path.join(DATA_DIR, 'ml-100k')
     datafile = os.path.join(movielens_dir, 'u.data')
     if not os.path.isfile(datafile):
-        os.makedirs(movielens_dir, exist_ok=True)
+        os.makedirs(DATA_DIR, exist_ok=True)
         download_location = os.path.join(DATA_DIR, 'ml-100k.zip')
         urllib.request.urlretrieve('http://files.grouplens.org/datasets/movielens/ml-100k.zip',
                                    filename=download_location)
         with zipfile.ZipFile(download_location, 'r') as zip_ref:
-            zip_ref.extractall(movielens_dir)
+            zip_ref.extractall(DATA_DIR)
         os.remove(download_location)
 
     data = pd.read_csv(datafile, sep='\t', header=None, usecols=[0, 1, 2, 3],

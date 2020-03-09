@@ -1,3 +1,4 @@
+import collections
 import os
 import shutil
 
@@ -8,6 +9,13 @@ import zipfile
 
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "../data")
+
+
+def split_ratings(ratings, proportion, shuffle=False):
+    split_1 = collections.DefaultDict()
+    split_2 = collections.DefaultDict()
+    split_1_end = int(proportion * len(ratings))
+    
 
 
 def read_movielens100k():

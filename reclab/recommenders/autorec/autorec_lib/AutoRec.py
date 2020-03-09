@@ -17,27 +17,10 @@ class AutoRec():
         self.num_users = num_users
         self.num_items = num_items
 
-        rating_matrix = np.zeros(shape=(num_users, num_items))
-        if R:
-            for user_item in R:
-                rating_matrix[user_item[0]][user_item[1]] = R[user_item][0]
-        self.R = rating_matrix
+        self.R = R
 
         self.seen_users = seen_users
         self.seen_items = seen_items
-        # self.mask_R = mask_R
-        # self.C = C
-        # self.train_R = train_R
-        # self.train_mask_R = train_mask_R
-        # self.test_R = test_R
-        # self.test_mask_R = test_mask_R
-        # self.num_train_ratings = num_train_ratings
-#        self.num_test_ratings = num_test_ratings
-
-#        self.user_train_set = user_train_set
-#        self.item_train_set = item_train_set
-#        self.user_test_set = user_test_set
-#        self.item_test_set = item_test_set
 
         self.hidden_neuron = hidden_neuron
         self.train_epoch = train_epoch
@@ -69,12 +52,9 @@ class AutoRec():
         self.sess.run(init)
         for epoch_itr in range(self.train_epoch):
             self.train_model(epoch_itr)
-            # self.test_model(epoch_itr)
-        # self.make_records()
 
     def prepare_model(self):
         self.input_R = tf.placeholder(dtype=tf.float32, shape=[None, self.num_items], name="input_R")
-        self.input_mask_R = tf.placeholder(dtype=tf.float32, shape=[None, self.num_items], name="input_mask_R")
 
         V = tf.get_variable(name="V", initializer=tf.truncated_normal(shape=[self.num_items, self.hidden_neuron],
                                          mean=0, stddev=0.03),dtype=tf.float32)
@@ -88,7 +68,7 @@ class AutoRec():
         pre_Decoder = tf.matmul(self.Encoder,W) + b
         self.Decoder = tf.identity(pre_Decoder)
 
-        pre_rec_cost = tf.multiply((self.input_R - self.Decoder) , self.input_mask_R)
+        pre_rec_cost = self.input_R - self.Decoder
         rec_cost = tf.square(self.l2_norm(pre_rec_cost))
         pre_reg_cost = tf.square(self.l2_norm(W)) + tf.square(self.l2_norm(V))
         reg_cost = self.lambda_value * 0.5 * pre_reg_cost
@@ -120,32 +100,26 @@ class AutoRec():
             elif i < self.num_batch - 1:
                 batch_set_idx = random_perm_doc_idx[i * self.batch_size : (i+1) * self.batch_size]
 
-            input_mask_R = np.ones(shape=(self.R[batch_set_idx, :].shape))
 
             _, Cost = self.sess.run(
                 [self.optimizer, self.cost],
-                feed_dict={self.input_R: self.R[batch_set_idx, :],
-                           self.input_mask_R: input_mask_R})
+                feed_dict={self.input_R: self.R[batch_set_idx, :]})
 
             batch_cost = batch_cost + Cost
         self.train_cost_list.append(batch_cost)
 
-        # if (itr+1) % self.display_step == 0:
-        #    print ("Training //", "Epoch %d //" % (itr), " Total cost = {:.2f}".format(batch_cost),
-        #       "Elapsed time : %d sec" % (time.time() - start_time))
+        if (itr+1) % self.display_step == 0:
+            print ("Training //", "Epoch %d //" % (itr), " Total cost = {:.2f}".format(batch_cost),
+               "Elapsed time : %d sec" % (time.time() - start_time))
 
     def predict(self, user_item):
         users = [triple[0] for triple in user_item]
         items = [triple[1] for triple in user_item]
 
-        rating_matrix = np.zeros(shape=(self.num_users, self.num_items))
-        input_mask_R = np.ones(shape=(self.R.shape))
-
         user_item = zip(users, items)
         Cost, Decoder = self.sess.run(
                 [self.cost, self.Decoder],
-                feed_dict={self.input_R: self.R,
-                           self.input_mask_R: input_mask_R})
+                feed_dict={self.input_R: self.R})
         user_idx = set(users)
         item_idx = set(items)
         Estimated_R = Decoder.clip(min=1, max=5)
@@ -157,37 +131,6 @@ class AutoRec():
                     Estimated_R[user,item] = 3
         idx = [tuple(users), tuple(items)]
         return np.array(Estimated_R[idx])
-
-    def test_model(self,itr):
-        start_time = time.time()
-        Cost,Decoder = self.sess.run(
-            [self.cost,self.Decoder],
-            feed_dict={self.input_R: self.test_R,
-                       self.input_mask_R: self.test_mask_R})
-
-        self.test_cost_list.append(Cost)
-
-        if (itr+1) % self.display_step == 0:
-            Estimated_R = Decoder.clip(min=1, max=5)
-            unseen_user_test_list = list(self.user_test_set - self.user_train_set)
-            unseen_item_test_list = list(self.item_test_set - self.item_train_set)
-
-            for user in unseen_user_test_list:
-                for item in unseen_item_test_list:
-                    if self.test_mask_R[user,item] == 1: # exist in test set
-                        Estimated_R[user,item] = 3
-
-            print(Estimated_R)
-            pre_numerator = np.multiply((Estimated_R - self.test_R), self.test_mask_R)
-            numerator = np.sum(np.square(pre_numerator))
-            denominator = self.num_test_ratings
-            RMSE = np.sqrt(numerator / float(denominator))
-
-            self.test_rmse_list.append(RMSE)
-
-            print ("Testing //", "Epoch %d //" % (itr), " Total cost = {:.2f}".format(Cost), " RMSE = {:.5f}".format(RMSE),
-                   "Elapsed time : %d sec" % (time.time() - start_time))
-            print ("=" * 100)
 
     def make_records(self):
         if not os.path.exists(self.result_path):
@@ -224,6 +167,3 @@ class AutoRec():
 
     def l2_norm(self,tensor):
         return tf.sqrt(tf.reduce_sum(tf.square(tensor)))
-
-
-

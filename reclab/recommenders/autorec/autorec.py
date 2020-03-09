@@ -1,3 +1,4 @@
+"""Tensorflow implementation of AutoRec recommender."""
 import os
 import tensorflow as tf
 import argparse
@@ -7,15 +8,15 @@ import numpy as np
 from .autorec_lib.AutoRec import AutoRec
 from .. import recommender
 
-class Autorec(recommender.PredictRecommender):
-    """
-    Auto-encoders meet collaborative filtering.
 
-    """
+class Autorec(recommender.PredictRecommender):
+    """Auto-encoders meet collaborative filtering."""
 
     def __init__(self, num_users, num_items, ratings=None,
-            hidden_neuron=50, lambda_value=1, train_epoch=100, batch_size=100,
-            optimizer_method='Adam', grad_clip=False, base_lr=1e-4, decay_epoch_step=50, random_seed=1000, display_step=1):
+                 hidden_neuron=50, lambda_value=1, train_epoch=100, batch_size=100,
+                 optimizer_method='Adam', grad_clip=False, base_lr=1e-4, decay_epoch_step=50,
+                 random_seed=1000, display_step=1):
+
         """
         Parameters
         ---------
@@ -61,14 +62,14 @@ class Autorec(recommender.PredictRecommender):
         """
         super().__init__()
         config = tf.ConfigProto()
-        config.gpu_options.allow_growth=True
+        config.gpu_options.allow_growth = True
         sess = tf.Session(config=config)
         seen_users = set()
         seen_items = set()
 
         self.model = AutoRec(sess, num_users, num_items, ratings, seen_users, seen_items,
-                hidden_neuron, lambda_value, train_epoch, batch_size, optimizer_method, grad_clip,
-                base_lr, decay_epoch_step, random_seed, display_step)
+                             hidden_neuron, lambda_value, train_epoch, batch_size, optimizer_method,
+                             grad_clip, base_lr, decay_epoch_step, random_seed, display_step)
 
     def _predict(self, user_item, round_rat=False):
         estimate = self.model.predict(user_item)

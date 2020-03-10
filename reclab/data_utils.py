@@ -12,10 +12,21 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "../data")
 
 
 def split_ratings(ratings, proportion, shuffle=False):
-    split_1 = collections.DefaultDict()
-    split_2 = collections.DefaultDict()
+    split_1 = collections.OrderedDict()
+    split_2 = collections.OrderedDict()
     split_1_end = int(proportion * len(ratings))
-    
+    iterator = list(ratings.items())
+
+    if shuffle:
+        np.random.shuffle(iterator)
+
+    for i, (key, val) in enumerate(iterator):
+        if i < split_1_end:
+            split_1[key] = val
+        else:
+            split_2[key] = val
+
+    return split_1, split_2
 
 
 def read_movielens100k():

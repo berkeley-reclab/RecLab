@@ -94,6 +94,7 @@ class LibFM(recommender.PredictRecommender):
         rating_inputs = scipy.sparse.csr_matrix((0, self._num_features))
         # Each row of rating_outputs consists of the numerical value assigned to that interaction.
         rating_outputs = np.empty((0,))
+        # TODO: We need to add support for MCMC/ALS by adding has_xt here and for the test set.
         self._train_data = pyfm.Data(rating_inputs, rating_outputs)
 
     def reset(self, users=None, items=None, ratings=None):  # noqa: D102

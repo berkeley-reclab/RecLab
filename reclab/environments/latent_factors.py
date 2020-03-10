@@ -4,7 +4,9 @@ In this environment users and items both have latent vectors, and
 the rating is determined by the inner product. Users and item both
 have bias terms, and there is an underlying bias as well.
 """
+import json
 import os
+
 import numpy as np
 import pandas as pd
 
@@ -194,14 +196,16 @@ class MovieLens100k(LatentFactorBehavior):
             item_factors = pairwise_interactions[item_indices]
             item_bias = weights[item_indices]
             offset = global_bias
+            params = json.dumps(recommender.hyperparameters())
 
             np.savez(model_file, user_factors=user_factors, user_bias=user_bias,
-                     item_factors=item_factors, item_bias=item_bias, offset=offset)
+                     item_factors=item_factors, item_bias=item_bias, offset=offset,
+                     params=params)
 
             return user_factors, user_bias, item_factors, item_bias, offset
 
         model = np.load(model_file)
-        print('Loading model from {}.'.format(model_file))
+        print('Loading model from {} trained via:\n{}.'.format(model_file, model['params']))
         return (model['user_factors'], model['user_bias'], model['item_factors'],
                 model['item_bias'], model['offset'])
 

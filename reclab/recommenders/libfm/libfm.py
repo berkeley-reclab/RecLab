@@ -1,13 +1,12 @@
 """A wrapper for the LibFM recommender. See www.libfm.org for implementation details."""
-import os
-
 import numpy as np
 import scipy.sparse
 
 from .. import recommender
-
-
-LIBFM_BINARY_PATH = os.path.join(os.path.dirname(__file__), 'libfm_lib/bin/libFM')
+try:
+    from .libfm_lib import pyfm
+except ImportError as error:
+    raise 'Could not find pyfm package. You probably need to import the libfm_lib submodule.'
 
 
 class LibFM(recommender.PredictRecommender):
@@ -27,94 +26,154 @@ class LibFM(recommender.PredictRecommender):
     max_num_items : int
         The maximum number of items that we will be making predictions for. Note that
         setting this value to be too large will lead to a degradation in performance.
-    latent_dim : int
-        The latent dimension of the factorization model
+    method : str
+        The method to learn parameters. Can be one of: 'sgd', 'sgda', or 'mcmc'.
+    use_global_bias : bool
+        Whether to use a global bias term.
+    use_one_way : bool
+        Whether to use one way interactions.
+    num_two_way_factors : int
+        The number of factors to use for the two way interactions.
+    learning_rate : float
+        The learning rate for sgd or sgda.
+    bias_reg : float
+        The regularization for the global bias.
+    one_way_reg : float
+        The regularization for the one-way interactions.
+    two_way_reg : float
+        The regularization for the two-way interactions.
+    init_stdev : float
+        Standard deviation for initialization of the 2-way factors.
+    num_iter : int
+        The number of iterations to train the model for.
     seed : int
-        The seed for the random state of the recommender. Defaults to 0.
+        The random seed to use when training the model.
 
     """
 
-    def __init__(self, num_user_features, num_item_features, num_rating_features,
-                 max_num_users, max_num_items, latent_dim=8, seed=0):
+    def __init__(self,
+                 num_user_features,
+                 num_item_features,
+                 num_rating_features,
+                 max_num_users,
+                 max_num_items,
+                 method='sgd',
+                 use_global_bias=True,
+                 use_one_way=True,
+                 num_two_way_factors=8,
+                 learning_rate=0.1,
+                 bias_reg=0.0,
+                 one_way_reg=0.0,
+                 two_way_reg=0.0,
+                 init_stdev=0.1,
+                 num_iter=100,
+                 seed=0):
         """Create a LibFM recommender."""
         super().__init__()
-        self._seed = seed
-        self._latent_dim = latent_dim
         self._max_num_users = max_num_users
         self._max_num_items = max_num_items
+        self._train_data = None
+        self._num_features = (self._max_num_users + num_user_features + self._max_num_items +
+                              num_item_features + num_rating_features)
+        self._model = pyfm.PyFM(method=method,
+                                dim=(use_global_bias, use_one_way, num_two_way_factors),
+                                lr=learning_rate,
+                                reg=(bias_reg, one_way_reg, two_way_reg),
+                                init_stdev=init_stdev,
+                                num_iter=num_iter,
+                                seed=seed)
+        self._hyperparameters = locals()
+
+        # We only want the function arguments so remove class related objects.
+        del self._hyperparameters['self']
+        del self._hyperparameters['__class__']
+
         # Each row of rating_inputs has the following structure:
         # (user_id, user_features, item_id, item_features, rating_features).
         # Where user_id and item_id are one hot encoded.
-        self._rating_inputs = scipy.sparse.csr_matrix((0, self._max_num_users + num_user_features +
-                                                       self._max_num_items + num_item_features +
-                                                       num_rating_features))
-        self._num_written_ratings = 0
+        rating_inputs = scipy.sparse.csr_matrix((0, self._num_features))
         # Each row of rating_outputs consists of the numerical value assigned to that interaction.
-        self._rating_outputs = np.empty((0,))
-
-        # Make sure the libfm files are empty.
-        if os.path.exists('train.libfm'):
-            os.remove('train.libfm')
-        if os.path.exists('test.libfm'):
-            os.remove('test.libfm')
+        rating_outputs = np.empty((0,))
+        self._train_data = pyfm.Data(rating_inputs, rating_outputs)
 
     def reset(self, users=None, items=None, ratings=None):  # noqa: D102
-        self._rating_inputs = scipy.sparse.csr_matrix((0, self._rating_inputs.shape[1]))
-        self._rating_outputs = np.empty((0,))
+        rating_inputs = scipy.sparse.csr_matrix((0, self._num_features))
+        rating_outputs = np.empty((0,))
+        self._train_data = pyfm.Data(rating_inputs, rating_outputs)
         super().reset(users, items, ratings)
 
     def update(self, users=None, items=None, ratings=None):  # noqa: D102
         super().update(users, items, ratings)
         if ratings is not None:
-            for (user_id, item_id), (rating, rating_context) in ratings.items():
+            data = []
+            row_col = [[], []]
+            new_rating_outputs = []
+            for row, ((user_id, item_id), (rating, rating_context)) in enumerate(ratings.items()):
                 user_features = self._users[user_id]
                 item_features = self._items[item_id]
-                one_hot_user_id = scipy.sparse.csr_matrix(([1], ([0], [user_id])),
-                                                          shape=(1, self._max_num_users))
-                one_hot_item_id = scipy.sparse.csr_matrix(([1], ([0], [item_id])),
-                                                          shape=(1, self._max_num_items))
-                new_rating_inputs = scipy.sparse.hstack((one_hot_user_id, user_features,
-                                                         one_hot_item_id, item_features,
-                                                         rating_context), format='csr')
-                self._rating_inputs = scipy.sparse.vstack((self._rating_inputs, new_rating_inputs),
-                                                          format='csr')
-                self._rating_outputs = np.concatenate((self._rating_outputs, [rating]))
+                row_col[0].append(row)
+                row_col[1].append(user_id)
+                data.append(1)
+                for i, feature in enumerate(user_features):
+                    row_col[0].append(row)
+                    row_col[1].append(self._max_num_users + i)
+                    data.append(feature)
+                row_col[0].append(row)
+                row_col[1].append(self._max_num_users + len(user_features) + item_id)
+                data.append(1)
+                for i, feature in enumerate(item_features):
+                    row_col[0].append(row)
+                    row_col[1].append(self._max_num_users + len(user_features) +
+                                      self._max_num_items + i)
+                    data.append(feature)
+                for i, feature in enumerate(rating_context):
+                    row_col[0].append(row)
+                    row_col[1].append(self._max_num_users + len(user_features) +
+                                      self._max_num_items + len(item_features) + i)
+                    data.append(feature)
+
+                new_rating_outputs.append(rating)
+
+            new_rating_inputs = scipy.sparse.csr_matrix((data, row_col),
+                                                        shape=(len(ratings), self._num_features))
+            new_rating_outputs = np.array(new_rating_outputs)
+            self._train_data.add_rows(new_rating_inputs, new_rating_outputs)
 
     def _predict(self, user_item):  # noqa: D102
         # Create a test_inputs array that can be parsed by our output function.
-        print('Constructing test_inputs')
-        test_inputs = scipy.sparse.csr_matrix((0, self._rating_inputs.shape[1]))
-        for user_id, item_id, rating in user_item:
+        test_inputs = []
+        data = []
+        row_col = [[], []]
+        for row, (user_id, item_id, rating_context) in enumerate(user_item):
             user_features = self._users[user_id]
             item_features = self._items[item_id]
-            one_hot_user_id = scipy.sparse.csr_matrix(([1], ([0], [user_id])),
-                                                      shape=(1, self._max_num_users))
-            one_hot_item_id = scipy.sparse.csr_matrix(([1], ([0], [item_id])),
-                                                      shape=(1, self._max_num_items))
-            new_rating_inputs = scipy.sparse.hstack((one_hot_user_id, user_features,
-                                                     one_hot_item_id, item_features,
-                                                     rating), format='csr')
-            test_inputs = scipy.sparse.vstack((test_inputs, new_rating_inputs), format='csr')
+            row_col[0].append(row)
+            row_col[1].append(user_id)
+            data.append(1)
+            for i, feature in enumerate(user_features):
+                row_col[0].append(row)
+                row_col[1].append(self._max_num_users + i)
+                data.append(feature)
+            row_col[0].append(row)
+            row_col[1].append(self._max_num_users + len(user_features) + item_id)
+            data.append(1)
+            for i, feature in enumerate(item_features):
+                row_col[0].append(row)
+                row_col[1].append(self._max_num_users + len(user_features) +
+                                  self._max_num_items + i)
+                data.append(feature)
+            for i, feature in enumerate(rating_context):
+                row_col[0].append(row)
+                row_col[1].append(self._max_num_users + len(user_features) +
+                                  self._max_num_items + len(item_features) + i)
+                data.append(feature)
 
-        # Now output both the train and test file.
-        print('Writing libfm files')
-        write_libfm_file('train.libfm', self._rating_inputs, self._rating_outputs,
-                         self._num_written_ratings)
-        self._num_written_ratings = self._rating_inputs.shape[0]
-        write_libfm_file('test.libfm', test_inputs, np.zeros(test_inputs.shape[0]))
+        test_inputs = scipy.sparse.csr_matrix((data, row_col),
+                                              shape=(len(user_item), self._num_features))
+        test_data = pyfm.Data(test_inputs, np.zeros(test_inputs.shape[0]))
 
-        # Run libfm on the train and test files.
-        print('Running libfm')
-        os.system(('{} -task r -train train.libfm -test test.libfm -dim \'1,1,{}\' '
-                   '-out predictions -verbosity 1 -seed {}').format(LIBFM_BINARY_PATH,
-                                                                    self._latent_dim, self._seed))
-
-        # Read the prediction file back in as a numpy array.
-        print('Reading in predictions')
-        predictions = np.empty(test_inputs.shape[0])
-        with open('predictions', 'r') as prediction_file:
-            for i, line in enumerate(prediction_file):
-                predictions[i] = float(line)
+        self._model.train(self._train_data)
+        predictions = self._model.predict(test_data)
 
         return predictions
 
@@ -131,63 +190,26 @@ class LibFM(recommender.PredictRecommender):
         Returns
         -------
         global_bias : float
-            global bias term in model
+            Global bias term in the model.
         weights : np.ndarray
-            linear term in model (related to user/item biases)
+            Linear terms in the model (related to user/item biases).
         pairwise_interactions  : np.ndarray
-            interaction term in model (related to user/item factors)
+            Interaction term in the model (related to user/item factors).
 
         """
-        print('Writing libfm file')
-        write_libfm_file('train.libfm', self._rating_inputs, self._rating_outputs,
-                         self._num_written_ratings)
-        self._num_written_ratings = self._rating_inputs.shape[0]
-        # Dummy test file
-        write_libfm_file('test.libfm', self._rating_inputs[0:1], np.zeros(1))
+        self._model.train(self._train_data)
+        return self._model.parameters()
 
-        print('Running libfm')
-        # We use SGD to access save_model (could also use ALS)
-        train_command = ('{} -task r -train train.libfm -test test.libfm -method sgd '
-                         '-learn_rate 0.01 -regular \'0.04,0.04,0.04\' -dim \'1,1,{}\' '
-                         '-verbosity 1 -save_model saved_model'
-                         .format(LIBFM_BINARY_PATH, self._latent_dim))
-        os.system(train_command)
+    def hyperparameters(self):
+        """Get the hyperparameters associated with this libfm model.
 
-        # a la https://github.com/jfloff/pywFM/blob/master/pywFM/__init__.py#L238
-        global_bias = None
-        weights = []
-        pairwise_interactions = []
-        with open('saved_model', 'rb') as saved_model:
-            out_iter = 0
-            for _, line in enumerate(saved_model):
-                line = line.decode('utf-8')
-                if line.startswith('#'):
-                    # if out_iter 0 its global bias; if 1, weights; if 2, pairwise interactions
-                    if '#global bias W0' in line:
-                        out_iter = 0
-                    elif '#unary interactions Wj' in line:
-                        out_iter = 1
-                    elif '#pairwise interactions Vj,f' in line:
-                        out_iter = 2
-                else:
-                    # appends to model parameter according to the flag outer_iter
-                    if out_iter == 0:
-                        global_bias = float(line)
-                    elif out_iter == 1:
-                        weights.append(float(line))
-                    elif out_iter == 2:
-                        try:
-                            pairwise_interactions.append([float(x) for x in line.split(' ')])
-                        except ValueError:
-                            # Case: no pairwise interactions used
-                            pairwise_interactions.append(0.0)
-        weights = np.array(weights)
-        pairwise_interactions = np.array(pairwise_interactions)
+        Returns
+        -------
+        hyperparameters : dict
+            The dict of all hyperparameters.
 
-        # Remove the model file
-        os.remove('saved_model')
-
-        return global_bias, weights, pairwise_interactions, train_command
+        """
+        return self._hyperparameters
 
 
 def write_libfm_file(file_path, inputs, outputs, start_idx=0):

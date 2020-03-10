@@ -1,7 +1,9 @@
 numpy
+pandas
 pycodestyle
 pydocstyle
 pylint
+pylint_quotes
 scipy
 pylint_quotes
 

@@ -4,7 +4,9 @@ In this environment users and items both have latent vectors, and
 the rating is determined by the inner product. Users and item both
 have bias terms, and there is an underlying bias as well.
 """
+import json
 import os
+
 import numpy as np
 import pandas as pd
 
@@ -178,12 +180,12 @@ class MovieLens100k(LatentFactorBehavior):
             print('Initializing latent factor model')
             recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0,
                                 max_num_users=self._num_users, max_num_items=self._num_items,
-                                latent_dim=self._latent_dim)
+                                num_two_way_factors=self._latent_dim)
             recommender.reset(users, items, ratings)
             print('Training latent factor model')
 
             res = recommender.model_parameters()
-            global_bias, weights, pairwise_interactions, train_command = res
+            global_bias, weights, pairwise_interactions = res
 
             # TODO: this logic is only correct if there are no additional user/item/rating features
             user_indices = np.arange(self._num_users)
@@ -194,16 +196,16 @@ class MovieLens100k(LatentFactorBehavior):
             item_factors = pairwise_interactions[item_indices]
             item_bias = weights[item_indices]
             offset = global_bias
+            params = json.dumps(recommender.hyperparameters())
 
             np.savez(model_file, user_factors=user_factors, user_bias=user_bias,
                      item_factors=item_factors, item_bias=item_bias, offset=offset,
-                     params=train_command)
+                     params=params)
 
             return user_factors, user_bias, item_factors, item_bias, offset
 
         model = np.load(model_file)
-        print('Loading model from {} trained via:\n{}'.format(model_file,
-                                                              model['params']))
+        print('Loading model from {} trained via:\n{}.'.format(model_file, model['params']))
         return (model['user_factors'], model['user_bias'], model['item_factors'],
                 model['item_bias'], model['offset'])
 

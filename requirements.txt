@@ -3,4 +3,5 @@ pycodestyle
 pydocstyle
 pylint
 scipy
+pylint_quotes
 

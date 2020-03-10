@@ -48,6 +48,8 @@ class LibFM(recommender.PredictRecommender):
         Standard deviation for initialization of the 2-way factors.
     num_iter : int
         The number of iterations to train the model for.
+    seed : int
+        The random seed to use when training the model.
 
     """
 
@@ -66,7 +68,8 @@ class LibFM(recommender.PredictRecommender):
                  one_way_reg=0.0,
                  two_way_reg=0.0,
                  init_stdev=0.1,
-                 num_iter=100):
+                 num_iter=100,
+                 seed=0):
         """Create a LibFM recommender."""
         super().__init__()
         self._max_num_users = max_num_users
@@ -79,7 +82,8 @@ class LibFM(recommender.PredictRecommender):
                                 lr=learning_rate,
                                 reg=(bias_reg, one_way_reg, two_way_reg),
                                 init_stdev=init_stdev,
-                                num_iter=num_iter)
+                                num_iter=num_iter,
+                                seed=seed)
 
         # Each row of rating_inputs has the following structure:
         # (user_id, user_features, item_id, item_features, rating_features).

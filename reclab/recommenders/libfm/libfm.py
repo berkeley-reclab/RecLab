@@ -5,10 +5,10 @@ import numpy as np
 import scipy.sparse
 
 from .. import recommender
-from .libfm_lib.bin import pyfm
-
-
-LIBFM_BINARY_PATH = os.path.join(os.path.dirname(__file__), 'libfm_lib/bin/libFM')
+try:
+    from .libfm_lib import pyfm
+except ImportError as error:
+    raise "Could not find pyfm package. You probably need to import the libfm_lib submodule."
 
 
 class LibFM(recommender.PredictRecommender):

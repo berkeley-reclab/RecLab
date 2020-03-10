@@ -1,6 +1,4 @@
 """A wrapper for the LibFM recommender. See www.libfm.org for implementation details."""
-import os
-
 import numpy as np
 import scipy.sparse
 
@@ -8,7 +6,7 @@ from .. import recommender
 try:
     from .libfm_lib import pyfm
 except ImportError as error:
-    raise "Could not find pyfm package. You probably need to import the libfm_lib submodule."
+    raise 'Could not find pyfm package. You probably need to import the libfm_lib submodule.'
 
 
 class LibFM(recommender.PredictRecommender):

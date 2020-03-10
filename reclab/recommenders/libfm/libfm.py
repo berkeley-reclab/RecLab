@@ -1,14 +1,12 @@
 """A wrapper for the LibFM recommender. See www.libfm.org for implementation details."""
-import os
-
 import numpy as np
 import scipy.sparse
 
 from .. import recommender
-from .libfm_lib.bin import pyfm
-
-
-LIBFM_BINARY_PATH = os.path.join(os.path.dirname(__file__), 'libfm_lib/bin/libFM')
+try:
+    from .libfm_lib import pyfm
+except ImportError as error:
+    raise 'Could not find pyfm package. You probably need to import the libfm_lib submodule.'
 
 
 class LibFM(recommender.PredictRecommender):
@@ -48,6 +46,8 @@ class LibFM(recommender.PredictRecommender):
         Standard deviation for initialization of the 2-way factors.
     num_iter : int
         The number of iterations to train the model for.
+    seed : int
+        The random seed to use when training the model.
 
     """
 
@@ -66,7 +66,8 @@ class LibFM(recommender.PredictRecommender):
                  one_way_reg=0.0,
                  two_way_reg=0.0,
                  init_stdev=0.1,
-                 num_iter=100):
+                 num_iter=100,
+                 seed=0):
         """Create a LibFM recommender."""
         super().__init__()
         self._max_num_users = max_num_users
@@ -79,7 +80,13 @@ class LibFM(recommender.PredictRecommender):
                                 lr=learning_rate,
                                 reg=(bias_reg, one_way_reg, two_way_reg),
                                 init_stdev=init_stdev,
-                                num_iter=num_iter)
+                                num_iter=num_iter,
+                                seed=seed)
+        self._hyperparameters = locals()
+
+        # We only want the function arguments so remove class related objects.
+        del self._hyperparameters['self']
+        del self._hyperparameters['__class__']
 
         # Each row of rating_inputs has the following structure:
         # (user_id, user_features, item_id, item_features, rating_features).
@@ -183,15 +190,26 @@ class LibFM(recommender.PredictRecommender):
         Returns
         -------
         global_bias : float
-            global bias term in model
+            Global bias term in the model.
         weights : np.ndarray
-            linear term in model (related to user/item biases)
+            Linear terms in the model (related to user/item biases).
         pairwise_interactions  : np.ndarray
-            interaction term in model (related to user/item factors)
+            Interaction term in the model (related to user/item factors).
 
         """
         self._model.train(self._train_data)
         return self._model.parameters()
+
+    def hyperparameters(self):
+        """Get the hyperparameters associated with this libfm model.
+
+        Returns
+        -------
+        hyperparameters : dict
+            The dict of all hyperparameters.
+
+        """
+        return self._hyperparameters
 
 
 def write_libfm_file(file_path, inputs, outputs, start_idx=0):

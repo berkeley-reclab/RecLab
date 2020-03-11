@@ -1,0 +1,31 @@
+import collections
+
+import numpy as np
+import pytest
+
+import reclab
+from reclab.recommenders import TopPop
+from . import utils
+
+def test_top_pop_one_step():
+    users = {0: np.array(0),
+             1: np.array(0),
+             2: np.array(0)}
+    items = {0: np.array(0),
+             1: np.array(0),
+             2: np.array(0)}
+    ratings = {(0, 0): (5, np.array(0)),
+               (0, 1): (4, np.array(0)),
+               (1, 1): (4, np.array(0)),
+               (1, 2): (3, np.array(0))}
+    user_contexts = collections.OrderedDict([(0, np.array(0)),
+                                             (1, np.array(0)),
+                                             (2, np.array(0))])
+
+    model = TopPop()
+    model.reset(users, items, ratings)
+    recs, _ = model.recommend(user_contexts, 1)
+    assert recs.shape == (3, 1)
+    assert recs[0, 0] == 2
+    assert recs[1, 0] == 0
+    assert recs[2, 0] == 0

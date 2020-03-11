@@ -1,17 +1,36 @@
+"""A utility module for loading and manipulating various datasets."""
 import collections
 import os
-import shutil
-
-import numpy as np
-import pandas as pd
 import urllib.request
 import zipfile
 
+import numpy as np
+import pandas as pd
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "../data")
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), '../data')
 
 
 def split_ratings(ratings, proportion, shuffle=False):
+    """Split a group of ratings into two groups.
+
+    Parameters
+    ----------
+    ratings : dict
+        The ratings to split.
+    proportion : float
+        The proportion of ratings that will be in the first group. Must be between 0 and 1.
+    shuffle : bool
+        Whether to shuffle the rating data.
+
+    Returns
+    -------
+    ratings_1 : OrderedDict
+        The first set of ratings.
+    ratings_2 : OrderedDict
+        The second set of ratings.
+
+    """
     split_1 = collections.OrderedDict()
     split_2 = collections.OrderedDict()
     split_1_end = int(proportion * len(ratings))
@@ -30,6 +49,20 @@ def split_ratings(ratings, proportion, shuffle=False):
 
 
 def read_movielens100k():
+    """Read the MovieLens100k dataset.
+
+    Returns
+    -------
+    users : dict
+        The dict of all users where the key is the user-id and the value is the user's features.
+    items : dict
+        The dict of all items where the key is the item-id and the value is the item's features.
+    ratings : dict
+        The dict of all ratings where the key is a tuple whose first element is the user-id
+        and whose second element is the item id. The value is a tuple whose first element is the
+        rating value and whose second element is the rating context (in this case an empty array).
+
+    """
     movielens_dir = os.path.join(DATA_DIR, 'ml-100k')
     datafile = os.path.join(movielens_dir, 'u.data')
     if not os.path.isfile(datafile):

@@ -1,13 +1,13 @@
+"""Tests for the TopPop recommender."""
 import collections
 
 import numpy as np
-import pytest
 
-import reclab
 from reclab.recommenders import TopPop
-from . import utils
+
 
 def test_top_pop_one_step():
+    """Test a single recommendation step."""
     users = {0: np.array(0),
              1: np.array(0),
              2: np.array(0)}
@@ -32,6 +32,7 @@ def test_top_pop_one_step():
 
 
 def test_top_pop_multi_step():
+    """Test multiple rounds of recommending and rating."""
     users = {0: np.array(0),
              1: np.array(0)}
     items = {0: np.array(0),

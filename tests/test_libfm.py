@@ -1,12 +1,11 @@
-import numpy as np
-import pytest
-
-import reclab
+"""Tests for the LibFM recommender."""
 from reclab import data_utils
 from reclab.recommenders import LibFM
 from . import utils
 
-def test_sgd():
+
+def test_sgd_one_step():
+    """Test the sgd method of LibFM for one rating step."""
     users, items, ratings = data_utils.read_movielens100k()
     train_ratings, test_ratings = data_utils.split_ratings(ratings, 0.9, shuffle=True)
     model = LibFM(num_user_features=0,

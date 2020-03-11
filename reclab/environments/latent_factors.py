@@ -8,7 +8,6 @@ import json
 import os
 
 import numpy as np
-import pandas as pd
 
 from . import environment
 from .. import data_utils

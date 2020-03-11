@@ -43,8 +43,8 @@ install:
 
 # Command to run tests
 script:
-    # Linting
     - bash lint.sh
+    - pytest tests
 
 notifications:
       email: false

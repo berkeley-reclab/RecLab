@@ -12,7 +12,7 @@ def test_sgd_predict():
     """Test that LibFM trained with SGD predicts well and that it gets better with more data."""
     users, items, ratings = data_utils.read_movielens100k()
     train_ratings, test_ratings = data_utils.split_ratings(ratings, 0.9, shuffle=True)
-    train_ratings_1, train_ratings_2 = data_utils.split_ratings(ratings, 0.5)
+    train_ratings_1, train_ratings_2 = data_utils.split_ratings(train_ratings, 0.5)
     model = LibFM(num_user_features=0,
                   num_item_features=0,
                   num_rating_features=0,
@@ -39,7 +39,7 @@ def test_sgd_predict():
     rmse2 = utils.rmse(preds, targets)
 
     # The RMSE should have reduced.
-    assert(rmse1 > rmse2)
+    assert rmse1 > rmse2
 
 
 def test_sgd_recommend():
@@ -65,9 +65,8 @@ def test_sgd_recommend():
                   seed=0)
     model.reset(users, items, ratings)
     user_contexts = collections.OrderedDict([(1, np.zeros((0,)))])
-    recs, preds = model.recommend(user_contexts, 1)
+    recs, _ = model.recommend(user_contexts, 1)
     preds = model.predict([(1, 1, np.zeros(0,)), (1, 2, np.zeros(0,))])
-    print(model._ratings, preds, recs)
     assert recs.shape == (1, 1)
     # The recommender should have recommended the item that user0 rated the highest.
     assert recs[0, 0] == 2

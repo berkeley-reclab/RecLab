@@ -138,6 +138,8 @@ class LibFM(recommender.PredictRecommender):
             new_rating_inputs = scipy.sparse.csr_matrix((data, row_col),
                                                         shape=(len(ratings), self._num_features))
             new_rating_outputs = np.array(new_rating_outputs)
+            # TODO: We need to account for when the same rating gets added again. Right now
+            # this will just add duplicate rows with different ratings.
             self._train_data.add_rows(new_rating_inputs, new_rating_outputs)
 
     def _predict(self, user_item):  # noqa: D102

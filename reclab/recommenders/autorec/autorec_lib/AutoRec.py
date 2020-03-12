@@ -4,7 +4,7 @@ import numpy as np
 import os
 import math
 
-class Autorec():
+class AutoRec():
     def __init__(self,sess,
                       num_users,num_items,
                       R, seen_users, seen_items,
@@ -46,10 +46,10 @@ class Autorec():
         self.result_path = result_path
         self.grad_clip = grad_clip
 
-    def run(self):
-        self.prepare_model()
         init = tf.global_variables_initializer()
         self.sess.run(init)
+
+    def run(self):
         for epoch_itr in range(self.train_epoch):
             self.train_model(epoch_itr)
 
@@ -99,7 +99,6 @@ class Autorec():
                 batch_set_idx = random_perm_doc_idx[i * self.batch_size:]
             elif i < self.num_batch - 1:
                 batch_set_idx = random_perm_doc_idx[i * self.batch_size : (i+1) * self.batch_size]
-
 
             _, Cost = self.sess.run(
                 [self.optimizer, self.cost],

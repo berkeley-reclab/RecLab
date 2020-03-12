@@ -4,7 +4,7 @@ import numpy as np
 import os
 import math
 
-class AutoRec():
+class Autorec():
     def __init__(self,sess,
                       num_users,num_items,
                       R, seen_users, seen_items,

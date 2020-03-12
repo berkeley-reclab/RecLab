@@ -1,13 +1,9 @@
 """Tensorflow implementation of AutoRec recommender."""
-import os
-import argparse
-
-import numpy as np
-import scipy
 import tensorflow as tf
 
-from .autorec_lib import Autorec
+from .autorec_lib import AutoRec
 from .. import recommender
+
 
 class Autorec(recommender.PredictRecommender):
     """Auto-encoders meet collaborative filtering.
@@ -55,7 +51,7 @@ class Autorec(recommender.PredictRecommender):
         seen_users = set()
         seen_items = set()
 
-        self.model = Autorec(sess, num_users, num_items, ratings, seen_users, seen_items,
+        self.model = AutoRec(sess, num_users, num_items, ratings, seen_users, seen_items,
                              hidden_neuron, lambda_value, train_epoch, batch_size, optimizer_method,
                              grad_clip, base_lr, decay_epoch_step, random_seed, display_step)
 
@@ -64,38 +60,23 @@ class Autorec(recommender.PredictRecommender):
         Predict items for user-item pairs.
 
         round_rat : bool
-            Autorec treats ratings as continuous, not discrete. Set to true to round ratings to integers.
+            Autorec treats ratings as continuous, not discrete. Set to true to round to integers.
 
         """
-
         estimate = self.model.predict(user_item)
         if round_rat:
             estimate = estimate.astype(int)
         return estimate
 
-    def reset(self, users=None, items=None, ratings=None): # noqa: D102
-        """
-        rating_matrix = np.zeros(shape=(len(users), len(items)))
-        seen_users = set()
-        seen_items = set()
-        for user_item in ratings:
-            rating_matrix[user_item[0]][user_item[1]] = ratings[user_item][0]
-            seen_users.add(user_item[0])
-            seen_items.add(user_item[1])
-
-        self.model.R = rating_matrix
-        self.model.seen_users = seen_users
-        self.model.seen_items = seen_items
-        self.model.run()
-        """
+    def reset(self, users=None, items=None, ratings=None):  # noqa: D102
         self.model.prepare_model()
         super().reset(users, items, ratings)
 
-    def update(self, users=None, items=None, ratings=None): # noqa: D102
+    def update(self, users=None, items=None, ratings=None):  # noqa: D102
         super().update(users, items, ratings)
         for user_item in ratings:
             self.model.seen_users.add(user_item[0])
             self.model.seen_items.add(user_item[1])
 
         self.model.R = self._ratings.toarray()
-        self.model.train_model(0)
+        self.model.run()

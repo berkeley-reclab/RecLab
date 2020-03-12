@@ -46,8 +46,6 @@ class AutoRec():
         self.result_path = result_path
         self.grad_clip = grad_clip
 
-        init = tf.global_variables_initializer()
-        self.sess.run(init)
 
     def run(self):
         for epoch_itr in range(self.train_epoch):
@@ -89,6 +87,9 @@ class AutoRec():
         else:
             self.optimizer = optimizer.minimize(self.cost, global_step=self.global_step)
 
+        init = tf.global_variables_initializer()
+        self.sess.run(init)
+
     def train_model(self, itr):
         start_time = time.time()
         random_perm_doc_idx = np.random.permutation(self.num_users)
@@ -129,7 +130,7 @@ class AutoRec():
                  if (user, item) in user_item: # exist in test set
                     Estimated_R[user,item] = 3
         idx = [tuple(users), tuple(items)]
-        return np.array(Estimated_R[idx])
+        return np.array((Estimated_R[idx]))
 
     def make_records(self):
         if not os.path.exists(self.result_path):

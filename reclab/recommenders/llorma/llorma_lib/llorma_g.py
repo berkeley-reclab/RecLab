@@ -1,14 +1,8 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import time
-import math
 import random
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.framework import ops
 from tensorflow.python.training import optimizer
 
 from anchor import AnchorManager
@@ -16,7 +10,7 @@ from train_utils import *
 
 class Llorma():
     def __init__(self, batch_manager, # i might not need any of this
-                 n_shot=0, n_anchor=10, pre_rank=5,
+                 n_anchor=10, pre_rank=5,
                  pre_learning_rate=2e-4, pre_lambda_val=10,
                  pre_train_steps = 100,
                  rank=10, learning_rate=1e-2, lambda_val=1e-3,
@@ -25,7 +19,6 @@ class Llorma():
                  gpu_memory_frac=0.95,
                  result_path='results'):
         self.batch_manager = batch_manager
-        self.n_shot = n_shot
         self.n_anchor = n_anchor
         self.pre_rank = pre_rank
         self.pre_learning_rate = pre_learning_rate

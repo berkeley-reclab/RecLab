@@ -62,7 +62,7 @@ class Llorma(recommender.PredictRecommender):
 
         batch_manager = llorma_g.BatchManager(train_data, valid_data, test_data)
 
-        self.model = llorma_g.Lorma(batch_manager, n_anchor, pre_rank,
+        self.model = llorma_g.Llorma(batch_manager, n_anchor, pre_rank,
                                     pre_learning_rate, pre_lambda_val, pre_train_steps,
                                     rank, learning_rate, lambda_val, train_steps,
                                     batch_size, use_cache, gpu_memory_frac, result_path)

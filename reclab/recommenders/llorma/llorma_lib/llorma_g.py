@@ -5,19 +5,16 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.training import optimizer
 
-from anchor import AnchorManager
-from train_utils import *
+from .anchor import AnchorManager
+from .train_utils import *
+
 
 class Llorma():
-    def __init__(self, batch_manager, # i might not need any of this
-                 n_anchor=10, pre_rank=5,
+    def __init__(self, batch_manager, n_anchor=10, pre_rank=5,
                  pre_learning_rate=2e-4, pre_lambda_val=10,
-                 pre_train_steps = 100,
-                 rank=10, learning_rate=1e-2, lambda_val=1e-3,
-                 train_steps= 1000,
-                 batch_size=1024,use_cache=True,
-                 gpu_memory_frac=0.95,
-                 result_path='results'):
+                 pre_train_steps=100, rank=10, learning_rate=1e-2,
+                 lambda_val=1e-3, train_steps=1000, batch_size=1024,
+                 use_cache=True, gpu_memory_frac=0.95, result_path='results'):
         self.batch_manager = batch_manager
         self.n_anchor = n_anchor
         self.pre_rank = pre_rank
@@ -56,9 +53,7 @@ class Llorma():
         q_lookup = tf.nn.embedding_lookup(q, i)
         r_hat = tf.reduce_sum(tf.multiply(p_lookup, q_lookup), 1)
 
-        reg_loss = tf.add_n(
-            [tf.reduce_sum(tf.square(p)),
-            tf.reduce_sum(tf.square(q))])
+        reg_loss = tf.add_n([tf.reduce_sum(tf.square(p)), tf.reduce_sum(tf.square(q))])
         loss = tf.reduce_sum(tf.square(r - r_hat)) + self.pre_lambda_val * reg_loss
         rmse = tf.sqrt(tf.reduce_mean(tf.square(r - r_hat)))
 
@@ -89,14 +84,14 @@ class Llorma():
         ps, qs, losses, r_hats = [], [], [], []
         for anchor_idx in range(self.n_anchor):
             p = init_latent_mat(self.batch_manager.n_user,
-                                        self.rank,
-                                        self.batch_manager.mu,
-                                        self.batch_manager.std)
+                                self.rank,
+                                self.batch_manager.mu,
+                                self.batch_manager.std)
 
             q = init_latent_mat(self.batch_manager.n_item,
-                                        self.rank,
-                                        self.batch_manager.mu,
-                                        self.batch_manager.std)
+                                self.rank,
+                                self.batch_manager.mu,
+                                self.batch_manager.std)
             ps.append(p)
             qs.append(q)
 
@@ -135,28 +130,28 @@ class Llorma():
         test_rmse = cur_session.run(
             pre_model['rmse'],
             feed_dict={
-                pre_model['u']: batch_manager.test_data[:, 0],
-                pre_model['i']: batch_manager.test_data[:, 1],
-                pre_model['r']: batch_manager.test_data[:, 2]
+                pre_model['u']: self.batch_manager.test_data[:, 0],
+                pre_model['i']: self.batch_manager.test_data[:, 1],
+                pre_model['r']: self.batch_manager.test_data[:, 2]
             })
         return valid_rmse, test_rmse
 
-    def _get_rmse_model(self, cur_session, model, valid_k,test_k):
+    def _get_rmse_model(self, cur_session, model, valid_k, test_k):
         valid_rmse, valid_r_hat = cur_session.run(
             [model['rmse'], model['r_hat']],
             feed_dict={
-                model['u']: batch_manager.valid_data[:, 0],
-                model['i']: batch_manager.valid_data[:, 1],
-                model['r']: batch_manager.valid_data[:, 2],
+                model['u']: self.batch_manager.valid_data[:, 0],
+                model['i']: self.batch_manager.valid_data[:, 1],
+                model['r']: self.batch_manager.valid_data[:, 2],
                 model['k']: valid_k,
             })
 
         test_rmse, test_r_hat = cur_session.run(
             [model['rmse'], model['r_hat']],
             feed_dict={
-                model['u']: batch_manager.test_data[:, 0],
-                model['i']: batch_manager.test_data[:, 1],
-                model['r']: batch_manager.test_data[:, 2],
+                model['u']: self.batch_manager.test_data[:, 0],
+                model['i']: self.batch_manager.test_data[:, 1],
+                model['r']: self.batch_manager.test_data[:, 2],
                 model['k']: test_k,
             })
 
@@ -169,7 +164,7 @@ class Llorma():
                 q = np.load('{}/pre_train_q.npy'.format(self.result_path))
                 self.user_latent_init = p
                 self.item_latent_init = q
-            except:
+            except FileNotFoundError:
                 print('>> There is no cached p and q.')
 
         pre_model = self.init_pre_model()
@@ -196,8 +191,8 @@ class Llorma():
                 _, loss, train_rmse = pre_session.run(
                     (train_op, pre_model['loss'], pre_model['rmse']),
                     feed_dict={pre_model['u']: u,
-                            pre_model['i']: i,
-                            pre_model['r']: r})
+                               pre_model['i']: i,
+                               pre_model['r']: r})
 
             valid_rmse, test_rmse = self._get_rmse_pre_model(pre_session, pre_model)
 
@@ -211,7 +206,7 @@ class Llorma():
                 break
 
             print('>> ITER:',
-                "{:3d}".format(iter), "{:3f}, {:3f} {:3f} / {:3f}".format(
+                  "{:3d}".format(iter), "{:3f}, {:3f} {:3f} / {:3f}".format(
                     train_rmse, valid_rmse, test_rmse, final_test_rmse))
 
         saver.restore(pre_session, file_path)
@@ -291,7 +286,7 @@ class Llorma():
                 batch_rmse = sum(batch_rmses) / len(batch_rmses)
                 batch_rmses = []
                 print('  - ITER{:4d}:'.format(iter),
-                    "{:.5f}, {:.5f} {:.5f} / {:.5f}".format(
+                      "{:.5f}, {:.5f} {:.5f} / {:.5f}".format(
                         batch_rmse, valid_rmse, test_rmse, final_test_rmse))
 
         self.session = session
@@ -320,6 +315,7 @@ class Llorma():
             })
         return predict_r_hat
 
+
 class LocalModel:
     def __init__(self, session, model, anchor_idx, anchor_manager,
                  batch_manager):
@@ -333,6 +329,7 @@ class LocalModel:
         self.train_k = anchor_manager.get_train_k(anchor_idx)
         self.valid_k = anchor_manager.get_valid_k(anchor_idx)
         self.test_k = anchor_manager.get_test_k(anchor_idx)
+
 
 def _get_k(local_models, kind='train'):
     k = np.stack(
@@ -352,7 +349,9 @@ class BatchManager:
         self.train_data = train_data
         self.valid_data = valid_data
         self.test_data = test_data
+        self._set_params()
 
+    def _set_params(self):
         self.n_user = int(
             max(
                 np.max(self.train_data[:, 0]),
@@ -367,13 +366,9 @@ class BatchManager:
         self.std = np.std(self.train_data[:, 2])
 
 
-users = np.random.choice(range(30), 1000)
-items = np.random.choice(range(30), 1000)
-ratings = np.random.choice(range(1,5), 1000)
-data = np.vstack((users,items,ratings)).T
-batch_manager = BatchManager(data, data, data)
-
-recommender = Llorma(batch_manager)
-(session, model) = recommender.train()
-user_items = np.vstack((users,items)).T
-r_hat = recommender.predict(user_items)
+    def update_self(self, train_data, valid_data=None, test_data=None):
+        self.train_data = train_data
+        if valid_data:
+            self.valid_data = valid_data
+        if test_data:
+            self.test_data = test_data

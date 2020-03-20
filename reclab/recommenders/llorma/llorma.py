@@ -1,7 +1,7 @@
 """Tensorflow implementation of AutoRec recommender."""
 import tensorflow as tf
 
-from llorma_lib import llorma_g
+from .llorma_lib import llorma_g
 from .. import recommender
 
 
@@ -87,9 +87,9 @@ class Llorma(recommender.PredictRecommender):
     def update(self, users=None, items=None, ratings=None):  # noqa: D102
         super().update(users, items, ratings)
 
-        train_data = self.train_data
+        train_data = self.model.batch_manager.train_data
         if ratings is not None:
             for (user_id, item_id), (rating, _) in ratings.items():
                 train_data.append([user_id, item_id, rating])
-        batch_manager = llorma_g.BatchManager(train_data, self.valid_data, self.test_data)
+        self.model.batch_manager.update(train_data)
         self.model.train()

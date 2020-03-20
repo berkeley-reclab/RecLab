@@ -5,8 +5,8 @@ from reclab.environments.latent_factors import LatentFactorBehavior, MovieLens10
 from reclab.environments.topics import Topics
 from reclab.recommenders.libfm.libfm import LibFM
 from reclab.recommenders import TopPop
+from reclab.recommenders.autorec.autorec import Autorec
 from reclab.recommenders import KNNRecommender
-
 
 def main():
     params = {'topic_change': 0.1, 'memory_length': 5,
@@ -34,7 +34,6 @@ def main():
         items, users, ratings, info = env.step(recommendations)
         recommender.update(users, items, ratings)
         rating_arr = []
-        print(predicted_ratings)
         if predicted_ratings is not None:
             for (rating, _), pred in zip(ratings.values(), predicted_ratings):
                 rating_arr.append([rating, pred])

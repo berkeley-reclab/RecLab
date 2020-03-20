@@ -5,4 +5,5 @@ pydocstyle
 pylint
 pylint_quotes
 scipy
+pylint_quotes
 

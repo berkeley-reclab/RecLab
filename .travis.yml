@@ -39,12 +39,13 @@ install:
     - conda info -a
     - conda create -q -n test-environment python=$PYTHON_VERSION
     - source activate test-environment
+    - pip --version
     - pip install -r requirements.txt
 
 # Command to run tests
 script:
-    # Linting
     - bash lint.sh
+    - pytest tests
 
 notifications:
       email: false

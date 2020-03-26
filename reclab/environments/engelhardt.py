@@ -113,9 +113,9 @@ class Engelhardt(environment.DictEnvironment):
         self._users_full = {user_id: User(self._num_topics, self.known_weight,
                                           self.user_topic_weights, self.beta_var)
                             for user_id in range(self._num_users)}
-        self._users = {user_id: np.zeros(0)
+        self._users = {user_id: np.zeros((0,))
                        for user_id in range(self._num_users)}
-        self._items = {item_id: np.zeros(0)
+        self._items = {item_id: np.zeros((0,))
                        for item_id in range(self._num_items)}
         self._item_attrs = {item_id: np.random.dirichlet(self.item_topic_weights)
                             for item_id in range(self._num_items)}

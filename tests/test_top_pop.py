@@ -22,9 +22,9 @@ def test_top_pop_one_step():
                                              (1, np.zeros((0,))),
                                              (2, np.zeros((0,)))])
 
-    model = TopPop()
-    model.reset(users, items, ratings)
-    recs, _ = model.recommend(user_contexts, 1)
+    recommender = TopPop()
+    recommender.reset(users, items, ratings)
+    recs, _ = recommender.recommend(user_contexts, 1)
     assert recs.shape == (3, 1)
     assert recs[0, 0] == 2
     assert recs[1, 0] == 0
@@ -43,17 +43,17 @@ def test_top_pop_multi_step():
     user_contexts = collections.OrderedDict([(0, np.zeros((0,))),
                                              (1, np.zeros((0,)))])
 
-    model = TopPop()
-    model.reset(users, items, ratings)
-    recs, _ = model.recommend(user_contexts, 1)
+    recommender = TopPop()
+    recommender.reset(users, items, ratings)
+    recs, _ = recommender.recommend(user_contexts, 1)
     assert recs.shape == (2, 1)
     assert recs[0, 0] == 1
     assert recs[1, 0] == 0
     user_contexts[2] = np.zeros((0,))
-    model.update(users={2: np.zeros((0,))},
-                 ratings={(0, 1): (5, np.zeros((0,))),
-                          (1, 0): (1, np.zeros((0,)))})
-    recs, _ = model.recommend(user_contexts, 1)
+    recommender.update(users={2: np.zeros((0,))},
+                       ratings={(0, 1): (5, np.zeros((0,))),
+                                (1, 0): (1, np.zeros((0,)))})
+    recs, _ = recommender.recommend(user_contexts, 1)
     assert recs.shape == (3, 1)
     assert recs[0, 0] == 2
     assert recs[1, 0] == 2

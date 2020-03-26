@@ -74,12 +74,12 @@ class LibFM(recommender.PredictRecommender):
         self._num_features = (self._max_num_users + num_user_features + self._max_num_items +
                               num_item_features + num_rating_features)
         self._model = wpyfm.PyFM(method=method,
-                                dim=(use_global_bias, use_one_way, num_two_way_factors),
-                                lr=learning_rate,
-                                reg=(bias_reg, one_way_reg, two_way_reg),
-                                init_stdev=init_stdev,
-                                num_iter=num_iter,
-                                seed=seed)
+                                 dim=(use_global_bias, use_one_way, num_two_way_factors),
+                                 lr=learning_rate,
+                                 reg=(bias_reg, one_way_reg, two_way_reg),
+                                 init_stdev=init_stdev,
+                                 num_iter=num_iter,
+                                 seed=seed)
         self._hyperparameters = locals()
 
         # We only want the function arguments so remove class related objects.

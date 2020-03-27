@@ -34,15 +34,6 @@ class DataSet(keras.callbacks.Callback):
 		self.mode = mode
 		self.shuffle = shuffle
 
-
-
-
-
-
-
-		
-
-
 	def get_corpus_size(self):
 		"""
 		Computes and returns the number of samples in the corpus.

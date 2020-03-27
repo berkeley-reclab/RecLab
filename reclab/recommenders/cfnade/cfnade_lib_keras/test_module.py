@@ -15,8 +15,6 @@ from keras.optimizers import Adam
 import tensorflow as tf
 
 
-
-
 def prediction_layer(x):
 	# x.shape = (?,6040,5)
 	x_cumsum = K.cumsum(x, axis=2)
@@ -52,9 +50,6 @@ def D_layer(x):
 def D_output_shape(input_shape):
 	
 	return (input_shape[0],)
-
-
-
 
 def rating_cost_lambda_func(args):
 	alpha=1.
@@ -150,24 +145,18 @@ if __name__ == '__main__':
 	alpha = 1.0
 	print('Loading data...')
 
-
-
 	train_file_list = sorted(glob.glob(os.path.join(('/Users/Guo/Documents/Data/ml-1m/train_set'), 'part*')))
 	val_file_list = sorted(glob.glob(os.path.join(('/Users/Guo/Documents/Data/ml-1m/data/val_set/'), 'part*')))
-	print('val_file_list check')
-	print(type(val_file_list))
-	print(val_file_list)
 	test_file_list = sorted(glob.glob(os.path.join(('/Users/Guo/Documents/Data/ml-1m/data/test_set/'), 'part*')))
+	
 	train_file_list = [dfile for dfile in train_file_list if os.stat(dfile).st_size != 0]
 	val_file_list = [dfile for dfile in val_file_list if os.stat(dfile).st_size != 0]
 	test_file_list = [dfile for dfile in test_file_list if os.stat(dfile).st_size != 0]
+	
 	random.shuffle(train_file_list)
 	random.shuffle(val_file_list)
 	random.shuffle(test_file_list)
 	train_file_list = train_file_list[:max(int(len(train_file_list) * data_sample),1)]
-
-
-
 	train_set = DataSet(train_file_list,
 		num_users=num_users,
 		num_items=num_items,
@@ -178,14 +167,11 @@ if __name__ == '__main__':
 		num_items=num_items,
 		batch_size=batch_size,
 		mode=1)
-
 	test_set = DataSet(test_file_list,
 		num_users=num_users,
 		num_items=num_items,
 		batch_size=batch_size,
 		mode=2)
-
-
 
 	rating_freq = np.zeros((6040, 5))
 	init_b = np.zeros((6040, 5))

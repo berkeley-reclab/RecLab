@@ -363,7 +363,7 @@ class DictEnvironment(Environment):
             will consume and rate the content.
 
         """
-        return np.zeros(0)
+        return np.zeros((0,))
 
     def _select_online_users(self):
         """Select the online users at this timestep.

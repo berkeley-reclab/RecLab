@@ -4,12 +4,14 @@ In this environment users and items both have latent vectors, and
 the rating is determined by the inner product. Users and item both
 have bias terms, and there is an underlying bias as well.
 """
+import json
 import os
-import numpy as np
-import pandas as pd
 
-from reclab.recommenders.libfm.libfm import LibFM
+import numpy as np
+
 from . import environment
+from .. import data_utils
+from ..recommenders import LibFM
 
 
 class LatentFactorBehavior(environment.DictEnvironment):
@@ -118,8 +120,8 @@ class LatentFactorBehavior(environment.DictEnvironment):
         self._item_biases = item_bias
         self._offset = offset
 
-        self._users = {user_id: np.zeros(0) for user_id in range(self._num_users)}
-        self._items = {item_id: np.zeros(0) for item_id in range(self._num_items)}
+        self._users = {user_id: np.zeros((0,)) for user_id in range(self._num_users)}
+        self._items = {item_id: np.zeros((0,)) for item_id in range(self._num_items)}
 
     def _generate_latent_factors(self):
         """Generate random latent factors."""
@@ -174,16 +176,16 @@ class MovieLens100k(LatentFactorBehavior):
         if not os.path.isfile(model_file) or self._force_retrain:
             print('Did not find model file at {}, loading data for training'.format(model_file))
 
-            users, items, ratings = self._read_datafile()
+            users, items, ratings = data_utils.read_movielens100k()
             print('Initializing latent factor model')
             recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0,
                                 max_num_users=self._num_users, max_num_items=self._num_items,
-                                latent_dim=self._latent_dim)
+                                num_two_way_factors=self._latent_dim)
             recommender.reset(users, items, ratings)
             print('Training latent factor model')
 
             res = recommender.model_parameters()
-            global_bias, weights, pairwise_interactions, train_command = res
+            global_bias, weights, pairwise_interactions = res
 
             # TODO: this logic is only correct if there are no additional user/item/rating features
             user_indices = np.arange(self._num_users)
@@ -194,44 +196,15 @@ class MovieLens100k(LatentFactorBehavior):
             item_factors = pairwise_interactions[item_indices]
             item_bias = weights[item_indices]
             offset = global_bias
+            params = json.dumps(recommender.hyperparameters())
 
             np.savez(model_file, user_factors=user_factors, user_bias=user_bias,
                      item_factors=item_factors, item_bias=item_bias, offset=offset,
-                     params=train_command)
+                     params=params)
 
             return user_factors, user_bias, item_factors, item_bias, offset
 
         model = np.load(model_file)
-        print('Loading model from {} trained via:\n{}'.format(model_file,
-                                                              model['params']))
+        print('Loading model from {} trained via:\n{}.'.format(model_file, model['params']))
         return (model['user_factors'], model['user_bias'], model['item_factors'],
                 model['item_bias'], model['offset'])
-
-    def _read_datafile(self):
-        datafile = os.path.join(self.datapath, 'u.data')
-        if not os.path.isfile(datafile):
-            raise OSError('Datafile u.data not found in {}. '
-                          'Download from https://grouplens.org/datasets/movielens/100k/ '
-                          'and follow README instructions for unzipping.'.format(datafile))
-
-        data = pd.read_csv(datafile, sep='\t', header=None, usecols=[0, 1, 2, 3],
-                           names=['user_id', 'item_id', 'rating', 'timestamp'])
-
-        # shifting user and movie indexing
-        data['user_id'] -= 1
-        data['item_id'] -= 1
-        # validating data assumptions
-        assert len(data) == 100000
-        assert len(np.unique(data['user_id'])) == self._num_users
-        assert len(np.unique(data['item_id'])) == self._num_items
-
-        users = {user_id: np.zeros(0) for user_id in np.unique(data['user_id'])}
-        items = {item_id: np.zeros(0) for item_id in np.unique(data['item_id'])}
-
-        # Fill the rating array with initial data.
-        ratings = {}
-        for user_id, item_id, rating in zip(data['user_id'], data['item_id'], data['rating']):
-            # TODO: may want to eventually add time as a rating context
-            ratings[user_id, item_id] = (rating, np.zeros(0))
-
-        return users, items, ratings

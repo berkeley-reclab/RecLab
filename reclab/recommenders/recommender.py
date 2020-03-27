@@ -208,7 +208,7 @@ class PredictRecommender(Recommender):
         all_item_ids = []
         for user_id in user_contexts:
             inner_uid = self._outer_to_inner_uid[user_id]
-            item_ids = np.array([j for j in range(len(self._users))
+            item_ids = np.array([j for j in range(len(self._items))
                                  if self._ratings[inner_uid, j] == 0])
             user_ids = inner_uid * np.ones(len(item_ids), dtype=np.int)
             contexts = len(item_ids) * [user_contexts[user_id]]

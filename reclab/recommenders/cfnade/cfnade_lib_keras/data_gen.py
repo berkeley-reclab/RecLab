@@ -50,15 +50,6 @@ class DataSet(keras.callbacks.Callback):
 		
 		return self.size
 
-
-
-
-
-
-
-
-
-
 	def generate(self,
 		max_iters=-1):
 		"""
@@ -68,14 +59,9 @@ class DataSet(keras.callbacks.Callback):
 			for dfile in self.flist:
 				with open(dfile) as df:
 					while True:
-						next_n_data_lines = list(islice(df, self.batch_size))
-						
-
-
+						next_n_data_lines = list(islice(df, self.batch_size))	
 						if not next_n_data_lines:
 							break
-						
-
 
 						self.input_ranking_vectors = np.zeros((self.batch_size,self.num_users,5),
 							dtype='int8')
@@ -86,16 +72,11 @@ class DataSet(keras.callbacks.Callback):
 						self.output_mask_vectors = np.zeros((self.batch_size,self.num_users),
 							dtype='int8')
 
-
-
 						for i,line in enumerate(next_n_data_lines):
 							line = json.loads(line)
 							movie_id = line['movieId']
 							rankings = line['rankings']
-							
-
-
-
+				
 							user_ids = []
 							values = []
 							flags = []
@@ -104,17 +85,14 @@ class DataSet(keras.callbacks.Callback):
 								values.append(int(ranking['value']))
 								flags.append(int(ranking['flag']))
 
-
 							if self.mode == 0:
 								ordering = np.random.permutation(np.arange(len(user_ids)))
 								d = np.random.randint(0, len(ordering))
 								flag_in = (ordering < d)
 								flag_out = (ordering >= d)
-
-
-								
-								self.input_mask_vectors[i][user_ids] = flag_in
-								self.output_mask_vectors[i][user_ids] = flag_out
+								users_ids_shifted = [x - 1 for x in user_ids]
+								self.input_mask_vectors[i][users_ids_shifted] = flag_in
+								self.output_mask_vectors[i][users_ids_shifted] = flag_out
 
 								if self.shuffle:
 									shuffle_list = list(zip(user_ids, values))
@@ -122,24 +100,24 @@ class DataSet(keras.callbacks.Callback):
 									user_ids, values = zip(*shuffle_list)
 								for j,(user_id,value) in enumerate(zip(user_ids,values)):
 									if flag_in[j]:
-										self.input_ranking_vectors[i,user_id,(value-1)] = 1
+										self.input_ranking_vectors[i,user_id-1,(value-1)] = 1
 									else:
-										self.output_ranking_vectors[i,user_id,(value-1)] = 1
+										self.output_ranking_vectors[i,user_id-1,(value-1)] = 1
 							elif self.mode == 1:
 								for j,(user_id,value,flag) in enumerate(zip(user_ids,values,flags)):
 									if flag == 0:
-										self.input_ranking_vectors[i,user_id,(value-1)] = 1
+										# print(self.input_ranking_vectors.shape) (64,6040,5)
+										self.input_ranking_vectors[i,user_id-1,(value-1)] = 1
 									else:
-										self.output_ranking_vectors[i,user_id,(value-1)] = 1
+										self.output_ranking_vectors[i,user_id-1,(value-1)] = 1
 							elif self.mode == 2:
 								for j,(user_id,value,flag) in enumerate(zip(user_ids,values,flags)):
 									if flag == 0:
-										self.input_ranking_vectors[i,user_id,(value-1)] = 1
+										self.input_ranking_vectors[i,user_id-1,(value-1)] = 1
 									elif flag == 1:
-										self.input_ranking_vectors[i,user_id,(value-1)] = 1
+										self.input_ranking_vectors[i,user_id-1,(value-1)] = 1
 									else:
-										self.output_ranking_vectors[i,user_id,(value-1)] = 1
-
+										self.output_ranking_vectors[i,user_id-1,(value-1)] = 1
 
 						inputs = {'input_ratings': self.input_ranking_vectors,
 						  'output_ratings': self.output_ranking_vectors,
@@ -149,7 +127,6 @@ class DataSet(keras.callbacks.Callback):
 
 						outputs = {'nade_loss': np.zeros([self.batch_size])}
 						yield (inputs,outputs)
-
 
 			if self.shuffle:
 				iter_cnt += 1

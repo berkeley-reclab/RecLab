@@ -102,13 +102,10 @@ if __name__ == "__main__":
 	val_size = val_df.count()
 	test_size =  test_df.count()
 
-	train_df.show()
+	# train_df.show()
 	print (train_size,'training examples')
 	print (val_size,'validation examples')
 	print (test_size,'testing example')
-
-
-
 
 	train_examples = train_df.select("movieId", F.struct(["userId","value","flag"]).alias("ranking")) \
 		.groupby('movieId') \
@@ -120,14 +117,13 @@ if __name__ == "__main__":
 		.groupby('movieId') \
 		.agg(F.collect_list('ranking').alias('rankings'))
 
-	train_examples.show()
-	val_examples.show()
-	test_examples.show()
+	# train_examples.show()
+	# val_examples.show()
+	# test_examples.show()
 
-
-	train_examples.coalesce(1).write.json(path="/Users/Guo/Documents/Data/ml-1m/train_set",
+	train_examples.coalesce(1).write.json(path="data/train_set",
 		mode='overwrite')
-	val_examples.coalesce(1).write.json(path="/Users/Guo/Documents/Data/ml-1m/val_set",
+	val_examples.coalesce(1).write.json(path="data/val_set",
 		mode='overwrite')
-	test_examples.coalesce(1).write.json(path="/Users/Guo/Documents/Data/ml-1m/test_set",
+	test_examples.coalesce(1).write.json(path="data/test_set",
 		mode='overwrite')

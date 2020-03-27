@@ -24,24 +24,17 @@ def prediction_layer(x):
 	# output = (?,6040,5)
 	return output
 
-
-
 def prediction_output_shape(input_shape):
 	
 	return input_shape
-
-
 
 def d_layer(x):
 	
 	return K.sum(x,axis=1)
 
-
 def d_output_shape(input_shape):
 	
 	return (input_shape[0],)
-
-
 
 def D_layer(x):
 	
@@ -54,8 +47,6 @@ def D_output_shape(input_shape):
 def rating_cost_lambda_func(args):
 	alpha=1.
 	std=0.01
-	"""
-	"""
 	pred_score,true_ratings,input_masks,output_masks,D,d = args
 	pred_score_cum = K.cumsum(pred_score, axis=2)
 
@@ -72,9 +63,7 @@ def rating_cost_lambda_func(args):
 	cost = K.mean(nll)
 	cost = K.expand_dims(cost, 0)
 
-
 	return cost
-	
 
 class RMSE_eval(Callback):
 	def __init__(self,
@@ -145,9 +134,9 @@ if __name__ == '__main__':
 	alpha = 1.0
 	print('Loading data...')
 
-	train_file_list = sorted(glob.glob(os.path.join(('/Users/Guo/Documents/Data/ml-1m/train_set'), 'part*')))
-	val_file_list = sorted(glob.glob(os.path.join(('/Users/Guo/Documents/Data/ml-1m/data/val_set/'), 'part*')))
-	test_file_list = sorted(glob.glob(os.path.join(('/Users/Guo/Documents/Data/ml-1m/data/test_set/'), 'part*')))
+	train_file_list = sorted(glob.glob(os.path.join(('data/train_set/'), 'part*')))
+	val_file_list = sorted(glob.glob(os.path.join(('data/val_set/'), 'part*')))
+	test_file_list = sorted(glob.glob(os.path.join(('data/test_set/'), 'part*')))
 	
 	train_file_list = [dfile for dfile in train_file_list if os.stat(dfile).st_size != 0]
 	val_file_list = [dfile for dfile in val_file_list if os.stat(dfile).st_size != 0]
@@ -219,29 +208,22 @@ if __name__ == '__main__':
 		output_shape=prediction_output_shape,
 		name='predicted_ratings')(nade_layer)
 
-	
-
 	d = Lambda(d_layer,
 		output_shape=d_output_shape,
 		name='d')(input_masks)	
-
-
 
 	sum_masks = add([input_masks, output_masks])
 	D = Lambda(D_layer,
 		output_shape=D_output_shape,
 		name='D')(sum_masks)
-
 	
 	loss_out = Lambda(rating_cost_lambda_func,
 		output_shape=(1,),
 		name='nade_loss')([nade_layer,output_ratings,input_masks,output_masks,D,d])
 
-
 	cf_nade_model = Model(inputs=[input_layer,output_ratings,input_masks,output_masks],
 		outputs=[loss_out,predicted_ratings])
 	cf_nade_model.summary()
-
 
 	adam = Adam(lr=0.001,
 		beta_1=0.9,
@@ -265,22 +247,17 @@ if __name__ == '__main__':
 	print('validation steps', val_set.get_corpus_size()//batch_size)
 	cf_nade_model.fit_generator(train_set.generate(),
 		steps_per_epoch=(train_set.get_corpus_size()//batch_size),
-		epochs=30,
+		epochs=2,
 		validation_data=val_set.generate(),
 		validation_steps=(val_set.get_corpus_size()//batch_size),
 		shuffle=True,
 		callbacks=[train_set,val_set,train_rmse_callback,val_rmse_callback],
 		verbose=1)
 
-
-
 	print ('Testing...')
 	rmses = []
 	rate_score = np.array([1, 2, 3, 4, 5], np.float32)
 	new_items = new_items
-
-
-
 	squared_error = []
 	n_samples = []
 	for i,batch in enumerate(test_set.generate(max_iters=1)):
@@ -307,7 +284,6 @@ if __name__ == '__main__':
 		n = np.sum(mask)
 		squared_error.append(se)
 		n_samples.append(n)
-
 		
 	total_squared_error = np.array(squared_error).sum()
 	total_n_samples = np.array(n_samples).sum()

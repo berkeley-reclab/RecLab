@@ -1,5 +1,6 @@
 """Tensorflow implementation of AutoRec recommender."""
 import tensorflow as tf
+import numpy as np
 
 from .llorma_lib import llorma_g
 from .. import recommender
@@ -43,7 +44,7 @@ class Llorma(recommender.PredictRecommender):
         Folder to save model outputs and checkpoints.
     """
 
-    def __init__(self, train_data, valid_data, test_data,
+    def __init__(self,
                  n_anchor=10,
                  pre_rank=5,
                  pre_learning_rate=2e-4,
@@ -60,9 +61,7 @@ class Llorma(recommender.PredictRecommender):
         """Create new Local Low-Rank Matrix Approximation (LLORMA) recommender."""
         super().__init__()
 
-        batch_manager = llorma_g.BatchManager(train_data, valid_data, test_data)
-
-        self.model = llorma_g.Llorma(batch_manager, n_anchor, pre_rank,
+        self.model = llorma_g.Llorma(n_anchor, pre_rank,
                                     pre_learning_rate, pre_lambda_val, pre_train_steps,
                                     rank, learning_rate, lambda_val, train_steps,
                                     batch_size, use_cache, gpu_memory_frac, result_path)
@@ -75,13 +74,21 @@ class Llorma(recommender.PredictRecommender):
             LLORMA treats ratings as continuous, not discrete. Set to true to round to integers.
 
         """
+        users, items, _ = list(zip(*user_item))
+        user_item = np.column_stack((users, items))
         estimate = self.model.predict(user_item)
         if round_rat:
             estimate = estimate.astype(int)
         return estimate
 
     def reset(self, users=None, items=None, ratings=None):  # noqa: D102
-        self.model.train()
+        user_items = np.array(list(ratings.keys()))
+        rating_arr = list(ratings.values())
+        rating_arr = np.array(list(zip(*rating_arr))[0])
+
+        data = np.column_stack((user_items, rating_arr))
+        self.model.reset_data(data, data, data)
+        self.model.prepare_model()
         super().reset(users, items, ratings)
 
     def update(self, users=None, items=None, ratings=None):  # noqa: D102
@@ -90,6 +97,6 @@ class Llorma(recommender.PredictRecommender):
         train_data = self.model.batch_manager.train_data
         if ratings is not None:
             for (user_id, item_id), (rating, _) in ratings.items():
-                train_data.append([user_id, item_id, rating])
-        self.model.batch_manager.update(train_data)
+                train_data = np.append(train_data, [[user_id, item_id, rating]], axis=0)
+        self.model.reset_data(train_data, train_data, train_data)
         self.model.train()

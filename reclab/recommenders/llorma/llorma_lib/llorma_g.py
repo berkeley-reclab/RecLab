@@ -10,12 +10,12 @@ from .train_utils import *
 
 
 class Llorma():
-    def __init__(self, batch_manager, n_anchor=10, pre_rank=5,
+    def __init__(self, n_anchor=10, pre_rank=5,
                  pre_learning_rate=2e-4, pre_lambda_val=10,
                  pre_train_steps=100, rank=10, learning_rate=1e-2,
                  lambda_val=1e-3, train_steps=1000, batch_size=1024,
                  use_cache=True, gpu_memory_frac=0.95, result_path='results'):
-        self.batch_manager = batch_manager
+        self.batch_manager = None
         self.n_anchor = n_anchor
         self.pre_rank = pre_rank
         self.pre_learning_rate = pre_learning_rate
@@ -34,6 +34,12 @@ class Llorma():
         self.anchor_manager = None
         self.session = None
         self.model = None
+
+    def reset_data(self, train_data, valid_data, test_data):
+        if not self.batch_manager:
+            self.batch_manager = BatchManager(train_data, valid_data, test_data)
+        else:
+            self.batch_manager.update(train_data, valid_data, test_data)
 
     def init_pre_model(self):
         u = tf.placeholder(tf.int64, [None], name='u')
@@ -228,7 +234,7 @@ class Llorma():
         self.user_latent_init = p
         self.item_latent_init = q
 
-    def train(self):
+    def prepare_model(self):
         self.pre_train()
         model = self.init_model()
 
@@ -242,10 +248,16 @@ class Llorma():
             LocalModel(session, model, anchor_idx, self.anchor_manager, self.batch_manager)
             for anchor_idx in range(self.n_anchor)
         ]
+        self.local_models = local_models
+        self.session = session
+        self.model = model
 
-        train_k = _get_k(local_models, kind='train')
-        valid_k = _get_k(local_models, kind='valid')
-        test_k = _get_k(local_models, kind='test')
+    def train(self):
+        self.prepare_model()
+
+        train_k = _get_k(self.local_models, kind='train')
+        valid_k = _get_k(self.local_models, kind='valid')
+        test_k = _get_k(self.local_models, kind='test')
 
         min_valid_rmse = float("Inf")
         min_valid_iter = 0
@@ -255,6 +267,8 @@ class Llorma():
         batch_rmses = []
         train_data = self.batch_manager.train_data
 
+        session = self.session
+        model = self.model
         for iter in range(self.train_steps):
             for m in range(0, train_data.shape[0], self.batch_size):
                 end_m = min(m + self.batch_size, train_data.shape[0])
@@ -275,7 +289,7 @@ class Llorma():
                 if m % (self.batch_size * 100) == 0:
                     print('  - ', results[:1])
 
-            if iter % 1 == 0:
+            if iter % 10 == 0:
                 valid_rmse, test_rmse = self._get_rmse_model(session, model,
                                                              valid_k, test_k)
                 if valid_rmse < min_valid_rmse:
@@ -288,7 +302,6 @@ class Llorma():
                 print('  - ITER{:4d}:'.format(iter),
                       "{:.5f}, {:.5f} {:.5f} / {:.5f}".format(
                         batch_rmse, valid_rmse, test_rmse, final_test_rmse))
-
         self.session = session
         self.model = model
         return(session, model)
@@ -366,9 +379,10 @@ class BatchManager:
         self.std = np.std(self.train_data[:, 2])
 
 
-    def update_self(self, train_data, valid_data=None, test_data=None):
+    def update(self, train_data, valid_data=None, test_data=None):
         self.train_data = train_data
-        if valid_data:
+        if valid_data is not None:
             self.valid_data = valid_data
-        if test_data:
+        if test_data is not None:
             self.test_data = test_data
+        self._set_params()

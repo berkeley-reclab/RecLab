@@ -1,6 +1,8 @@
+from itertools import islice
+
 def data_gen(df, batch_size, num_users, mode, shuffle = True):
 	while True:
-		next_n_data_lines = list(islice(df, batch_size)) #len = bs
+		next_n_data_lines = np.asarray(list(islice(df, batch_size))) 
 		if not next_n_data_lines:
 			break
 
@@ -12,26 +14,14 @@ def data_gen(df, batch_size, num_users, mode, shuffle = True):
 			dtype='int8')
 		output_mask_vectors = np.zeros((batch_size,num_users),
 			dtype='int8')
-
-		for i,line in enumerate(next_n_data_lines):
-			movie_id = line['movieId']
-			rankings = line['rankings']
-			user_ids = []
-			values = []
-			flags = []
-			for ranking in rankings:
-				user_ids.append(int(ranking['userId']))
-				values.append(int(ranking['value']))
-				flags.append(int(ranking['flag']))
-			#value is in {1,2,3,4,5}, flag is 0 or 1
-
+		for i in next_n_data_lines:
 			if mode == 0:
-				ordering = np.random.permutation(np.arange(len(user_ids))) #a random ordered list 0 to len(user_ids)-1
+				ordering = np.random.permutation(np.arange(num_users)) #a random ordered list 0 to len(user_ids)-1
 				d = np.random.randint(0, len(ordering))
 				flag_in = (ordering < d)
 				flag_out = (ordering >= d)
 
-				users_ids_shifted = [x - 1 for x in user_ids]
+				users_ids = range(num_users)
 				input_mask_vectors[i][users_ids_shifted] = flag_in
 				output_mask_vectors[i][users_ids_shifted] = flag_out
 

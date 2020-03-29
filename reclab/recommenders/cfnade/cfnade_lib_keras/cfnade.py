@@ -19,10 +19,10 @@ import utils
 
 class CFNade():
 	def __init__(self, batch_size, 
-					   num_users, num_items, train_set,
-					   input_dim0, input_dim1, hidden_dim, std, alpha, train_epoch,
-					   data_sample = 1.0, lr=0.001, beta_1=0.9, 
-					   beta_2=0.999, epsilon=1e-8, shuffle=True):
+					   num_users, num_items, train_set, train_epoch,
+					   input_dim1, hidden_dim, std, alpha, 
+					   data_sample, lr, beta_1, 
+					   beta_2, epsilon=, shuffle):
 		self.num_users = num_users
 		self.num_items = num_items
 		self.batch_size = batch_size
@@ -32,7 +32,7 @@ class CFNade():
 
 		self.data_sample = data_sample
 
-		self.input_dim0 = input_dim0
+		self.input_dim0 = self.num_users
 		self.input_dim1 = input_dim1
 		self.hidden_dim = hidden_dim
 
@@ -44,12 +44,6 @@ class CFNade():
 		self.epsilon = epsilon
 
 		self.train_epoch = train_epoch
-
-		self.train_set = DataSet(train_file_list,
-		num_users=self.num_users,
-		num_items=self.num_items,
-		batch_size=self.batch_size,
-		mode=0)
 
 		self.shuffle = shuffle
 		self.train_rmse_callback = util.RMSE_eval(data_set=self.train_set,
@@ -102,7 +96,7 @@ class CFNade():
 
 	def train_model(self):
 		start_time = time.time()
-		self.cf_nade_model.fit_generator(utils.data_gen(self.train_set),
+		self.cf_nade_model.fit_generator(utils.data_gen(self.train_set, self.batch_size, 0, True),
 		steps_per_epoch=(self.num_items//self.batch_size),
 		epochs=self.train_epoch,
 		shuffle=self.shuffle,
@@ -119,18 +113,18 @@ class CFNade():
         items = [triple[1] for triple in user_item]
 
         user_item = zip(users, items)
-
-		rmses = []
 		rate_score = np.array([1, 2, 3, 4, 5], np.float32)
-		squared_error = []
-		num_samples = []
 
-		'''
-		to be added: correct input for the input of self.cf_nade_model.predict()
+		test_df = np.zeros((self.num_items, self.num_users, 5))
 
-		'''
-		pred = self.cf_nade_model.predict(batch[0])[1]
+		pred_rating = np.empty((0,0))
+		for i,batch in enumerate(utils.data_gen(test_df, self.batch_size, len(users),2,True)):
+			pred_matrix = self.cf_nade_model.predict(batch[0])[1]
+			pred_rating_batch = (pred_matrix * rate_score[np.newaxis, np.newaxis, :]).sum(axis=2)
+			pred_rating = np.append(pred_rating, pred_rating_batch, axis=0)
+		
 
+		return pred_rating
 
 
 

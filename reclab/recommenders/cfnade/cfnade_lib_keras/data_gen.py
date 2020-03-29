@@ -73,6 +73,7 @@ class DataSet(keras.callbacks.Callback):
 
 						for i,line in enumerate(next_n_data_lines):
 							line = json.loads(line)
+							
 							movie_id = line['movieId']
 							rankings = line['rankings']
 							user_ids = []

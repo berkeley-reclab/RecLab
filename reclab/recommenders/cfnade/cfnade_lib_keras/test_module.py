@@ -171,11 +171,7 @@ if __name__ == '__main__':
 		# inp_m = batch[0]['input_masks']
 		# out_m = batch[0]['output_masks'] 
 		rating_freq += inp_r.sum(axis=0)
-	print('shape rating_freq', rating_freq.shape)
-	print (rating_freq.sum(axis=1).shape)
-	print(rating_freq.sum(axis=1))
-	print(np.where(rating_freq.sum(axis=1) == 0))
-	exit()
+	
 	new_items = np.where(rating_freq.sum(axis=1) == 0)[0]
 
 	#code below seems never used
@@ -241,7 +237,7 @@ if __name__ == '__main__':
 	print('val_set corpus_size',val_set.get_corpus_size() )  #3690
 	print('batch_size', batch_size)  #64
 	print('validation steps', val_set.get_corpus_size()//batch_size)  #57 for ml-1m
-	# history = cf_nade_model.fit_generator(train_set.generate(),
+	# cf_nade_model.fit_generator(train_set.generate(),
 	# 	steps_per_epoch=(train_set.get_corpus_size()//batch_size),
 	# 	epochs=1,
 	# 	validation_data=val_set.generate(),
@@ -249,8 +245,9 @@ if __name__ == '__main__':
 	# 	shuffle=True,
 	# 	callbacks=[train_set,val_set,train_rmse_callback,val_rmse_callback],
 	# 	verbose=1)
+	#	steps_per_epoch=(train_set.get_corpus_size()//batch_size)
 	cf_nade_model.fit_generator(train_set.generate(),
-		steps_per_epoch=(train_set.get_corpus_size()//batch_size),
+		steps_per_epoch=5,
 		epochs=1,
 		shuffle=True,
 		callbacks=[train_set,val_set,train_rmse_callback,val_rmse_callback],
@@ -267,11 +264,23 @@ if __name__ == '__main__':
 		out_r = batch[0]['output_ratings']
 		inp_m = batch[0]['input_masks']
 		out_m = batch[0]['output_masks']
+		pred_batch_all = cf_nade_model.predict(batch[0])
+		print('pred_batch_all', pred_batch_all)
+		
+		pred_batch = pred_batch_all[1]
 
-		pred_batch = cf_nade_model.predict(batch[0])[1]
-		true_r = out_r.argmax(axis=2) + 1
+		print('pred_batch_all[1] shape', np.asarray(pred_batch).shape)
+		print(pred_batch)
+		
+
 		pred_r = (pred_batch * rate_score[np.newaxis, np.newaxis, :]).sum(axis=2)
-		# pred_r[:, new_items] = 3 #why??
+		print(pred_r)
+		exit()
+
+
+		true_r = out_r.argmax(axis=2) + 1
+		
+		# pred_r[:, new_items] = 3 #unseen items
 		mask = out_r.sum(axis=2)
 
 		'''

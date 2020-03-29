@@ -1,3 +1,72 @@
+def data_gen(df, batch_size, num_users, mode, shuffle = True):
+	while True:
+		next_n_data_lines = list(islice(df, batch_size)) #len = bs
+		if not next_n_data_lines:
+			break
+
+		input_ranking_vectors = np.zeros((batch_size,num_users,5),
+			dtype='int8')
+		output_ranking_vectors = np.zeros((batch_size,num_users,5),
+			dtype='int8')
+		input_mask_vectors = np.zeros((batch_size,num_users),
+			dtype='int8')
+		output_mask_vectors = np.zeros((batch_size,num_users),
+			dtype='int8')
+
+		for i,line in enumerate(next_n_data_lines):
+			movie_id = line['movieId']
+			rankings = line['rankings']
+			user_ids = []
+			values = []
+			flags = []
+			for ranking in rankings:
+				user_ids.append(int(ranking['userId']))
+				values.append(int(ranking['value']))
+				flags.append(int(ranking['flag']))
+			#value is in {1,2,3,4,5}, flag is 0 or 1
+
+			if mode == 0:
+				ordering = np.random.permutation(np.arange(len(user_ids))) #a random ordered list 0 to len(user_ids)-1
+				d = np.random.randint(0, len(ordering))
+				flag_in = (ordering < d)
+				flag_out = (ordering >= d)
+
+				users_ids_shifted = [x - 1 for x in user_ids]
+				input_mask_vectors[i][users_ids_shifted] = flag_in
+				output_mask_vectors[i][users_ids_shifted] = flag_out
+
+				if shuffle:
+					shuffle_list = list(zip(user_ids, values))
+					random.shuffle(shuffle_list)
+					user_ids, values = zip(*shuffle_list)
+				for j,(user_id,value) in enumerate(zip(user_ids,values)):
+					if flag_in[j]:
+						input_ranking_vectors[i,user_id-1,(value-1)] = 1
+					else:
+						output_ranking_vectors[i,user_id-1,(value-1)] = 1
+			elif mode == 1:
+				for j,(user_id,value,flag) in enumerate(zip(user_ids,values,flags)):
+					if flag == 0:
+						# print(self.input_ranking_vectors.shape) (64,6040,5)
+						input_ranking_vectors[i,user_id-1,(value-1)] = 1
+					else:
+						output_ranking_vectors[i,user_id-1,(value-1)] = 1
+			elif mode == 2:
+				for j,(user_id,value,flag) in enumerate(zip(user_ids,values,flags)):
+					if flag == 0:
+						input_ranking_vectors[i,user_id-1,(value-1)] = 1
+					elif flag == 1:
+						input_ranking_vectors[i,user_id-1,(value-1)] = 1
+					
+		inputs = {'input_ratings': input_ranking_vectors,
+		  'output_ratings': output_ranking_vectors,
+		  'input_masks': input_mask_vectors,
+		  'output_masks': output_mask_vectors,
+		  }
+
+		outputs = {'nade_loss': np.zeros([batch_size])}
+		yield (inputs,outputs)
+
 def prediction_layer(x):
 	# x.shape = (?,6040,5)
 	x_cumsum = K.cumsum(x, axis=2)
@@ -51,13 +120,11 @@ def rating_cost_lambda_func(args):
 class RMSE_eval(Callback):
 	def __init__(self,
 		data_set,
-		new_items,
 		training_set):
 
 		self.data_set = data_set
 		self.rmses = []
 		self.rate_score = np.array([1, 2, 3, 4, 5], np.float32)
-		self.new_items = new_items
 		self.training_set = training_set
 
 	def eval_rmse(self):
@@ -72,8 +139,6 @@ class RMSE_eval(Callback):
 			pred_batch = self.model.predict(batch[0])[1]
 			true_r = out_r.argmax(axis=2) + 1
 			pred_r = (pred_batch * self.rate_score[np.newaxis, np.newaxis, :]).sum(axis=2)
-
-			pred_r[:, self.new_items] = 3
 
 			mask = out_r.sum(axis=2)
 

@@ -4,10 +4,9 @@ import os
 import json
 import threading
 import random
+
 from itertools import islice
-
 from sklearn.preprocessing import MultiLabelBinarizer
-
 from keras.preprocessing import sequence
 from keras.utils.np_utils import to_categorical
 import keras.callbacks
@@ -49,7 +48,6 @@ class DataSet(keras.callbacks.Callback):
 			line_count += (i + 1)
 
 		self.size = line_count
-		
 		return self.size
 
 	def generate(self, max_iters=-1):

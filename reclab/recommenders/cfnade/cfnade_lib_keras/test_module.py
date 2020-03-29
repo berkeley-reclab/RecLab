@@ -69,7 +69,6 @@ def rating_cost_lambda_func(args):
 class RMSE_eval(Callback):
 	def __init__(self,
 		data_set,
-		new_items,
 		training_set):
 
 		self.data_set = data_set
@@ -91,7 +90,7 @@ class RMSE_eval(Callback):
 			true_r = out_r.argmax(axis=2) + 1
 			pred_r = (pred_batch * self.rate_score[np.newaxis, np.newaxis, :]).sum(axis=2)
 
-			pred_r[:, self.new_items] = 3
+			# pred_r[:, self.new_items] = 3
 
 			mask = out_r.sum(axis=2)
 
@@ -168,10 +167,15 @@ if __name__ == '__main__':
 
 	for batch in val_set.generate(max_iters=1):
 		inp_r = batch[0]['input_ratings']
-		out_r = batch[0]['output_ratings']
-		inp_m = batch[0]['input_masks']
-		out_m = batch[0]['output_masks'] 
+		# out_r = batch[0]['output_ratings']
+		# inp_m = batch[0]['input_masks']
+		# out_m = batch[0]['output_masks'] 
 		rating_freq += inp_r.sum(axis=0)
+	print('shape rating_freq', rating_freq.shape)
+	print (rating_freq.sum(axis=1).shape)
+	print(rating_freq.sum(axis=1))
+	print(np.where(rating_freq.sum(axis=1) == 0))
+	exit()
 	new_items = np.where(rating_freq.sum(axis=1) == 0)[0]
 
 	#code below seems never used
@@ -228,10 +232,8 @@ if __name__ == '__main__':
 		optimizer=adam)
 
 	train_rmse_callback = RMSE_eval(data_set=train_set,
-		new_items=new_items,
 		training_set=True)
 	val_rmse_callback = RMSE_eval(data_set=val_set,
-		new_items=new_items,
 		training_set=False)
 
 	print ('Training...')
@@ -269,7 +271,7 @@ if __name__ == '__main__':
 		pred_batch = cf_nade_model.predict(batch[0])[1]
 		true_r = out_r.argmax(axis=2) + 1
 		pred_r = (pred_batch * rate_score[np.newaxis, np.newaxis, :]).sum(axis=2)
-		pred_r[:, new_items] = 3 #why??
+		# pred_r[:, new_items] = 3 #why??
 		mask = out_r.sum(axis=2)
 
 		'''

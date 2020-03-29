@@ -15,7 +15,7 @@ import keras.callbacks
 
 class DataSet(keras.callbacks.Callback):
 	"""
-	A datagenerator the feeds data from given files.
+	A data generator that feeds data from given files.
 	"""
 	def __init__(self,
 		file_list,
@@ -25,6 +25,7 @@ class DataSet(keras.callbacks.Callback):
 		mode,
 		shuffle=True):
 		"""
+		mode: 0 for train_set, 1 for val_set, 2 for test_set
 		"""
 
 		self.flist = file_list
@@ -33,6 +34,7 @@ class DataSet(keras.callbacks.Callback):
 		self.batch_size = batch_size
 		self.mode = mode
 		self.shuffle = shuffle
+		print(file_list, num_users, num_items,batch_size, mode, shuffle)
 
 	def get_corpus_size(self):
 		"""
@@ -50,8 +52,7 @@ class DataSet(keras.callbacks.Callback):
 		
 		return self.size
 
-	def generate(self,
-		max_iters=-1):
+	def generate(self, max_iters=-1):
 		"""
 		"""
 		iter_cnt = 0
@@ -59,7 +60,7 @@ class DataSet(keras.callbacks.Callback):
 			for dfile in self.flist:
 				with open(dfile) as df:
 					while True:
-						next_n_data_lines = list(islice(df, self.batch_size))	
+						next_n_data_lines = list(islice(df, self.batch_size)) #len = bs
 						if not next_n_data_lines:
 							break
 
@@ -76,7 +77,6 @@ class DataSet(keras.callbacks.Callback):
 							line = json.loads(line)
 							movie_id = line['movieId']
 							rankings = line['rankings']
-				
 							user_ids = []
 							values = []
 							flags = []
@@ -84,12 +84,14 @@ class DataSet(keras.callbacks.Callback):
 								user_ids.append(int(ranking['userId']))
 								values.append(int(ranking['value']))
 								flags.append(int(ranking['flag']))
+							#value is in {1,2,3,4,5}, flag is 0 or 1
 
 							if self.mode == 0:
-								ordering = np.random.permutation(np.arange(len(user_ids)))
+								ordering = np.random.permutation(np.arange(len(user_ids))) #a random ordered list 0 to len(user_ids)-1
 								d = np.random.randint(0, len(ordering))
 								flag_in = (ordering < d)
 								flag_out = (ordering >= d)
+
 								users_ids_shifted = [x - 1 for x in user_ids]
 								self.input_mask_vectors[i][users_ids_shifted] = flag_in
 								self.output_mask_vectors[i][users_ids_shifted] = flag_out
@@ -116,8 +118,8 @@ class DataSet(keras.callbacks.Callback):
 										self.input_ranking_vectors[i,user_id-1,(value-1)] = 1
 									elif flag == 1:
 										self.input_ranking_vectors[i,user_id-1,(value-1)] = 1
-									else:
-										self.output_ranking_vectors[i,user_id-1,(value-1)] = 1
+									# else:
+									# 	self.output_ranking_vectors[i,user_id-1,(value-1)] = 1
 
 						inputs = {'input_ratings': self.input_ranking_vectors,
 						  'output_ratings': self.output_ranking_vectors,
@@ -133,7 +135,6 @@ class DataSet(keras.callbacks.Callback):
 				if max_iters != -1:
 					if iter_cnt == max_iters:
 						break
-
-				print ('shuffling data...')
+				# print ('shuffling data...')
 				random.shuffle(self.flist)
 				

@@ -13,6 +13,7 @@ import keras.regularizers
 from keras.optimizers import Adam
 
 import tensorflow as tf
+import matplotlib.pyplot as plt
 
 
 def prediction_layer(x):
@@ -79,7 +80,7 @@ class RMSE_eval(Callback):
 
 	def eval_rmse(self):
 		squared_error = []
-		n_samples = []
+		num_samples = []
 		for i,batch in enumerate(self.data_set.generate(max_iters=1)):
 			inp_r = batch[0]['input_ratings']
 			out_r = batch[0]['output_ratings']
@@ -103,12 +104,12 @@ class RMSE_eval(Callback):
 			se = np.sum(np.square(true_r - pred_r) * mask)
 			n = np.sum(mask)
 			squared_error.append(se)
-			n_samples.append(n)
+			num_samples.append(n)
 
 			
 		total_squared_error = np.array(squared_error).sum()
-		total_n_samples = np.array(n_samples).sum()
-		rmse = np.sqrt(total_squared_error / (total_n_samples * 1.0 + 1e-8))
+		total_num_samples = np.array(num_samples).sum()
+		rmse = np.sqrt(total_squared_error / (total_num_samples * 1.0 + 1e-8))
 
 		return rmse
 
@@ -141,7 +142,7 @@ if __name__ == '__main__':
 	train_file_list = [dfile for dfile in train_file_list if os.stat(dfile).st_size != 0]
 	val_file_list = [dfile for dfile in val_file_list if os.stat(dfile).st_size != 0]
 	test_file_list = [dfile for dfile in test_file_list if os.stat(dfile).st_size != 0]
-	
+
 	random.shuffle(train_file_list)
 	random.shuffle(val_file_list)
 	random.shuffle(test_file_list)
@@ -164,27 +165,21 @@ if __name__ == '__main__':
 
 	rating_freq = np.zeros((6040, 5))
 	init_b = np.zeros((6040, 5))
+
 	for batch in val_set.generate(max_iters=1):
 		inp_r = batch[0]['input_ratings']
 		out_r = batch[0]['output_ratings']
 		inp_m = batch[0]['input_masks']
 		out_m = batch[0]['output_masks'] 
-
 		rating_freq += inp_r.sum(axis=0)
-
-
-
-	log_rating_freq = np.log(rating_freq + 1e-8)
-	log_rating_freq_diff = np.diff(log_rating_freq, axis=1)
-	init_b[:, 1:] = log_rating_freq_diff
-	init_b[:, 0] = log_rating_freq[:, 0]
-
-
-
 	new_items = np.where(rating_freq.sum(axis=1) == 0)[0]
 
+	#code below seems never used
+	# log_rating_freq = np.log(rating_freq + 1e-8)
+	# log_rating_freq_diff = np.diff(log_rating_freq, axis=1)
+	# init_b[:, 1:] = log_rating_freq_diff
+	# init_b[:, 0] = log_rating_freq[:, 0]
 
-	
 	input_layer = Input(shape=(input_dim0,input_dim1),
 		name='input_ratings')
 	output_ratings = Input(shape=(input_dim0,input_dim1),
@@ -203,7 +198,6 @@ if __name__ == '__main__':
 		b_regularizer=keras.regularizers.l2(0.02),
 		c_regularizer=keras.regularizers.l2(0.02))(nade_layer)
 	
-
 	predicted_ratings = Lambda(prediction_layer,
 		output_shape=prediction_output_shape,
 		name='predicted_ratings')(nade_layer)
@@ -229,7 +223,7 @@ if __name__ == '__main__':
 		beta_1=0.9,
 		beta_2=0.999,
 		epsilon=1e-8)
-
+	#Configures the model for training
 	cf_nade_model.compile(loss={'nade_loss': lambda y_true, y_pred: y_pred},
 		optimizer=adam)
 
@@ -241,15 +235,21 @@ if __name__ == '__main__':
 		training_set=False)
 
 	print ('Training...')
-	print('corpus_size',val_set.get_corpus_size() )
-	print('val_set type', type(val_set))
-	print('batch_size', batch_size)
-	print('validation steps', val_set.get_corpus_size()//batch_size)
+	print('train_set corpus_size',train_set.get_corpus_size() ) #3682
+	print('val_set corpus_size',val_set.get_corpus_size() )  #3690
+	print('batch_size', batch_size)  #64
+	print('validation steps', val_set.get_corpus_size()//batch_size)  #57 for ml-1m
+	# history = cf_nade_model.fit_generator(train_set.generate(),
+	# 	steps_per_epoch=(train_set.get_corpus_size()//batch_size),
+	# 	epochs=1,
+	# 	validation_data=val_set.generate(),
+	# 	validation_steps=(val_set.get_corpus_size()//batch_size),
+	# 	shuffle=True,
+	# 	callbacks=[train_set,val_set,train_rmse_callback,val_rmse_callback],
+	# 	verbose=1)
 	cf_nade_model.fit_generator(train_set.generate(),
 		steps_per_epoch=(train_set.get_corpus_size()//batch_size),
-		epochs=2,
-		validation_data=val_set.generate(),
-		validation_steps=(val_set.get_corpus_size()//batch_size),
+		epochs=1,
 		shuffle=True,
 		callbacks=[train_set,val_set,train_rmse_callback,val_rmse_callback],
 		verbose=1)
@@ -257,9 +257,9 @@ if __name__ == '__main__':
 	print ('Testing...')
 	rmses = []
 	rate_score = np.array([1, 2, 3, 4, 5], np.float32)
-	new_items = new_items
+	# new_items = new_items
 	squared_error = []
-	n_samples = []
+	num_samples = []
 	for i,batch in enumerate(test_set.generate(max_iters=1)):
 		inp_r = batch[0]['input_ratings']
 		out_r = batch[0]['output_ratings']
@@ -269,9 +269,7 @@ if __name__ == '__main__':
 		pred_batch = cf_nade_model.predict(batch[0])[1]
 		true_r = out_r.argmax(axis=2) + 1
 		pred_r = (pred_batch * rate_score[np.newaxis, np.newaxis, :]).sum(axis=2)
-
-		pred_r[:, new_items] = 3
-
+		pred_r[:, new_items] = 3 #why??
 		mask = out_r.sum(axis=2)
 
 		'''
@@ -279,13 +277,12 @@ if __name__ == '__main__':
 			print [true_r[0][j] for j in np.nonzero(true_r[0]* mask[0])[0]]
 			print [pred_r[0][j] for j in np.nonzero(pred_r[0]* mask[0])[0]]
 		'''
-
-		se = np.sum(np.square(true_r - pred_r) * mask)
+		squared_error_batch = np.sum(np.square(true_r - pred_r) * mask)
 		n = np.sum(mask)
-		squared_error.append(se)
-		n_samples.append(n)
+		squared_error.append(squared_error_batch)
+		num_samples.append(n)
 		
 	total_squared_error = np.array(squared_error).sum()
-	total_n_samples = np.array(n_samples).sum()
-	rmse = np.sqrt(total_squared_error / (total_n_samples * 1.0 + 1e-8))
+	total_num_samples = np.array(num_samples).sum()
+	rmse = np.sqrt(total_squared_error / (total_num_samples * 1.0 + 1e-8))
 	print ("test set RMSE is %f"%(rmse))

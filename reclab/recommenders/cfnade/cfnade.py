@@ -1,15 +1,15 @@
 ''' Keras implementation of cfnade recommender'''
 
+import tensorflow as tf
+from keras.models import Model
+
 from .. import recommender
-from .cfnade_lib_keras import nade
+from .cfnade_lib_keras import cfnade
 
 
 class Cfnade(recommender.PredictRecommender):
 	"""
-    cf-nade recommender from the paper
-	"A Neural Autoregressive Approach to Collaborative Filtering"
-
-    The class supports the CF-Nade collaborative filtering.
+    A neural autoregressive architecture for collaborative filtering (CF) tasks
 
     Parameters
     ---------

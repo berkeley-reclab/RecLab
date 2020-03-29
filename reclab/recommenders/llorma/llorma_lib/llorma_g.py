@@ -1,21 +1,64 @@
+"""
+The package for the Global LLORMA recommender.
+Code modified from https://github.com/JoonyoungYi/LLORMA-tensorflow
+"""
 import os
-import time
 import random
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.training import optimizer
 
 from .anchor import AnchorManager
-from .train_utils import *
+from .train_utils import get_train_op, init_latent_mat, init_session
 
 
 class Llorma():
+    """Local Low Rank Matrix Approximation Model
+
+    Parameters
+    ----------
+    n_anchor : int, optional
+        number of anchor-points, by default 10
+    pre_rank : int, optional
+        latent-dimension of the matrix-factorization model
+        used for pre-training, by default 5
+    pre_learning_rate : float, optional
+        learning rate used to fit the global pre-train model,
+        by default 2e-4
+    pre_lambda_val : float, optional
+        regularization parameter for pre-training,
+        by default 10
+    pre_train_steps : int, optional
+        number of gradient steps used for pretraining,
+        by default 100
+    rank : int, optional
+        latent-dimension of the local models, by default 10
+    learning_rate : float, optional
+        learning rate used to fit local models, by default 1e-2
+    lambda_val : float, optional
+        regularization parameter for the local models,
+        by default 1e-3
+    train_steps : int, optional
+        number of train epochs for fitting local models,
+        by default 1000
+    batch_size : int, optional
+        the batch size used when fitting local models,
+        by default 1024
+    use_cache : bool, optional
+        If True use old saved models of the pre-train step,
+        by default True
+    gpu_memory_frac : float, optional
+        by default 0.95
+    result_path : str, optional
+        directory name where model data will be saved,
+        by default 'results'
+    """
     def __init__(self, n_anchor=10, pre_rank=5,
                  pre_learning_rate=2e-4, pre_lambda_val=10,
                  pre_train_steps=100, rank=10, learning_rate=1e-2,
                  lambda_val=1e-3, train_steps=1000, batch_size=1024,
                  use_cache=True, gpu_memory_frac=0.95, result_path='results'):
-        self.batch_manager = None
+        """ Initialize a LLORMA recommender
+        """
         self.n_anchor = n_anchor
         self.pre_rank = pre_rank
         self.pre_learning_rate = pre_learning_rate
@@ -31,100 +74,139 @@ class Llorma():
         self.result_path = result_path
         self.user_latent_init = None
         self.item_latent_init = None
+        self.batch_manager = None
         self.anchor_manager = None
         self.session = None
         self.model = None
 
     def reset_data(self, train_data, valid_data, test_data):
+        """ Reset the data of a recommender by instantiating a
+        new BatchManager or modifying the existing one
+
+        Parameters
+        ----------
+        train_data : Array-like, shape (N_train,3)
+            Training data, each row is of the form
+            (user_id, item_id, rating)
+        valid_data : Array-like, shape (N_valid, 3)
+            Validation data, each row is of the form
+            (user_id, item_id, rating)
+        test_data : Array-like, shape (N_test, 3)
+            Test data, each row is of the form
+            (user_id, item_idm rating)
+        """
         if not self.batch_manager:
             self.batch_manager = BatchManager(train_data, valid_data, test_data)
         else:
             self.batch_manager.update(train_data, valid_data, test_data)
 
     def init_pre_model(self):
-        u = tf.placeholder(tf.int64, [None], name='u')
-        i = tf.placeholder(tf.int64, [None], name='i')
-        r = tf.placeholder(tf.float64, [None], name='r')
+        """ Initialize TF variables, loss, objective and
+        optimizer for the global pre-model
+        """
+        u_var = tf.placeholder(tf.int64, [None], name='u')
+        i_var = tf.placeholder(tf.int64, [None], name='i')
+        r_var = tf.placeholder(tf.float64, [None], name='r')
 
-        p = init_latent_mat(self.batch_manager.n_user,
-                            self.pre_rank,
-                            self.batch_manager.mu,
-                            self.batch_manager.std)
-        q = init_latent_mat(self.batch_manager.n_item,
-                            self.pre_rank,
-                            self.batch_manager.mu,
-                            self.batch_manager.std)
+        p_factor = init_latent_mat(self.batch_manager.n_user,
+                                   self.pre_rank,
+                                   self.batch_manager.mu,
+                                   self.batch_manager.std)
+        q_factor = init_latent_mat(self.batch_manager.n_item,
+                                   self.pre_rank,
+                                   self.batch_manager.mu,
+                                   self.batch_manager.std)
 
-        p_lookup = tf.nn.embedding_lookup(p, u)
-        q_lookup = tf.nn.embedding_lookup(q, i)
+        p_lookup = tf.nn.embedding_lookup(p_factor, u_var)
+        q_lookup = tf.nn.embedding_lookup(q_factor, i_var)
         r_hat = tf.reduce_sum(tf.multiply(p_lookup, q_lookup), 1)
 
-        reg_loss = tf.add_n([tf.reduce_sum(tf.square(p)), tf.reduce_sum(tf.square(q))])
-        loss = tf.reduce_sum(tf.square(r - r_hat)) + self.pre_lambda_val * reg_loss
-        rmse = tf.sqrt(tf.reduce_mean(tf.square(r - r_hat)))
+        reg_loss = tf.add_n([tf.reduce_sum(tf.square(p_factor)),
+                             tf.reduce_sum(tf.square(q_factor))])
+        loss = tf.reduce_sum(tf.square(r_var - r_hat)) + self.pre_lambda_val * reg_loss
+        rmse = tf.sqrt(tf.reduce_mean(tf.square(r_var - r_hat)))
 
         optimizer = tf.train.MomentumOptimizer(self.pre_learning_rate, 0.9)
         train_ops = [
-            optimizer.minimize(loss, var_list=[p]),
-            optimizer.minimize(loss, var_list=[q])
+            optimizer.minimize(loss, var_list=[p_factor]),
+            optimizer.minimize(loss, var_list=[q_factor])
         ]
         return {
-            'u': u,
-            'i': i,
-            'r': r,
+            'u': u_var,
+            'i': i_var,
+            'r': r_var,
             'train_ops': train_ops,
             'loss': loss,
             'rmse': rmse,
-            'p': p,
-            'q': q,
+            'p': p_factor,
+            'q': q_factor,
         }
 
     def init_model(self):
-        u = tf.placeholder(tf.int64, [None], name='u')
-        i = tf.placeholder(tf.int64, [None], name='i')
-        r = tf.placeholder(tf.float64, [None], name='r')
-        k = tf.placeholder(tf.float64, [None, self.n_anchor], name='k')
-        k_sum = tf.reduce_sum(k, axis=1)
+        """ Initialize TF variables, loss, objective and
+        optimizer for the local models
+        """
+        u_var = tf.placeholder(tf.int64, [None], name='u')
+        i_var = tf.placeholder(tf.int64, [None], name='i')
+        r_var = tf.placeholder(tf.float64, [None], name='r')
+        k_var = tf.placeholder(tf.float64, [None, self.n_anchor], name='k')
+        k_sum = tf.reduce_sum(k_var, axis=1)
 
         # init weights
-        ps, qs, losses, r_hats = [], [], [], []
-        for anchor_idx in range(self.n_anchor):
-            p = init_latent_mat(self.batch_manager.n_user,
-                                self.rank,
-                                self.batch_manager.mu,
-                                self.batch_manager.std)
+        all_p_factors, all_q_factors, r_hats = [], [], []
+        for _ in range(self.n_anchor):
+            p_factor = init_latent_mat(self.batch_manager.n_user,
+                                       self.rank,
+                                       self.batch_manager.mu,
+                                       self.batch_manager.std)
 
-            q = init_latent_mat(self.batch_manager.n_item,
-                                self.rank,
-                                self.batch_manager.mu,
-                                self.batch_manager.std)
-            ps.append(p)
-            qs.append(q)
+            q_factor = init_latent_mat(self.batch_manager.n_item,
+                                       self.rank,
+                                       self.batch_manager.mu,
+                                       self.batch_manager.std)
+            all_p_factors.append(p_factor)
+            all_q_factors.append(q_factor)
 
-            p_lookup = tf.nn.embedding_lookup(p, u)
-            q_lookup = tf.nn.embedding_lookup(q, i)
+            p_lookup = tf.nn.embedding_lookup(p_factor, u_var)
+            q_lookup = tf.nn.embedding_lookup(q_factor, i_var)
             r_hat = tf.reduce_sum(tf.multiply(p_lookup, q_lookup), axis=1)
             r_hats.append(r_hat)
 
-        r_hat = tf.reduce_sum(tf.multiply(k, tf.stack(r_hats, axis=1)), axis=1)
+        r_hat = tf.reduce_sum(tf.multiply(k_var, tf.stack(r_hats, axis=1)), axis=1)
         r_hat = tf.where(tf.greater(k_sum, 1e-2), r_hat, tf.ones_like(r_hat) * 3)
-        rmse = tf.sqrt(tf.reduce_mean(tf.square(r - r_hat)))
+        rmse = tf.sqrt(tf.reduce_mean(tf.square(r_var - r_hat)))
 
         optimizer = tf.train.GradientDescentOptimizer(self.learning_rate)
-        loss = tf.reduce_sum(tf.square(r_hat - r)) + self.lambda_val * tf.reduce_sum(
-            [tf.reduce_sum(tf.square(p_or_q)) for p_or_q in ps + qs])
-        train_ops = [get_train_op(optimizer, loss, [p, q]) for p, q in zip(ps, qs)]
+        loss = tf.reduce_sum(tf.square(r_hat - r_var)) + self.lambda_val * tf.reduce_sum(
+            [tf.reduce_sum(tf.square(p_or_q)) for p_or_q in all_p_factors + all_q_factors])
+        train_ops = [get_train_op(optimizer, loss, [p, q])
+                     for p, q in zip(all_p_factors, all_q_factors)]
         return {
-            'u': u,
-            'i': i,
-            'r': r,
-            'k': k,
+            'u': u_var,
+            'i': i_var,
+            'r': r_var,
+            'k': k_var,
             'train_ops': train_ops,
             'rmse': rmse,
             'r_hat': r_hat,
         }
 
     def _get_rmse_pre_model(self, cur_session, pre_model):
+        """ Helper method to compute RMSE of the pre-model
+
+        Parameters
+        ----------
+        cur_session : obj: tf.session
+            TensorFlow session to use for computation
+        pre_model : Dict-like
+            Dictionary of TF variables, train operations
+            Typically the output of self.init_pre_model()
+
+        Returns
+        -------
+        (float, float)
+            The validation and test set RMSE
+        """
         valid_rmse = cur_session.run(
             pre_model['rmse'],
             feed_dict={
@@ -143,8 +225,27 @@ class Llorma():
         return valid_rmse, test_rmse
 
     def _get_rmse_model(self, cur_session, model, valid_k, test_k):
-        valid_rmse, valid_r_hat = cur_session.run(
-            [model['rmse'], model['r_hat']],
+        """ Compute the RMSE for the ensamble model of local models
+
+        Parameters
+        ----------
+        cur_session : obj: tf.session
+            TensorFlow session to use for computation
+        model : Dict-like
+            Dictionary of TF variables, train operations
+            Typically the output of self.init_model()
+        valid_k : Array-like, shape (N_valid,)
+            Kernel weight values for each user-item pair
+        test_k : Array-like, shape (N_test,)
+            Kernel weight values for each user-item pair
+
+        Returns
+        -------
+        (float, float)
+            The validation and test set RMSE
+        """
+        valid_rmse = cur_session.run(
+            model['rmse'],
             feed_dict={
                 model['u']: self.batch_manager.valid_data[:, 0],
                 model['i']: self.batch_manager.valid_data[:, 1],
@@ -152,8 +253,8 @@ class Llorma():
                 model['k']: valid_k,
             })
 
-        test_rmse, test_r_hat = cur_session.run(
-            [model['rmse'], model['r_hat']],
+        test_rmse = cur_session.run(
+            model['rmse'],
             feed_dict={
                 model['u']: self.batch_manager.test_data[:, 0],
                 model['i']: self.batch_manager.test_data[:, 1],
@@ -163,60 +264,59 @@ class Llorma():
 
         return valid_rmse, test_rmse
 
-    def pre_train(self):
+    def pre_train(self):  # noqa: R0914
+        """Pre-train a Matrix Factorization model for the full data
+        """
         if self.use_cache:
             try:
-                p = np.load('{}/pre_train_p.npy'.format(self.result_path))
-                q = np.load('{}/pre_train_q.npy'.format(self.result_path))
-                self.user_latent_init = p
-                self.item_latent_init = q
+                self.user_latent_init = np.load('{}/pre_train_p.npy'.format(self.result_path))
+                self.item_latent_init = np.load('{}/pre_train_q.npy'.format(self.result_path))
             except FileNotFoundError:
-                print('>> There is no cached p and q.')
+                print('>> There is no cached p and q factors.')
 
         pre_model = self.init_pre_model()
 
         pre_session = tf.Session()
         pre_session.run(tf.global_variables_initializer())
 
-        min_valid_rmse = float("Inf")
-        min_valid_iter = 0
-        final_test_rmse = float("Inf")
+        min_valid_rmse = float('Inf')
+        final_test_rmse = float('Inf')
 
         random_model_idx = random.randint(0, 1000000)
 
-        file_path = "{}/model-{}.ckpt".format(self.result_path, random_model_idx)
+        file_path = '{}/model-{}.ckpt'.format(self.result_path, random_model_idx)
 
         train_data = self.batch_manager.train_data
-        u = train_data[:, 0]
-        i = train_data[:, 1]
-        r = train_data[:, 2]
+        u_vec = train_data[:, 0]
+        i_vec = train_data[:, 1]
+        r_vec = train_data[:, 2]
 
         saver = tf.train.Saver()
-        for iter in range(self.pre_train_steps):
+        for itr in range(self.pre_train_steps):
             for train_op in pre_model['train_ops']:
-                _, loss, train_rmse = pre_session.run(
+                _, _, train_rmse = pre_session.run(
                     (train_op, pre_model['loss'], pre_model['rmse']),
-                    feed_dict={pre_model['u']: u,
-                               pre_model['i']: i,
-                               pre_model['r']: r})
+                    feed_dict={pre_model['u']: u_vec,
+                               pre_model['i']: i_vec,
+                               pre_model['r']: r_vec})
 
             valid_rmse, test_rmse = self._get_rmse_pre_model(pre_session, pre_model)
 
             if valid_rmse < min_valid_rmse:
                 min_valid_rmse = valid_rmse
-                min_valid_iter = iter
+                min_valid_iter = itr
                 final_test_rmse = test_rmse
                 saver.save(pre_session, file_path)
 
-            if iter >= min_valid_iter + 100:
+            if itr >= min_valid_iter + 100:
                 break
 
-            print('>> ITER:',
-                  "{:3d}".format(iter), "{:3f}, {:3f} {:3f} / {:3f}".format(
-                    train_rmse, valid_rmse, test_rmse, final_test_rmse))
+            print('>> ITER:', '{:3d}'.format(itr),
+                  '{:3f}, {:3f} {:3f} / {:3f}'.format(
+                      train_rmse, valid_rmse, test_rmse, final_test_rmse))
 
         saver.restore(pre_session, file_path)
-        p, q = pre_session.run(
+        p_factor, q_factor = pre_session.run(
             (pre_model['p'], pre_model['q']),
             feed_dict={
                 pre_model['u']: self.batch_manager.train_data[:, 0],
@@ -226,15 +326,17 @@ class Llorma():
         if not os.path.exists(self.result_path):
             os.makedirs(self.result_path)
 
-        np.save('{}/pre_train_p.npy'.format(self.result_path), p)
-        np.save('{}/pre_train_q.npy'.format(self.result_path), q)
+        np.save('{}/pre_train_p.npy'.format(self.result_path), p_factor)
+        np.save('{}/pre_train_q.npy'.format(self.result_path), q_factor)
 
         pre_session.close()
 
-        self.user_latent_init = p
-        self.item_latent_init = q
+        self.user_latent_init = p_factor
+        self.item_latent_init = q_factor
 
-    def prepare_model(self):
+    def train(self):  # noqa: R0914
+        """ Train the LLORMA recommender
+        """
         self.pre_train()
         model = self.init_model()
 
@@ -248,70 +350,71 @@ class Llorma():
             LocalModel(session, model, anchor_idx, self.anchor_manager, self.batch_manager)
             for anchor_idx in range(self.n_anchor)
         ]
-        self.local_models = local_models
-        self.session = session
-        self.model = model
 
-    def train(self):
-        self.prepare_model()
+        train_k = _get_local_k(local_models, kind='train')
+        valid_k = _get_local_k(local_models, kind='valid')
+        test_k = _get_local_k(local_models, kind='test')
 
-        train_k = _get_k(self.local_models, kind='train')
-        valid_k = _get_k(self.local_models, kind='valid')
-        test_k = _get_k(self.local_models, kind='test')
-
-        min_valid_rmse = float("Inf")
-        min_valid_iter = 0
-        final_test_rmse = float("Inf")
-        start_time = time.time()
+        min_valid_rmse = float('Inf')
+        final_test_rmse = float('Inf')
 
         batch_rmses = []
         train_data = self.batch_manager.train_data
 
-        session = self.session
-        model = self.model
-        for iter in range(self.train_steps):
-            for m in range(0, train_data.shape[0], self.batch_size):
-                end_m = min(m + self.batch_size, train_data.shape[0])
-                u = train_data[m:end_m, 0]
-                i = train_data[m:end_m, 1]
-                r = train_data[m:end_m, 2]
-                k = train_k[m:end_m, :]
+        for itr in range(self.train_steps):
+            for start_m in range(0, train_data.shape[0], self.batch_size):
+                end_m = min(start_m + self.batch_size, train_data.shape[0])
+                u_vec = train_data[start_m:end_m, 0]
+                i_vec = train_data[start_m:end_m, 1]
+                r_vec = train_data[start_m:end_m, 2]
+                k_vec = train_k[start_m:end_m, :]
                 results = session.run(
                     [model['rmse']] + model['train_ops'],
                     feed_dict={
-                        model['u']: u,
-                        model['i']: i,
-                        model['r']: r,
-                        model['k']: k,
+                        model['u']: u_vec,
+                        model['i']: i_vec,
+                        model['r']: r_vec,
+                        model['k']: k_vec,
                     })
                 batch_rmses.append(results[0])
 
-                if m % (self.batch_size * 100) == 0:
+                if start_m % (self.batch_size * 100) == 0:
                     print('  - ', results[:1])
 
-            if iter % 10 == 0:
+            if itr % 10 == 0:
                 valid_rmse, test_rmse = self._get_rmse_model(session, model,
                                                              valid_k, test_k)
                 if valid_rmse < min_valid_rmse:
                     min_valid_rmse = valid_rmse
-                    min_valid_iter = iter
                     final_test_rmse = test_rmse
 
                 batch_rmse = sum(batch_rmses) / len(batch_rmses)
                 batch_rmses = []
-                print('  - ITER{:4d}:'.format(iter),
-                      "{:.5f}, {:.5f} {:.5f} / {:.5f}".format(
-                        batch_rmse, valid_rmse, test_rmse, final_test_rmse))
+                print('  - ITER{:4d}:'.format(itr),
+                      '{:.5f}, {:.5f} {:.5f} / {:.5f}'.format(
+                          batch_rmse, valid_rmse, test_rmse, final_test_rmse))
         self.session = session
         self.model = model
         return(session, model)
 
     def predict(self, user_items):
+        """Given user-item pairs predict the rating
+
+        Parameters
+        ----------
+        user_items : Array-like, shape (N, 2)
+            Each row is an (user, item) pair
+
+        Returns
+        -------
+        np.ndarray, shape (N,)
+            Predicted ratings
+        """
         session = self.session
         model = self.model
         predict_k = np.stack(
             [
-                self.anchor_manager._get_k(anchor_idx, user_items)
+                self.anchor_manager.get_k(anchor_idx, user_items)
                 for anchor_idx in range(len(self.anchor_manager.anchor_idxs))
             ],
             axis=1)
@@ -329,9 +432,25 @@ class Llorma():
         return predict_r_hat
 
 
-class LocalModel:
+class LocalModel:  # noqa: R0903
+    """LocalModel
+
+    Parameters
+    ----------
+    session : obj: tf.session
+        TF session
+    model : Dict-like
+        Dictionary of TF variables, train operations
+        Typically the output of self.init_pre_model()
+    anchor_idx : int
+        Id of the anchor point for the local model
+    anchor_manager : obj: AnchorManager
+    batch_manager : obj: BatchManager
+    """
     def __init__(self, session, model, anchor_idx, anchor_manager,
                  batch_manager):
+        """ Instantiate a local model
+        """
         self.session = session
         self.model = model
         self.batch_manager = batch_manager
@@ -344,7 +463,24 @@ class LocalModel:
         self.test_k = anchor_manager.get_test_k(anchor_idx)
 
 
-def _get_k(local_models, kind='train'):
+def _get_local_k(local_models, kind='train'):
+    """Get kernel weights for the local models
+
+    Parameters
+    ----------
+    local_models : Array-like
+        A list of LocalModel objects
+    kind : str, optional
+        type of data to get kernel weights for,
+        possible values are: 'train', 'valid', 'test'
+        by default 'train'
+
+    Returns
+    -------
+    np.ndarray, shape (N_local_models, N_ratings)
+        Matrix of kernel weights for each local model
+        for each user-item pair in the train/valid/test data
+    """
     k = np.stack(
         [
             getattr(local_model, '{}_k'.format(kind))
@@ -357,14 +493,30 @@ def _get_k(local_models, kind='train'):
     return k
 
 
-class BatchManager:
+class BatchManager:  # noqa: R0903
+    """BatchManager Class to manage the train-valid-test datasets
+
+    Parameters
+    ----------
+    train_data : Array-like, shape [N_train, 3]
+        Each row is of the form (user_id, item_id, rating)
+    valid_data : Array-like, shape [N_valid, 3]
+        Each row is of the form (user_id, item_id, rating)
+    test_data : Array-like, shape [N_test, 3]
+        Each row is of the form (user_id, item_id, rating)
+    """
     def __init__(self, train_data, valid_data, test_data):
+        """Instantiate a BatchManager
+        """
         self.train_data = train_data
         self.valid_data = valid_data
         self.test_data = test_data
         self._set_params()
 
     def _set_params(self):
+        """Private method to set the number of users, number of items,
+            mean and standard deviation attributes
+        """
         self.n_user = int(
             max(
                 np.max(self.train_data[:, 0]),
@@ -378,8 +530,20 @@ class BatchManager:
         self.mu = np.mean(self.train_data[:, 2])
         self.std = np.std(self.train_data[:, 2])
 
-
     def update(self, train_data, valid_data=None, test_data=None):
+        """ Update the data
+
+        Parameters
+        ----------
+        train_data : Array-like, shape [N_train, 3]
+            Each row is of the form (user_id, item_id, rating)
+        valid_data : [Array-like, shape [N_valid, 3], optional
+            Each row is of the form (user_id, item_id, rating),
+            by default None
+        test_data : Array-like, shape [N_test, 3], optional
+            Each row is of the form (user_id, item_id, rating)
+            by default None
+        """
         self.train_data = train_data
         if valid_data is not None:
             self.valid_data = valid_data

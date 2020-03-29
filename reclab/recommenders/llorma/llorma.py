@@ -1,5 +1,4 @@
 """Tensorflow implementation of AutoRec recommender."""
-import tensorflow as tf
 import numpy as np
 
 from .llorma_lib import llorma_g
@@ -7,7 +6,7 @@ from .. import recommender
 
 
 class Llorma(recommender.PredictRecommender):
-    """Auto-encoders meet collaborative filtering.
+    """Many local low rank models averaged via kernels.
 
     Parameters
     ---------
@@ -62,11 +61,11 @@ class Llorma(recommender.PredictRecommender):
         super().__init__()
 
         self.model = llorma_g.Llorma(n_anchor, pre_rank,
-                                    pre_learning_rate, pre_lambda_val, pre_train_steps,
-                                    rank, learning_rate, lambda_val, train_steps,
-                                    batch_size, use_cache, gpu_memory_frac, result_path)
+                                     pre_learning_rate, pre_lambda_val, pre_train_steps,
+                                     rank, learning_rate, lambda_val, train_steps,
+                                     batch_size, use_cache, gpu_memory_frac, result_path)
 
-    def _predict(self, user_item, round_rat=False):
+    def _predict(self, user_item, round_rat=False):  # noqa: W0221
         """
         Predict items for user-item pairs.
 
@@ -81,22 +80,28 @@ class Llorma(recommender.PredictRecommender):
             estimate = estimate.astype(int)
         return estimate
 
-    def reset(self, users=None, items=None, ratings=None):  # noqa: D102
-        user_items = np.array(list(ratings.keys()))
-        rating_arr = list(ratings.values())
-        rating_arr = np.array(list(zip(*rating_arr))[0])
+    def update(self, users=None, items=None, ratings=None):
+        """ Update the recommender with new user, item, and rating data.
+
+        Parameters
+        ----------
+        users : dict, optional
+            The new users where the key is the user id while the value is the
+            user features.
+        items : dict, optional
+            The new items where the key is the user id while the value is the
+            item features.
+        ratings : dict, optional
+            The new ratings where the key is a double whose first index is the
+            id of the user making the rating and the second index is the id of the item being
+            rated. The value is a double whose first index is the rating value and the second
+            index is a numpy array that represents the context in which the rating was made.
+        """
+        super().update(users, items, ratings)
+        updated_ratings = dict(self._ratings)
+        user_items = np.array(list(updated_ratings.keys()))
+        rating_arr = list(updated_ratings.values())
 
         data = np.column_stack((user_items, rating_arr))
         self.model.reset_data(data, data, data)
-        self.model.prepare_model()
-        super().reset(users, items, ratings)
-
-    def update(self, users=None, items=None, ratings=None):  # noqa: D102
-        super().update(users, items, ratings)
-
-        train_data = self.model.batch_manager.train_data
-        if ratings is not None:
-            for (user_id, item_id), (rating, _) in ratings.items():
-                train_data = np.append(train_data, [[user_id, item_id, rating]], axis=0)
-        self.model.reset_data(train_data, train_data, train_data)
         self.model.train()

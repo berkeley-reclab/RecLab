@@ -7,3 +7,4 @@ pylint_quotes
 pytest
 scipy
 wpyfm
+tensorflow<=1.14

@@ -18,8 +18,8 @@ def main():
     # env = LatentFactorBehavior(latent_dim=8, num_users=100, num_items=170, num_init_ratings=1000, **params)
     # env = MovieLens100k(latent_dim=8, datapath="./data/ml-100k/", num_init_ratings=1000)
     # env = RandomPreferences(num_topics=10, num_users=100, num_items=1700, num_init_ratings=10000)
-    # recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=100, max_num_items=170)
-    recommender = Llorma(train_steps=10, pre_train_steps=5)
+    recommender = TopPop()
+    recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=100, max_num_items=170, method="mcmc")
 
     # First generate the items and users to seed the dataset.
     print("Initializing environment and recommender")

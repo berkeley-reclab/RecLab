@@ -1,9 +1,12 @@
 /**/__pycache__/
 
+data
 train.libfm
 test.libfm
 predictions
 
 .ipynb_checkpoints
+*.swo
+*.swp
 
 experiments/data

@@ -12,7 +12,7 @@ import scipy.special
 from . import environment
 
 
-class User(object):
+class User:
     """Create custom User object for use in Engelhardt environment."""
 
     def __init__(self, num_topics, known_weight,
@@ -83,7 +83,6 @@ class Engelhardt(environment.DictEnvironment):
         self._users_full = None
         self._items = None
         self._ratings = None
-        self._timestep = 0
 
     @property
     def name(self):
@@ -114,9 +113,9 @@ class Engelhardt(environment.DictEnvironment):
         self._users_full = {user_id: User(self._num_topics, self.known_weight,
                                           self.user_topic_weights, self.beta_var)
                             for user_id in range(self._num_users)}
-        self._users = {user_id: np.zeros(0)
+        self._users = {user_id: np.zeros((0,))
                        for user_id in range(self._num_users)}
-        self._items = {item_id: np.zeros(0)
+        self._items = {item_id: np.zeros((0,))
                        for item_id in range(self._num_items)}
         self._item_attrs = {item_id: np.random.dirichlet(self.item_topic_weights)
                             for item_id in range(self._num_items)}
@@ -139,5 +138,5 @@ class Engelhardt(environment.DictEnvironment):
         """
         item_attr = self._item_attrs[item_id]
         util, rating = self._users_full[user_id].rate(item_attr)
-        print("Util is {} and rating is {}".format(util, rating))
+        print('Util is {} and rating is {}'.format(util, rating))
         return rating

@@ -1,6 +1,9 @@
 numpy
+pandas
 pycodestyle
 pydocstyle
 pylint
+pylint_quotes
+pytest
 scipy
-
+wpyfm

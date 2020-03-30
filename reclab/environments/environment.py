@@ -150,6 +150,7 @@ class DictEnvironment(Environment):
         self._items = None
         self._ratings = None
         self._online_users = None
+        self._user_histories = collections.defaultdict(list)
         self._memory_length = memory_length
 
     def reset(self):
@@ -172,8 +173,7 @@ class DictEnvironment(Environment):
         # Initialize the state of the environment.
         self._timestep = -1
         self._reset_state()
-        self._user_histories = {user_id: [None]*self._memory_length for user_id in
-                                range(self._num_users)}
+        self._user_histories = collections.defaultdict(list)
         num_users = len(self._users)
         num_items = len(self._items)
 
@@ -228,8 +228,10 @@ class DictEnvironment(Environment):
         for user_id, item_id in zip(self._online_users, recommendations):
             ratings[user_id, item_id] = (self._rate_item(user_id, item_id),
                                          self._rating_context(user_id))
-            if self._memory_length > 0:
-                self._user_histories[user_id] = self._user_histories[user_id][1:]+[item_id]
+            self._user_histories[user_id].append(item_id)
+            if len(self._user_histories[user_id]) == self._memory_length + 1:
+                self._user_histories[user_id].pop(0)
+            assert len(self._user_histories[user_id]) <= self._memory_length
 
         self._ratings.update(ratings)
 
@@ -237,9 +239,9 @@ class DictEnvironment(Environment):
         self._online_users = self._select_online_users()
 
         # Create the info dict.
-        info = {"users": self._users,
-                "items": self._items,
-                "ratings": self._ratings}
+        info = {'users': self._users,
+                'items': self._items,
+                'ratings': self._ratings}
 
         self._timestep += 1
         return new_users, new_items, ratings, info
@@ -361,7 +363,7 @@ class DictEnvironment(Environment):
             will consume and rate the content.
 
         """
-        return np.zeros(0)
+        return np.zeros((0,))
 
     def _select_online_users(self):
         """Select the online users at this timestep.

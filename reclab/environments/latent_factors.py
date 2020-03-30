@@ -156,13 +156,19 @@ class MovieLens100k(LatentFactorBehavior):
 
     """
 
-    def __init__(self, latent_dim, datapath, force_retrain=False,
+    def __init__(self, latent_dim=128, datapath=data_utils.DATA_DIR, force_retrain=False,
                  **kwargs):
         """Create a ML100K Latent Factor environment."""
         self.datapath = os.path.expanduser(datapath)
         self._force_retrain = force_retrain
         num_users = 943
         num_items = 1682
+
+        # these parameters are the result of tuning
+        reg = 0.1
+        ss = 0.005
+        self.train_params = dict(bias_reg=reg, one_way_reg=reg, two_way_reg=reg,
+                                 learning_rate=ss)
         super().__init__(latent_dim, num_users, num_items, **kwargs)
 
     @property
@@ -176,13 +182,14 @@ class MovieLens100k(LatentFactorBehavior):
         if not os.path.isfile(model_file) or self._force_retrain:
             print('Did not find model file at {}, loading data for training'.format(model_file))
 
-            users, items, ratings = data_utils.read_movielens100k()
+            users, items, ratings = data_utils.read_dataset('ml-100k')
             print('Initializing latent factor model')
             recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0,
                                 max_num_users=self._num_users, max_num_items=self._num_items,
-                                num_two_way_factors=self._latent_dim)
+                                num_two_way_factors = self._latent_dim,
+                                **self.train_params)
             recommender.reset(users, items, ratings)
-            print('Training latent factor model')
+            print('Training latent factor model with parameters: {}'.format(self.train_params))
 
             res = recommender.model_parameters()
             global_bias, weights, pairwise_interactions = res

@@ -47,9 +47,8 @@ def split_ratings(ratings, proportion, shuffle=False):
 
     return split_1, split_2
 
-
-def read_movielens100k():
-    """Read the MovieLens100k dataset.
+def read_dataset(name):
+    """Read a dataset as specified by name.
 
     Returns
     -------
@@ -63,26 +62,40 @@ def read_movielens100k():
         rating value and whose second element is the rating context (in this case an empty array).
 
     """
-    movielens_dir = os.path.join(DATA_DIR, 'ml-100k')
-    datafile = os.path.join(movielens_dir, 'u.data')
+    if name == 'ml-100k':
+        dir_name = 'ml-100k'
+        data_name = 'u.data'
+        data_url = 'http://files.grouplens.org/datasets/movielens/ml-100k.zip'
+        csv_params = dict(sep='\t', header=None, usecols=[0, 1, 2, 3],
+                       names=['user_id', 'item_id', 'rating', 'timestamp'])
+        # # Shifting user and movie indexing.
+        # data['user_id'] -= 1
+        # data['item_id'] -= 1
+
+        # # Validating data assumptions.
+        # assert len(data) == 100000
+    elif name == 'ml-10m':
+        dir_name = 'ml-10M100K'
+        data_name = 'ratings.dat'
+        data_url = 'http://files.grouplens.org/datasets/movielens/ml-10m.zip'
+        csv_params = dict(sep='::', header=None, usecols=[0, 1, 2, 3],
+                       names=['user_id', 'item_id', 'rating', 'timestamp'], engine='python')
+    else:
+        raise ValueError('dataset name not recognized')
+
+    data_dir = os.path.join(DATA_DIR, dir_name)
+    datafile = os.path.join(data_dir, data_name)
     if not os.path.isfile(datafile):
         os.makedirs(DATA_DIR, exist_ok=True)
-        download_location = os.path.join(DATA_DIR, 'ml-100k.zip')
-        urllib.request.urlretrieve('http://files.grouplens.org/datasets/movielens/ml-100k.zip',
+        download_location = os.path.join(DATA_DIR, '{}.zip'.format(data_dir))
+        urllib.request.urlretrieve(data_url,
                                    filename=download_location)
         with zipfile.ZipFile(download_location, 'r') as zip_ref:
             zip_ref.extractall(DATA_DIR)
         os.remove(download_location)
 
-    data = pd.read_csv(datafile, sep='\t', header=None, usecols=[0, 1, 2, 3],
-                       names=['user_id', 'item_id', 'rating', 'timestamp'])
+    data = pd.read_csv(datafile, **csv_params)
 
-    # Shifting user and movie indexing.
-    data['user_id'] -= 1
-    data['item_id'] -= 1
-
-    # Validating data assumptions.
-    assert len(data) == 100000
 
     users = {user_id: np.zeros(0) for user_id in np.unique(data['user_id'])}
     items = {item_id: np.zeros(0) for item_id in np.unique(data['item_id'])}
@@ -90,7 +103,7 @@ def read_movielens100k():
     # Fill the rating array with initial data.
     ratings = {}
     for user_id, item_id, rating in zip(data['user_id'], data['item_id'], data['rating']):
-        # TODO: may want to eventually add time as a rating context
+        # TODO: may want to eventually a rating context (e.g. time)
         ratings[user_id, item_id] = (rating, np.zeros(0))
 
     return users, items, ratings

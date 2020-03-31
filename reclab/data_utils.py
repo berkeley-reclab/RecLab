@@ -63,32 +63,56 @@ def read_dataset(name, shuffle=True):
 
     """
     if name == 'ml-100k':
-        dir_name = 'ml-100k'
+        dir_name = 'ml-100k' # name of directory within zip
         data_name = 'u.data'
+        extraction_dir = ''
         data_url = 'http://files.grouplens.org/datasets/movielens/ml-100k.zip'
         csv_params = dict(sep='\t', header=None, usecols=[0, 1, 2, 3],
                        names=['user_id', 'item_id', 'rating', 'timestamp'])
     elif name == 'ml-10m':
-        dir_name = 'ml-10M100K'
+        dir_name = 'ml-10M100K' # name of directory within zip
         data_name = 'ratings.dat'
+        extraction_dir = ''
         data_url = 'http://files.grouplens.org/datasets/movielens/ml-10m.zip'
         csv_params = dict(sep='::', header=None, usecols=[0, 1, 2, 3],
                        names=['user_id', 'item_id', 'rating', 'timestamp'], engine='python')
+    elif name == 'citeulike-a':
+        dir_name = '' # no zipped directory
+        extraction_dir = 'citeulike-a'
+        data_name = 'train.npy'
+        data_url = 'https://github.com/tebesu/CollaborativeMemoryNetwork/blob/master/data/citeulike-a.npz'
+        csv_params = None
+        np_params = dict(columns=['user_id', 'item_id'])
+    elif name == 'pinterest':
+        dir_name = '' # no zipped directory
+        extraction_dir = 'pinterest'
+        data_name = 'train.npy'
+        data_url = 'https://github.com/tebesu/CollaborativeMemoryNetwork/blob/master/data/pinterest.npz'
+        csv_params = None
+        np_params = dict(columns=['user_id', 'item_id'])
     else:
         raise ValueError('dataset name not recognized')
 
-    data_dir = os.path.join(DATA_DIR, dir_name)
+    # TODO download logic is annoying
+
+    data_dir = os.path.join(os.path.join(DATA_DIR, extraction_dir), dir_name)
     datafile = os.path.join(data_dir, data_name)
     if not os.path.isfile(datafile):
         os.makedirs(DATA_DIR, exist_ok=True)
-        download_location = os.path.join(DATA_DIR, '{}.zip'.format(data_dir))
+        download_location = os.path.join('{}.zip'.format(data_dir))
         urllib.request.urlretrieve(data_url,
                                    filename=download_location)
         with zipfile.ZipFile(download_location, 'r') as zip_ref:
-            zip_ref.extractall(DATA_DIR)
+            zip_ref.extractall(os.path.join(DATA_DIR, extraction_dir))
         os.remove(download_location)
 
-    data = pd.read_csv(datafile, **csv_params)
+    if csv_params is not None:
+        data = pd.read_csv(datafile, **csv_params)
+    else:
+        data_np = np.load(datafile)
+        data = pd.DataFrame(data_np, **np_params)
+        if 'ratings' not in data.columns:
+            data['ratings'] = 1 # implicit ratings
     if shuffle:
         data = data.sample(frac=1).reset_index(drop=True)
 

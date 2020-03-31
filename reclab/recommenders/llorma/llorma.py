@@ -10,13 +10,6 @@ class Llorma(recommender.PredictRecommender):
 
     Parameters
     ---------
-    train.data : np.matrix
-        [[user_id, item_id, rating][...]]
-        Existing user_item ratings to train the recommender
-    valid_data : np.matrix
-        User_item_ratings matrix to validate and tune recommender
-    test_data : np.matrix
-        User_item_ratings matrix to test recommender
     n_anchor : int
         Number of local model to build in the train phase
     pre_rank : int
@@ -65,7 +58,7 @@ class Llorma(recommender.PredictRecommender):
                                      rank, learning_rate, lambda_val, train_steps,
                                      batch_size, use_cache, gpu_memory_frac, result_path)
 
-    def _predict(self, user_item, round_rat=False):  # noqa: W0221
+    def _predict(self, user_item, round_rat=False):
         """
         Predict items for user-item pairs.
 
@@ -80,23 +73,7 @@ class Llorma(recommender.PredictRecommender):
             estimate = estimate.astype(int)
         return estimate
 
-    def update(self, users=None, items=None, ratings=None):
-        """ Update the recommender with new user, item, and rating data.
-
-        Parameters
-        ----------
-        users : dict, optional
-            The new users where the key is the user id while the value is the
-            user features.
-        items : dict, optional
-            The new items where the key is the user id while the value is the
-            item features.
-        ratings : dict, optional
-            The new ratings where the key is a double whose first index is the
-            id of the user making the rating and the second index is the id of the item being
-            rated. The value is a double whose first index is the rating value and the second
-            index is a numpy array that represents the context in which the rating was made.
-        """
+    def update(self, users=None, items=None, ratings=None):  # noqa: W0221
         super().update(users, items, ratings)
         updated_ratings = dict(self._ratings)
         user_items = np.array(list(updated_ratings.keys()))

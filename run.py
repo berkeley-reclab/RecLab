@@ -1,24 +1,24 @@
 import numpy as np
 
 from reclab.environments.fixed_rating import FixedRating
-from reclab.environments.latent_factors import LatentFactorBehavior, MovieLens100k
+from reclab.environments.latent_factors import DatasetLatentFactor
 from reclab.environments.topics import Topics
-from reclab.recommenders.libfm.libfm import LibFM
+from reclab.recommenders import LibFM
 from reclab.recommenders import TopPop
-from reclab.recommenders.autorec.autorec import Autorec
+# from reclab.recommenders.autorec.autorec import Autorec
 from reclab.recommenders import KNNRecommender
 
 def main():
-    params = {'topic_change': 0.1, 'memory_length': 5,
-              'boredom_threshold': 2, 'boredom_penalty': 1.0}
-    env = Topics(num_topics=10, num_users=100, num_items=170, num_init_ratings=5000, **params)
-    params = {'affinity_change': 0.1, 'memory_length': 5,
-              'boredom_threshold': 0.5, 'boredom_penalty': 1.0}
+    # params = {'topic_change': 0.1, 'memory_length': 5,
+    #           'boredom_threshold': 2, 'boredom_penalty': 1.0}
+    # env = Topics(num_topics=10, num_users=100, num_items=170, num_init_ratings=5000, **params)
+    # params = {'affinity_change': 0.1, 'memory_length': 5,
+    #           'boredom_threshold': 0.5, 'boredom_penalty': 1.0}
     # env = LatentFactorBehavior(latent_dim=8, num_users=100, num_items=170, num_init_ratings=1000, **params)
-    # env = MovieLens100k(latent_dim=8, datapath="./data/ml-100k/", num_init_ratings=1000)
+    env = DatasetLatentFactor('ml-10m', num_init_ratings=1000, max_num_users=1000, max_num_items=1700)
     # env = RandomPreferences(num_topics=10, num_users=100, num_items=1700, num_init_ratings=10000)
-    recommender = TopPop()
-    recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=100, max_num_items=170, method="mcmc")
+    # recommender = TopPop()
+    recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=1000, max_num_items=1700, method="sgd")
 
     # First generate the items and users to seed the dataset.
     print("Initializing environment and recommender")

@@ -47,7 +47,7 @@ def split_ratings(ratings, proportion, shuffle=False):
 
     return split_1, split_2
 
-def read_dataset(name):
+def read_dataset(name, shuffle=True):
     """Read a dataset as specified by name.
 
     Returns
@@ -68,12 +68,6 @@ def read_dataset(name):
         data_url = 'http://files.grouplens.org/datasets/movielens/ml-100k.zip'
         csv_params = dict(sep='\t', header=None, usecols=[0, 1, 2, 3],
                        names=['user_id', 'item_id', 'rating', 'timestamp'])
-        # # Shifting user and movie indexing.
-        # data['user_id'] -= 1
-        # data['item_id'] -= 1
-
-        # # Validating data assumptions.
-        # assert len(data) == 100000
     elif name == 'ml-10m':
         dir_name = 'ml-10M100K'
         data_name = 'ratings.dat'
@@ -95,6 +89,8 @@ def read_dataset(name):
         os.remove(download_location)
 
     data = pd.read_csv(datafile, **csv_params)
+    if shuffle:
+        data = data.sample(frac=1).reset_index(drop=True)
 
 
     users = {user_id: np.zeros(0) for user_id in np.unique(data['user_id'])}

@@ -95,6 +95,8 @@ class LatentFactorBehavior(environment.DictEnvironment):
         """
         raw_rating = (self._user_factors[user_id] @ self._item_factors[item_id]
                       + self._user_biases[user_id] + self._item_biases[item_id] + self._offset)
+
+        # Computing boredom penalty
         recent_item_factors = [self._item_factors[item] for item in self._user_histories[user_id]]
         boredom_penalty = 0
         for item_factor in recent_item_factors:
@@ -106,6 +108,7 @@ class LatentFactorBehavior(environment.DictEnvironment):
                     boredom_penalty += (similarity - self._boredom_threshold)
         boredom_penalty *= self._boredom_penalty
         rating = np.clip(raw_rating - boredom_penalty + self._random.randn() * self._noise, 0, 5)
+
         # Updating underlying affinity
         self._user_factors[user_id] = ((1.0 - self._affinity_change) * self._user_factors[user_id]
                                        + self._affinity_change * self._item_factors[item_id])
@@ -140,8 +143,8 @@ class LatentFactorBehavior(environment.DictEnvironment):
         return user_factors, user_bias, item_factors, item_bias, offset
 
 
-class MovieLens100k(LatentFactorBehavior):
-    """An environment where user behavior is based on the ML-100k dataset.
+class DatasetLatentFactor(LatentFactorBehavior):
+    """An environment where user behavior is based on a dataset.
 
     Latent factor model of behavior with parameters fit directly from full dataset.
 
@@ -150,68 +153,115 @@ class MovieLens100k(LatentFactorBehavior):
     latent_dim : int
         Size of latent factors p, q.
     datapath : str
-        The path to the movielens datafiles and model file
+        The path to the directory containing datafiles
     force_retrain : bool
         Forces retraining the latent factor model
 
     """
 
-    def __init__(self, latent_dim=128, datapath=data_utils.DATA_DIR, force_retrain=False,
-                 **kwargs):
+    def __init__(self, name, latent_dim=128, datapath=data_utils.DATA_DIR, force_retrain=False,
+                 max_num_users=np.inf, max_num_items=np.inf, **kwargs):
         """Create a ML100K Latent Factor environment."""
-        self.datapath = os.path.expanduser(datapath)
-        self._force_retrain = force_retrain
-        num_users = 943
-        num_items = 1682
+        self.dataset_name = name
+        if name == 'ml-100k':
+            self.datapath = os.path.expanduser(os.path.join(datapath, 'ml-100k'))
+            latent_dim = 100 if latent_dim is None else latent_dim
+            self._full_num_users = 943
+            self._full_num_items = 1682
+            # these parameters are the result of tuning
+            reg = 0.1
+            ss = 0.005
+            self.train_params = dict(bias_reg=reg, one_way_reg=reg, two_way_reg=reg,
+                                     learning_rate=ss, num_iter=100)
+        elif name == 'ml-10m':
+            self.datapath = os.path.expanduser(os.path.join(datapath, 'ml-10M100K'))
+            latent_dim = 128 if latent_dim is None else latent_dim
+            self._full_num_users = 69878
+            self._full_num_items = 10677
+            # these parameters are presented in "On the Difficulty of Baselines" by Rendle et al.
+            reg = 0.04
+            ss = 0.003
+            self.train_params = dict(bias_reg=reg, one_way_reg=reg, two_way_reg=reg,
+                                     learning_rate=ss, num_iter=128)
 
-        # these parameters are the result of tuning
-        reg = 0.1
-        ss = 0.005
-        self.train_params = dict(bias_reg=reg, one_way_reg=reg, two_way_reg=reg,
-                                 learning_rate=ss)
+        self._force_retrain = force_retrain
+
+        num_users = min(self._full_num_users, max_num_users)
+        num_items = min(self._full_num_items, max_num_items)
+
         super().__init__(latent_dim, num_users, num_items, **kwargs)
 
     @property
     def name(self):
         """Name of environment, used for saving."""
-        return 'ml100k'
+        return 'latent-{}'.format(self.dataset_name)
 
     def _generate_latent_factors(self):
-        """Create latent factors based on ML100K dataset."""
-        model_file = os.path.join(self.datapath, 'fm_model.npz')
-        if not os.path.isfile(model_file) or self._force_retrain:
-            print('Did not find model file at {}, loading data for training'.format(model_file))
+        full_model_params = dict(num_user_features=0, num_item_features=0, num_rating_features=0,
+                            max_num_users=self._full_num_items, max_num_items=self._full_num_items,
+                            num_two_way_factors=self._latent_dim, **self.train_params)
+        if self._num_users < self._full_num_users or self._num_items < self._full_num_items:
+            reduced_num_users_items = (min(self._num_users, self._full_num_users),
+                                       min(self._num_items, self._full_num_items))
+        else:
+            reduced_num_users_items = None
+        return generate_latent_factors_from_data(self.dataset_name, self.datapath, full_model_params,
+                                                 force_retrain=self._force_retrain,
+                                                 reduced_num_users_items=reduced_num_users_items)
 
-            users, items, ratings = data_utils.read_dataset('ml-100k')
-            print('Initializing latent factor model')
-            recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0,
-                                max_num_users=self._num_users, max_num_items=self._num_items,
-                                num_two_way_factors = self._latent_dim,
-                                **self.train_params)
-            recommender.reset(users, items, ratings)
-            print('Training latent factor model with parameters: {}'.format(self.train_params))
 
-            res = recommender.model_parameters()
-            global_bias, weights, pairwise_interactions = res
+def generate_latent_factors_from_data(dataset_name, datapath, params,
+                                      force_retrain=False, reduced_num_users_items=None):
+    """Create latent factors based on a dataset."""
+    model_file = os.path.join(datapath, 'fm_model.npz')
+    if not os.path.isfile(model_file) or force_retrain:
+        print('Did not find model file at {}, loading data for training'.format(model_file))
 
-            # TODO: this logic is only correct if there are no additional user/item/rating features
-            user_indices = np.arange(self._num_users)
-            item_indices = np.arange(self._num_users, self._num_users + self._num_items)
+        users, items, ratings = data_utils.read_dataset(dataset_name)
+        print('Initializing latent factor model')
+        recommender = LibFM(**params)
+        recommender.reset(users, items, ratings)
+        print('Training latent factor model with parameters: {}'.format(params))
 
-            user_factors = pairwise_interactions[user_indices]
-            user_bias = weights[user_indices]
-            item_factors = pairwise_interactions[item_indices]
-            item_bias = weights[item_indices]
-            offset = global_bias
-            params = json.dumps(recommender.hyperparameters())
+        res = recommender.model_parameters()
+        global_bias, weights, pairwise_interactions = res
 
-            np.savez(model_file, user_factors=user_factors, user_bias=user_bias,
-                     item_factors=item_factors, item_bias=item_bias, offset=offset,
-                     params=params)
+        # TODO: this logic is only correct if there are no additional user/item/rating features
+        # Note that we discard the original data's user_ids and item_ids at this step
+        user_indices = np.arange(params['max_num_users'])
+        item_indices = np.arange(params['max_num_users'],
+                                 params['max_num_users'] + params['max_num_items'])
 
-            return user_factors, user_bias, item_factors, item_bias, offset
+        user_factors = pairwise_interactions[user_indices]
+        user_bias = weights[user_indices]
+        item_factors = pairwise_interactions[item_indices]
+        item_bias = weights[item_indices]
+        offset = global_bias
+        params = json.dumps(recommender.hyperparameters())
 
+        np.savez(model_file, user_factors=user_factors, user_bias=user_bias,
+                 item_factors=item_factors, item_bias=item_bias, offset=offset,
+                 params=params)
+
+    else:
         model = np.load(model_file)
         print('Loading model from {} trained via:\n{}.'.format(model_file, model['params']))
-        return (model['user_factors'], model['user_bias'], model['item_factors'],
-                model['item_bias'], model['offset'])
+
+        user_factors = model['user_factors']
+        user_bias = model['user_bias']
+        item_factors = model['item_factors']
+        item_bias = model['item_bias']
+        offset = model['offset']
+
+    if reduced_num_users_items is not None:
+        num_users, num_items = reduced_num_users_items
+        user_indices = np.random.choice(user_factors.shape[0], size=num_users,
+                                        replace=False)
+        item_indices = np.random.choice(item_factors.shape[0], size=num_items,
+                                        replace=False)
+        user_factors = user_factors[user_indices]
+        user_bias = user_bias[user_indices]
+        item_factors = item_factors[item_indices]
+        item_bias = item_bias[item_indices]
+
+    return user_factors, user_bias, item_factors, item_bias, offset

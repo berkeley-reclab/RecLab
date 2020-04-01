@@ -2,11 +2,9 @@
 import numpy as np
 import scipy.sparse
 
-from .. import recommender
-try:
-    from .libfm_lib import pyfm
-except ImportError as error:
-    raise 'Could not find pyfm package. You probably need to import the libfm_lib submodule.'
+import wpyfm
+
+from . import recommender
 
 
 class LibFM(recommender.PredictRecommender):
@@ -75,13 +73,13 @@ class LibFM(recommender.PredictRecommender):
         self._train_data = None
         self._num_features = (self._max_num_users + num_user_features + self._max_num_items +
                               num_item_features + num_rating_features)
-        self._model = pyfm.PyFM(method=method,
-                                dim=(use_global_bias, use_one_way, num_two_way_factors),
-                                lr=learning_rate,
-                                reg=(bias_reg, one_way_reg, two_way_reg),
-                                init_stdev=init_stdev,
-                                num_iter=num_iter,
-                                seed=seed)
+        self._model = wpyfm.PyFM(method=method,
+                                 dim=(use_global_bias, use_one_way, num_two_way_factors),
+                                 lr=learning_rate,
+                                 reg=(bias_reg, one_way_reg, two_way_reg),
+                                 init_stdev=init_stdev,
+                                 num_iter=num_iter,
+                                 seed=seed)
         self._hyperparameters = locals()
 
         # We only want the function arguments so remove class related objects.
@@ -94,12 +92,13 @@ class LibFM(recommender.PredictRecommender):
         rating_inputs = scipy.sparse.csr_matrix((0, self._num_features))
         # Each row of rating_outputs consists of the numerical value assigned to that interaction.
         rating_outputs = np.empty((0,))
-        self._train_data = pyfm.Data(rating_inputs, rating_outputs)
+        # TODO: We need to add support for MCMC/ALS by adding has_xt here and for the test set.
+        self._train_data = wpyfm.Data(rating_inputs, rating_outputs)
 
     def reset(self, users=None, items=None, ratings=None):  # noqa: D102
         rating_inputs = scipy.sparse.csr_matrix((0, self._num_features))
         rating_outputs = np.empty((0,))
-        self._train_data = pyfm.Data(rating_inputs, rating_outputs)
+        self._train_data = wpyfm.Data(rating_inputs, rating_outputs)
         super().reset(users, items, ratings)
 
     def update(self, users=None, items=None, ratings=None):  # noqa: D102
@@ -137,6 +136,8 @@ class LibFM(recommender.PredictRecommender):
             new_rating_inputs = scipy.sparse.csr_matrix((data, row_col),
                                                         shape=(len(ratings), self._num_features))
             new_rating_outputs = np.array(new_rating_outputs)
+            # TODO: We need to account for when the same rating gets added again. Right now
+            # this will just add duplicate rows with different ratings.
             self._train_data.add_rows(new_rating_inputs, new_rating_outputs)
 
     def _predict(self, user_item):  # noqa: D102
@@ -170,7 +171,7 @@ class LibFM(recommender.PredictRecommender):
 
         test_inputs = scipy.sparse.csr_matrix((data, row_col),
                                               shape=(len(user_item), self._num_features))
-        test_data = pyfm.Data(test_inputs, np.zeros(test_inputs.shape[0]))
+        test_data = wpyfm.Data(test_inputs, np.zeros(test_inputs.shape[0]))
 
         self._model.train(self._train_data)
         predictions = self._model.predict(test_data)

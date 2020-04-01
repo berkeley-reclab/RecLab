@@ -4,6 +4,6 @@ pycodestyle
 pydocstyle
 pylint
 pylint_quotes
+pytest
 scipy
-pylint_quotes
-
+wpyfm

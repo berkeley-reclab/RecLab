@@ -6,5 +6,5 @@ pylint
 pylint_quotes
 pytest
 scipy
-tensorflow
+tensorflow<=1.14
 wpyfm

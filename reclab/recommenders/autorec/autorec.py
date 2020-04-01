@@ -42,7 +42,7 @@ class Autorec(recommender.PredictRecommender):
 
     def __init__(self, num_users, num_items, ratings=None,
                  hidden_neuron=50, lambda_value=1, train_epoch=10, batch_size=100,
-                 optimizer_method='Adam', grad_clip=False, base_lr=1e-3, decay_epoch_step=0,
+                 optimizer_method='Adam', grad_clip=False, base_lr=1e-3, decay_epoch_step=10,
                  random_seed=1000, display_step=1):
         """Create new Autorec recommender."""
         super().__init__()
@@ -53,8 +53,8 @@ class Autorec(recommender.PredictRecommender):
         seen_items = set()
 
         self.model = autorec.AutoRec(sess, num_users, num_items, ratings, seen_users, seen_items,
-                             hidden_neuron, lambda_value, train_epoch, batch_size, optimizer_method,
-                             grad_clip, base_lr, decay_epoch_step, random_seed, display_step)
+                                     hidden_neuron, lambda_value, train_epoch, batch_size, optimizer_method,
+                                     grad_clip, base_lr, decay_epoch_step, random_seed, display_step)
 
     def _predict(self, user_item, round_rat=False):
         """

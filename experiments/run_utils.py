@@ -12,7 +12,26 @@ def plot_ratings_mses(ratings,
                       predictions,
                       num_init_ratings,
                       labels):
-    """Plotting functionality."""
+    """Plot the performance results for multiple recommenders.
+
+    Parameters
+    ----------
+    ratings : np.ndarray
+        The array of all ratings made by users throughout all trials. ratings[i, j, k, l]
+        corresponds to the rating made by the l-th online user during the k-th step of the
+        j-th trial for the i-th recommender.
+    predictions : np.ndarray
+        The array of all predictions made by recommenders throughout all trials.
+        predictions[i, j, k, l] corresponds to the prediction that the i-th recommender
+        made on the rating of the l-th online user during the k-th step of the
+        j-th trial for the aforementioned recommender. If a recommender does not make
+        predictions then its associated elements can be np.nan. It will not be displayed
+        during RMSE plotting.
+    num_init_ratings : int
+        The number of ratings initially available to recommenders.
+    labels : list of str
+        The name of each recommender.
+    """
     def get_stats(arr):
         # Swap the trial and step axes.
         arr = np.swapaxes(arr, 0, 1)
@@ -33,7 +52,7 @@ def plot_ratings_mses(ratings,
     for recommender_ratings, label in zip(ratings, labels):
         means, lower_bounds, upper_bounds = get_stats(recommender_ratings)
         plt.plot(xs, means, label=label)
-        plt.fill_between(xs, lower_bounds, upper_bound, alpha=0.1)
+        plt.fill_between(xs, lower_bounds, upper_bounds, alpha=0.1)
     plt.xlabel('# ratings')
     plt.ylabel('Mean Rating')
     plt.legend()
@@ -41,13 +60,13 @@ def plot_ratings_mses(ratings,
     plt.subplot(1, 2, 2)
     squared_diffs = (ratings - predictions) ** 2
     for recommender_squared_diffs, label in zip(squared_diffs, labels):
-        mse, lower_bounds, upper_bounds = get_stats(squared_diffs)
+        mse, lower_bounds, upper_bounds = get_stats(recommender_squared_diffs)
         # Transform the MSE into the RMSE and correct the associated intervals.
         rmse = np.sqrt(mse)
         lower_bounds = np.sqrt(lower_bounds)
         upper_bounds = np.sqrt(upper_bounds)
         plt.plot(xs, rmse, label=label)
-        plt.fill_betweem(xs, lower_bounds, upper_bounds, alpha=0.1)
+        plt.fill_between(xs, lower_bounds, upper_bounds, alpha=0.1)
     plt.xlabel('# ratings')
     plt.ylabel('RMSE')
     plt.legend()
@@ -57,8 +76,8 @@ def plot_ratings_mses(ratings,
 
 def run_env_experiment(env,
                        recommenders,
-                       len_trial,
                        n_trials,
+                       len_trial,
                        exp_dirname,
                        data_filename,
                        overwrite=False):
@@ -95,10 +114,10 @@ def run_env_experiment(env,
         not make predictions to make recommendations then that element will be np.nan.
 
     """
-    datadirname = os.path.join('data', expdirname)
+    datadirname = os.path.join('data', exp_dirname)
     os.makedirs(datadirname, exist_ok=True)
 
-    filename = os.path.join(datadirname, datafilename)
+    filename = os.path.join(datadirname, data_filename)
     if not os.path.exists(filename) or overwrite:
         all_ratings = []
         all_predictions = []
@@ -156,13 +175,15 @@ def run_trial(env, recommender, len_trial):
     for i in range(len_trial):
         online_users = env.online_users()
         recommendations, predictions = recommender.recommend(online_users, num_recommendations=1)
-        recommendations = recommendations[:, 0]
+        recommendations = recommendations.flatten()
         items, users, ratings, info = env.step(recommendations)
         recommender.update(users, items, ratings)
-        ratings = [rating, _ in ratings]
+        ratings = [rating for rating, _ in ratings.values()]
         all_ratings.append(ratings)
         if predictions is None:
             predictions = np.ones(ratings.shape) * np.nan
+        else:
+            predictions = predictions.flatten()
         all_predictions.append(predictions)
 
     return all_ratings, all_predictions

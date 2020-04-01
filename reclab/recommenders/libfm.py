@@ -3,9 +3,7 @@ import numpy as np
 import scipy.sparse
 
 import wpyfm
-
 from . import recommender
-
 
 class LibFM(recommender.PredictRecommender):
     """The libFM recommendation model which is a factorization machine.

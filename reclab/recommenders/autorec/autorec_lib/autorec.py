@@ -53,6 +53,7 @@ class AutoRec():
 
     def prepare_model(self):
         self.input_R = tf.placeholder(dtype=tf.float32, shape=[None, self.num_items], name="input_R")
+        self.input_mask_R = tf.placeholder(dtype=tf.float32, shape=[None, self.num_items], name="input_R")
 
         V = tf.get_variable(name="V", initializer=tf.truncated_normal(shape=[self.num_items, self.hidden_neuron],
                                          mean=0, stddev=0.03),dtype=tf.float32)
@@ -66,7 +67,7 @@ class AutoRec():
         pre_Decoder = tf.matmul(self.Encoder,W) + b
         self.Decoder = tf.identity(pre_Decoder)
 
-        pre_rec_cost = self.input_R - self.Decoder
+        pre_rec_cost = tf.multiply((self.input_R - self.Decoder), self.input_mask_R)
         rec_cost = tf.square(self.l2_norm(pre_rec_cost))
         pre_reg_cost = tf.square(self.l2_norm(W)) + tf.square(self.l2_norm(V))
         reg_cost = self.lambda_value * 0.5 * pre_reg_cost
@@ -103,32 +104,38 @@ class AutoRec():
 
             _, Cost = self.sess.run(
                 [self.optimizer, self.cost],
-                feed_dict={self.input_R: self.R[batch_set_idx, :]})
+                feed_dict={self.input_R: self.R[batch_set_idx, :],
+                    self.input_mask_R: self.mask_R[batch_set_idx, :]
+                    })
 
             batch_cost = batch_cost + Cost
         self.train_cost_list.append(batch_cost)
 
+        """
         if (itr+1) % self.display_step == 0:
             print ("Training //", "Epoch %d //" % (itr), " Total cost = {:.2f}".format(batch_cost),
                "Elapsed time : %d sec" % (time.time() - start_time))
+        """
 
     def predict(self, user_item):
         users = [triple[0] for triple in user_item]
         items = [triple[1] for triple in user_item]
 
         user_item = zip(users, items)
+        #print("Training data: {}".format(self.R))
         Cost, Decoder = self.sess.run(
                 [self.cost, self.Decoder],
-                feed_dict={self.input_R: self.R})
+                feed_dict={self.input_R: self.R,
+                    self.input_mask_R: self.mask_R
+                    })
         user_idx = set(users)
         item_idx = set(items)
         Estimated_R = Decoder.clip(min=1, max=5)
-        unseen_user_test_list = list(user_idx - self.seen_users)
-        unseen_item_test_list = list(item_idx - self.seen_items)
-        for user in unseen_user_test_list:
-            for item in unseen_item_test_list:
-                 if (user, item) in user_item: # exist in test set
+        for user in range(self.R.shape[0]):
+            for item in range(self.R.shape[1]):
+                if user not in self.seen_users and item not in self.seen_items:
                     Estimated_R[user,item] = 3
+       # print("Predictions: {}".format(Estimated_R))
         idx = [tuple(users), tuple(items)]
         return np.array((Estimated_R[idx]))
 

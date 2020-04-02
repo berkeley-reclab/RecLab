@@ -1,4 +1,4 @@
-"""Tests for the LibFM recommender."""
+"""Tests for the Autorec recommender."""
 import collections
 
 import numpy as np
@@ -14,8 +14,8 @@ def test_predict():
     train_ratings, test_ratings = data_utils.split_ratings(ratings, 0.9, shuffle=True)
     train_ratings_1, train_ratings_2 = data_utils.split_ratings(train_ratings, 0.5)
     recommender = Autorec(len(users), len(items), hidden_neuron=500, lambda_value=1,
-                        train_epoch=50, batch_size=20, optimizer_method='Adam',
-                        grad_clip=False, base_lr=1e-2, decay_epoch_step=int(500), display_step=20)
+                          train_epoch=50, batch_size=20, optimizer_method='Adam',
+                          grad_clip=False, base_lr=1e-2, decay_epoch_step=int(500), display_step=20)
     recommender.reset(users, items, train_ratings_1)
     user_item = [(key[0], key[1], val[1]) for key, val in test_ratings.items()]
     preds = recommender.predict(user_item)
@@ -33,7 +33,7 @@ def test_predict():
 
 
 def test_recommend():
-    """Test that LibFM trained with SGD will recommend reasonable items."""
+    """Test that Autorec will recommend reasonable items."""
     users = {0: np.zeros((0,)),
              1: np.zeros((0,))}
     items = {0: np.zeros((0,)),
@@ -44,8 +44,8 @@ def test_recommend():
                (0, 2): (5, np.zeros((0,))),
                (1, 0): (5, np.zeros((0,)))}
     recommender = Autorec(len(users), len(items), hidden_neuron=200, lambda_value=1,
-                        train_epoch=50, batch_size=20, optimizer_method='Adam',
-                        grad_clip=False, base_lr=1e-3, decay_epoch_step=int(500), display_step=20)
+                          train_epoch=50, batch_size=20, optimizer_method='Adam',
+                          grad_clip=False, base_lr=1e-3, decay_epoch_step=int(500), display_step=20)
     recommender.reset(users, items, ratings)
     user_contexts = collections.OrderedDict([(1, np.zeros((0,)))])
     recs, _ = recommender.recommend(user_contexts, 1)

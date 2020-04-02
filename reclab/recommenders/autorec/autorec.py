@@ -51,23 +51,25 @@ class Autorec(recommender.PredictRecommender):
         sess = tf.Session(config=config)
         seen_users = set()
         seen_items = set()
+        self.model = autorec.AutoRec(sess,
+                                     num_users,
+                                     num_items,
+                                     ratings,
+                                     seen_users,
+                                     seen_items,
+                                     hidden_neuron,
+                                     lambda_value,
+                                     train_epoch,
+                                     batch_size,
+                                     optimizer_method,
+                                     grad_clip,
+                                     base_lr,
+                                     decay_epoch_step,
+                                     random_seed,
+                                     display_step)
 
-        self.model = autorec.AutoRec(sess, num_users, num_items, ratings, seen_users, seen_items,
-                                     hidden_neuron, lambda_value, train_epoch, batch_size, optimizer_method,
-                                     grad_clip, base_lr, decay_epoch_step, random_seed, display_step)
-
-    def _predict(self, user_item, round_rat=False):
-        """
-        Predict items for user-item pairs.
-
-        round_rat : bool
-            Autorec treats ratings as continuous, not discrete. Set to true to round to integers.
-
-        """
-        estimate = self.model.predict(user_item)
-        if round_rat:
-            estimate = estimate.astype(int)
-        return estimate
+    def _predict(self, user_item):  # noqa: D102
+        return self.model.predict(user_item)
 
     def reset(self, users=None, items=None, ratings=None):  # noqa: D102
         self.model.prepare_model()
@@ -78,7 +80,7 @@ class Autorec(recommender.PredictRecommender):
         for user_item in ratings:
             self.model.seen_users.add(user_item[0])
             self.model.seen_items.add(user_item[1])
-        R = self._ratings.toarray()
-        self.model.R = R
-        self.model.mask_R = np.clip(R, a_min=0, a_max=1)
+        ratings = self._ratings.toarray()
+        self.model.R = ratings
+        self.model.mask_R = np.clip(ratings, a_min=0, a_max=1)
         self.model.run()

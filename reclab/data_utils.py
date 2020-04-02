@@ -47,6 +47,33 @@ def split_ratings(ratings, proportion, shuffle=False):
 
     return split_1, split_2
 
+def find_zipped(zipped_dir_name, data_name, data_url, csv_params):
+    data_dir = os.path.join(DATA_DIR, zipped_dir_name)
+    datafile = os.path.join(data_dir, data_name)
+    if not os.path.isfile(datafile):
+        os.makedirs(DATA_DIR, exist_ok=True)
+
+        download_location = os.path.join('{}.zip'.format(data_dir))
+        urllib.request.urlretrieve(data_url,
+                                   filename=download_location)
+        with zipfile.ZipFile(download_location, 'r') as zip_ref:
+            zip_ref.extractall(DATA_DIR)
+        os.remove(download_location)
+    data = pd.read_csv(datafile, **csv_params)
+    return data
+
+def find_npz(dir_name, data_name, data_url, np_params):
+    download_dir = os.path.join(DATA_DIR, dir_name)
+    datafile = os.path.join(data_dir, data_name)
+    if not os.path.isfile(datafile):
+        os.makedirs(download_dir, exist_ok=True)
+        urllib.request.urlretrieve(data_url, filename=datafile)
+    data_np = np.load(datafile, allow_pickle=True)['train_data']
+    data = pd.DataFrame(data_np, **np_params)
+    if 'rating' not in data.columns:
+        data['rating'] = 1 # implicit ratings
+    return data
+
 def read_dataset(name, shuffle=True):
     """Read a dataset as specified by name.
 
@@ -65,59 +92,47 @@ def read_dataset(name, shuffle=True):
     if name == 'ml-100k':
         zipped_dir_name = 'ml-100k' # name of directory within zip
         data_name = 'u.data'
-        extraction_dir = ''
         data_url = 'http://files.grouplens.org/datasets/movielens/ml-100k.zip'
         csv_params = dict(sep='\t', header=None, usecols=[0, 1, 2, 3],
                        names=['user_id', 'item_id', 'rating', 'timestamp'])
+        data = find_zipped(zipped_dir_name, data_name, data_url, csv_params)
     elif name == 'ml-10m':
         zipped_dir_name = 'ml-10M100K' # name of directory within zip
         data_name = 'ratings.dat'
-        extraction_dir = ''
         data_url = 'http://files.grouplens.org/datasets/movielens/ml-10m.zip'
         csv_params = dict(sep='::', header=None, usecols=[0, 1, 2, 3],
                        names=['user_id', 'item_id', 'rating', 'timestamp'], engine='python')
+        data = find_zipped(zipped_dir_name, data_name, data_url, csv_params)
     elif name == 'citeulike-a':
-        zipped_dir_name = '' # no zipped directory
-        extraction_dir = 'citeulike-a'
+        dir_name = 'citeulike-a'
         data_name = 'data.npz'
         data_url = 'https://raw.githubusercontent.com/tebesu/CollaborativeMemoryNetwork/master/data/citeulike-a.npz'
-        csv_params = None
         np_params = dict(columns=['user_id', 'item_id'])
+        data = find_npz(dir_name, data_name, data_url, np_params)
     elif name == 'pinterest':
-        zipped_dir_name = '' # no zipped directory
-        extraction_dir = 'pinterest'
+        dir_name = 'pinterest'
         data_name = 'data.npz'
         data_url = 'https://raw.githubusercontent.com/tebesu/CollaborativeMemoryNetwork/master/data/pinterest.npz'
-        csv_params = None
         np_params = dict(columns=['user_id', 'item_id'])
+        data = find_npz(dir_name, data_name, data_url, np_params)
+    elif name == 'lastfm':
+        data_name = 'lastfm-dataset-1K/lfm1k-play-counts.csv'
+        csv_params = dict(header=0, usecols=[0, 1, 2],
+                          names=['user_id', 'item_id', 'rating'])
+        datafile = os.path.join(DATA_DIR, data_name)
+        try:
+            data = pd.read_csv(datafile, **csv_params)
+            # log transform for better scaling
+            data['rating'] = np.log(1+ data['rating'])
+            # TODO: remove artists with less than 50 total listens?
+            # otherwise should probably retrain for hyperparameter tuning...
+        except Error as e:
+            print('LastFM data must be downloaded and preprocessed locally, '+
+                  'get files from https://drive.google.com/open?id=1qxmsQHeD8O-81CbHxvaFP8omMvMxgEh0')
+            raise e
     else:
         raise ValueError('dataset name not recognized')
 
-    # downloading file into correct location
-    download_dir = os.path.join(DATA_DIR, extraction_dir)
-    data_dir = os.path.join(download_dir, zipped_dir_name)
-    datafile = os.path.join(data_dir, data_name)
-    if not os.path.isfile(datafile):
-        os.makedirs(download_dir, exist_ok=True)
-
-        # unzipping file if necessary
-        if zipped_dir_name != '':
-            download_location = os.path.join('{}.zip'.format(data_dir))
-            urllib.request.urlretrieve(data_url,
-                                       filename=download_location)
-            with zipfile.ZipFile(download_location, 'r') as zip_ref:
-                zip_ref.extractall(os.path.join(DATA_DIR, extraction_dir))
-            os.remove(download_location)
-        else:
-            urllib.request.urlretrieve(data_url, filename=datafile)
-
-    if csv_params is not None:
-        data = pd.read_csv(datafile, **csv_params)
-    else:
-        data_np = np.load(datafile, allow_pickle=True)['train_data']
-        data = pd.DataFrame(data_np, **np_params)
-        if 'rating' not in data.columns:
-            data['rating'] = 1 # implicit ratings
     if shuffle:
         data = data.sample(frac=1).reset_index(drop=True)
 

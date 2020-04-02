@@ -147,9 +147,7 @@ class LibFM(recommender.PredictRecommender):
         test_inputs = []
         data = []
         row_col = [[], []]
-        for row, (user_id_outer, item_id_outer, rating_context) in enumerate(user_item):
-            user_id = self._outer_to_inner_uid[user_id_outer]
-            item_id = self._outer_to_inner_iid[item_id_outer]
+        for row, (user_id, item_id, rating_context) in enumerate(user_item):
             user_features = self._users[user_id]
             item_features = self._items[item_id]
             row_col[0].append(row)

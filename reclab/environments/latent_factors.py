@@ -183,7 +183,18 @@ class DatasetLatentFactor(LatentFactorBehavior):
             ss = 0.003
             self.train_params = dict(bias_reg=reg, one_way_reg=reg, two_way_reg=reg,
                                      learning_rate=ss, num_iter=128)
-
+        elif name == 'lastfm':
+            self.datapath = os.path.expanduser(os.path.join(datapath, 'lastfm-dataset-1K'))
+            latent_dim = 128 if latent_dim is None else latent_dim
+            self._full_num_users = 992
+            self._full_num_items = 177023
+            # these parameters are presented in "Recommendations and User Agency" by Dean et al.
+            reg = 0.08
+            ss = 0.001
+            self.train_params = dict(bias_reg=reg, one_way_reg=reg, two_way_reg=reg,
+                                     learning_rate=ss, num_iter=128)
+        else:
+            raise ValueError('dataset name not recognized')
         self._force_retrain = force_retrain
 
         num_users = min(self._full_num_users, max_num_users)
@@ -219,7 +230,7 @@ def generate_latent_factors_from_data(dataset_name, datapath, params,
 
         users, items, ratings = data_utils.read_dataset(dataset_name)
         print('Initializing latent factor model')
-        recommender = LibFM(**params)
+        recommender = LibFM(**params) # TODO: FULL NUMBER OF USERS HERE??
         recommender.reset(users, items, ratings)
         print('Training latent factor model with parameters: {}'.format(params))
 

@@ -63,56 +63,61 @@ def read_dataset(name, shuffle=True):
 
     """
     if name == 'ml-100k':
-        dir_name = 'ml-100k' # name of directory within zip
+        zipped_dir_name = 'ml-100k' # name of directory within zip
         data_name = 'u.data'
         extraction_dir = ''
         data_url = 'http://files.grouplens.org/datasets/movielens/ml-100k.zip'
         csv_params = dict(sep='\t', header=None, usecols=[0, 1, 2, 3],
                        names=['user_id', 'item_id', 'rating', 'timestamp'])
     elif name == 'ml-10m':
-        dir_name = 'ml-10M100K' # name of directory within zip
+        zipped_dir_name = 'ml-10M100K' # name of directory within zip
         data_name = 'ratings.dat'
         extraction_dir = ''
         data_url = 'http://files.grouplens.org/datasets/movielens/ml-10m.zip'
         csv_params = dict(sep='::', header=None, usecols=[0, 1, 2, 3],
                        names=['user_id', 'item_id', 'rating', 'timestamp'], engine='python')
     elif name == 'citeulike-a':
-        dir_name = '' # no zipped directory
+        zipped_dir_name = '' # no zipped directory
         extraction_dir = 'citeulike-a'
-        data_name = 'train.npy'
-        data_url = 'https://github.com/tebesu/CollaborativeMemoryNetwork/blob/master/data/citeulike-a.npz'
+        data_name = 'data.npz'
+        data_url = 'https://raw.githubusercontent.com/tebesu/CollaborativeMemoryNetwork/master/data/citeulike-a.npz'
         csv_params = None
         np_params = dict(columns=['user_id', 'item_id'])
     elif name == 'pinterest':
-        dir_name = '' # no zipped directory
+        zipped_dir_name = '' # no zipped directory
         extraction_dir = 'pinterest'
-        data_name = 'train.npy'
-        data_url = 'https://github.com/tebesu/CollaborativeMemoryNetwork/blob/master/data/pinterest.npz'
+        data_name = 'data.npz'
+        data_url = 'https://raw.githubusercontent.com/tebesu/CollaborativeMemoryNetwork/master/data/pinterest.npz'
         csv_params = None
         np_params = dict(columns=['user_id', 'item_id'])
     else:
         raise ValueError('dataset name not recognized')
 
-    # TODO download logic is annoying
-
-    data_dir = os.path.join(os.path.join(DATA_DIR, extraction_dir), dir_name)
+    # downloading file into correct location
+    download_dir = os.path.join(DATA_DIR, extraction_dir)
+    data_dir = os.path.join(download_dir, zipped_dir_name)
     datafile = os.path.join(data_dir, data_name)
     if not os.path.isfile(datafile):
-        os.makedirs(DATA_DIR, exist_ok=True)
-        download_location = os.path.join('{}.zip'.format(data_dir))
-        urllib.request.urlretrieve(data_url,
-                                   filename=download_location)
-        with zipfile.ZipFile(download_location, 'r') as zip_ref:
-            zip_ref.extractall(os.path.join(DATA_DIR, extraction_dir))
-        os.remove(download_location)
+        os.makedirs(download_dir, exist_ok=True)
+
+        # unzipping file if necessary
+        if zipped_dir_name != '':
+            download_location = os.path.join('{}.zip'.format(data_dir))
+            urllib.request.urlretrieve(data_url,
+                                       filename=download_location)
+            with zipfile.ZipFile(download_location, 'r') as zip_ref:
+                zip_ref.extractall(os.path.join(DATA_DIR, extraction_dir))
+            os.remove(download_location)
+        else:
+            urllib.request.urlretrieve(data_url, filename=datafile)
 
     if csv_params is not None:
         data = pd.read_csv(datafile, **csv_params)
     else:
-        data_np = np.load(datafile)
+        data_np = np.load(datafile, allow_pickle=True)['train_data']
         data = pd.DataFrame(data_np, **np_params)
-        if 'ratings' not in data.columns:
-            data['ratings'] = 1 # implicit ratings
+        if 'rating' not in data.columns:
+            data['rating'] = 1 # implicit ratings
     if shuffle:
         data = data.sample(frac=1).reset_index(drop=True)
 
@@ -123,7 +128,7 @@ def read_dataset(name, shuffle=True):
     # Fill the rating array with initial data.
     ratings = {}
     for user_id, item_id, rating in zip(data['user_id'], data['item_id'], data['rating']):
-        # TODO: may want to eventually a rating context (e.g. time)
+        # TODO: may want to eventually a rating context depending on dataset (e.g. time)
         ratings[user_id, item_id] = (rating, np.zeros(0))
 
     return users, items, ratings

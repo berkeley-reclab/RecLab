@@ -3,7 +3,7 @@ import numpy as np
 from reclab.environments.fixed_rating import FixedRating
 from reclab.environments.latent_factors import LatentFactorBehavior, MovieLens100k
 from reclab.environments.topics import Topics
-from reclab.recommenders.libfm import LibFM
+from reclab.recommenders import LibFM
 from reclab.recommenders import TopPop
 from reclab.recommenders.autorec.autorec import Autorec
 from reclab.recommenders import KNNRecommender

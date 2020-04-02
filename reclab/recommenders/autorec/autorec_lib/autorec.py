@@ -111,18 +111,15 @@ class AutoRec():
             batch_cost = batch_cost + Cost
         self.train_cost_list.append(batch_cost)
 
-        """
         if (itr+1) % self.display_step == 0:
             print ("Training //", "Epoch %d //" % (itr), " Total cost = {:.2f}".format(batch_cost),
                "Elapsed time : %d sec" % (time.time() - start_time))
-        """
 
     def predict(self, user_item):
         users = [triple[0] for triple in user_item]
         items = [triple[1] for triple in user_item]
 
         user_item = zip(users, items)
-        #print("Training data: {}".format(self.R))
         Cost, Decoder = self.sess.run(
                 [self.cost, self.Decoder],
                 feed_dict={self.input_R: self.R,
@@ -135,7 +132,6 @@ class AutoRec():
             for item in range(self.R.shape[1]):
                 if user not in self.seen_users and item not in self.seen_items:
                     Estimated_R[user,item] = 3
-       # print("Predictions: {}".format(Estimated_R))
         idx = [tuple(users), tuple(items)]
         return np.array((Estimated_R[idx]))
 

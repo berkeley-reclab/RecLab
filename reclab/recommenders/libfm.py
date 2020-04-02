@@ -3,7 +3,6 @@ import numpy as np
 import scipy.sparse
 
 import wpyfm
-
 from . import recommender
 
 

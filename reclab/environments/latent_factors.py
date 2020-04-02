@@ -266,6 +266,8 @@ def generate_latent_factors_from_data(dataset_name, datapath, params,
 
     if reduced_num_users_items is not None:
         num_users, num_items = reduced_num_users_items
+        # TODO: may want to reduce the number in some other way
+        # e.g. related to popularity
         user_indices = np.random.choice(user_factors.shape[0], size=num_users,
                                         replace=False)
         item_indices = np.random.choice(item_factors.shape[0], size=num_items,

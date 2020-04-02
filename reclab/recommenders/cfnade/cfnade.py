@@ -4,11 +4,11 @@ import tensorflow as tf
 from keras.models import Model
 
 from .. import recommender
-from .cfnade_lib_keras import cfnade
+from .cfnade_lib import cfnade
 
 
 class Cfnade(recommender.PredictRecommender):
-	"""
+    """
     A Neural Autoregressive Distribution Estimator (NADE) for collaborative filtering (CF) tasks
 
     Parameters
@@ -23,8 +23,6 @@ class Cfnade(recommender.PredictRecommender):
         Number of epochs to train for each call.
     batch_size : int
         Batch size during initial training phase.
-
-    to be added
     
     """
 

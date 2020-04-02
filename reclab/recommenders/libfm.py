@@ -211,21 +211,3 @@ class LibFM(recommender.PredictRecommender):
 
         """
         return self._hyperparameters
-
-
-def write_libfm_file(file_path, inputs, outputs, start_idx=0):
-    """Write out a train or test file to be used by libfm."""
-    if start_idx == inputs.shape[0]:
-        return
-    if start_idx == 0:
-        write_mode = 'w+'
-    else:
-        write_mode = 'a+'
-    with open(file_path, write_mode) as out_file:
-        for i in range(start_idx, inputs.shape[0]):
-            out_file.write('{} '.format(outputs[i]))
-            indices = inputs[i].nonzero()[1]
-            values = inputs[i, indices].todense().A1
-            index_value_strings = ['{}:{}'.format(index, value)
-                                   for index, value in zip(indices, values)]
-            out_file.write(' '.join(index_value_strings) + '\n')

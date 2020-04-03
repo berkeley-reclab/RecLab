@@ -227,7 +227,7 @@ class PredictRecommender(Recommender):
         all_recs = []
         predicted_ratings = []
         for item_ids, predictions in zip(all_item_ids, all_predictions):
-            recs, predicted_ratings = self.select_item(item_ids, predictions,
+            recs, predicted_ratings = self._select_item(item_ids, predictions,
                                                        num_recommendations, strategy)
             # Convert the recommendations to outer item ids.
             all_recs.append([self._inner_to_outer_iid[rec] for rec in recs])
@@ -257,7 +257,7 @@ class PredictRecommender(Recommender):
             inner_user_item.append((inner_uid, inner_iid, context))
         return self._predict(inner_user_item)
 
-    def select_item(self, item_ids, predictions, num_recommendations, strategy='greedy'):
+    def _select_item(self, item_ids, predictions, num_recommendations, strategy='greedy'):
         """Select items given a strategy.
 
         Parameters

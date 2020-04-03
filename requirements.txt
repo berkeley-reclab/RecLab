@@ -8,5 +8,4 @@ pytest
 scipy
 tensorflow<=1.14
 wpyfm
-tensorflow<=1.14
-sklearng
+sklearn

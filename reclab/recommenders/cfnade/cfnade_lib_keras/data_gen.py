@@ -83,7 +83,7 @@ class DataSet(keras.callbacks.Callback):
 								user_ids.append(int(ranking['userId']))
 								values.append(int(ranking['value']))
 								flags.append(int(ranking['flag']))
-							#value is in {1,2,3,4,5}, flag is 0 or 1
+							#value is in {1,2,3,4,5}, flag is 0, 1, 2
 
 							if self.mode == 0:
 								ordering = np.random.permutation(np.arange(len(user_ids))) #a random ordered list 0 to len(user_ids)-1
@@ -117,8 +117,8 @@ class DataSet(keras.callbacks.Callback):
 										self.input_ranking_vectors[i,user_id-1,(value-1)] = 1
 									elif flag == 1:
 										self.input_ranking_vectors[i,user_id-1,(value-1)] = 1
-									# else:
-									# 	self.output_ranking_vectors[i,user_id-1,(value-1)] = 1
+									else:
+										self.output_ranking_vectors[i,user_id-1,(value-1)] = 1
 
 						inputs = {'input_ratings': self.input_ranking_vectors,
 						  'output_ratings': self.output_ranking_vectors,

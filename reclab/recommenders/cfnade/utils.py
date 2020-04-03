@@ -1,7 +1,15 @@
 from itertools import islice
 
 
-def data_gen(df, batch_size, num_users, mode, shuffle=True):
+def data_gen(df, batch_size, num_users, mode):
+    """
+    a generator function yields inputs for each batch
+
+    df: rating matrix, num_iters * num_users, entry is input rating rounded to integer
+    batch_size: int, batch size, default is 64
+    num_users: int, number of users, user_id starts from 0
+    mode: int, 0 indicates train_set, 2 indicates test_set
+    """
     while True:
         next_n_data_lines = np.asarray(list(islice(df, batch_size)))
         if not next_n_data_lines:
@@ -11,7 +19,7 @@ def data_gen(df, batch_size, num_users, mode, shuffle=True):
         output_ranking_vectors = np.zeros((batch_size, num_users, 5), dtype='int8')
         input_mask_vectors = np.zeros((batch_size, num_users), dtype='int8')
         output_mask_vectors = np.zeros((batch_size, num_users), dtype='int8')
-        for i in next_n_data_lines:
+        for i,line in enemerate(next_n_data_lines):
             if mode == 0:
                 # a random ordered list 0 to len(user_ids)-1
                 ordering = np.random.permutation(np.arange(num_users))
@@ -22,28 +30,12 @@ def data_gen(df, batch_size, num_users, mode, shuffle=True):
                 input_mask_vectors[i][users_ids_shifted] = flag_in
                 output_mask_vectors[i][users_ids_shifted] = flag_out
 
-                if shuffle:
-                    shuffle_list = list(zip(user_ids, values))
-                    random.shuffle(shuffle_list)
-                    user_ids, values = zip(*shuffle_list)
-                for j, (user_id, value) in enumerate(zip(user_ids, values)):
+                for j, (user_id, value) in enumerate(zip(user_ids, line)):
                     if flag_in[j]:
-                        input_ranking_vectors[i, user_id-1, (value-1)] = 1
+                        input_ranking_vectors[i, user_id, (value-1)] = 1
                     else:
-                        output_ranking_vectors[i, user_id-1, (value-1)] = 1
-            elif mode == 1:
-                for j, (user_id, value, flag) in enumerate(zip(user_ids, values, flags)):
-                    if flag == 0:
-                        # print(self.input_ranking_vectors.shape) (64,6040,5)
-                        input_ranking_vectors[i, user_id-1, (value-1)] = 1
-                    else:
-                        output_ranking_vectors[i, user_id-1, (value-1)] = 1
-            elif mode == 2:
-                for j, (user_id, value, flag) in enumerate(zip(user_ids, values, flags)):
-                    if flag == 0:
-                        input_ranking_vectors[i, user_id-1, (value-1)] = 1
-                    elif flag == 1:
-                        input_ranking_vectors[i, user_id-1, (value-1)] = 1
+                        output_ranking_vectors[i, user_id, (value-1)] = 1
+
         inputs = {
                  'input_ratings': input_ranking_vectors,
                  'output_ratings': output_ranking_vectors,
@@ -157,17 +149,3 @@ class RMSE_eval(Callback):
 
         self.rmses.append(score)
 
-
-def dot_product(x, kernel):
-    """
-    Wrapper for dot product operation, in order to be compatible with both
-    Theano and Tensorflow
-    Args:
-        x (): input
-        kernel (): weights
-    Returns:
-    """
-    if K.backend() == 'tensorflow':
-        return K.squeeze(K.dot(x, K.expand_dims(kernel)), axis=-1)
-    else:
-        return K.dot(x, kernel)

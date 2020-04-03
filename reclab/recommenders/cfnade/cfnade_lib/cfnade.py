@@ -77,7 +77,7 @@ class CFNade():
     def train_model(self):
         start_time = time.time()
         self.cf_nade_model.fit_generator(
-                   utils.data_gen(self.train_set, self.batch_size, 0, True),
+                   utils.data_gen(self.train_set, self.batch_size, 0),
                    steps_per_epoch=(self.num_items//self.batch_size),
                    epochs=self.train_epoch,
                    shuffle=self.shuffle,
@@ -94,7 +94,7 @@ class CFNade():
         rate_score = np.array([1, 2, 3, 4, 5], np.float32)
         test_df = np.zeros((self.num_items, self.num_users, 5))
         pred_rating = np.empty((0, 0))
-        for i, batch in enumerate(utils.data_gen(test_df, self.batch_size, len(users), 2, True)):
+        for i, batch in enumerate(utils.data_gen(test_df, self.batch_size, len(users), 2)):
             pred_matrix = self.cf_nade_model.predict(batch[0])[1]
             pred_rating_batch = (pred_matrix * rate_score[np.newaxis, np.newaxis, :]).sum(axis=2)
             pred_rating = np.append(pred_rating, pred_rating_batch, axis=0)

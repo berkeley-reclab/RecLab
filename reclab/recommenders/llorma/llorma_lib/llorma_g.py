@@ -418,7 +418,6 @@ class Llorma():
         session = self.session
         model = self.model
 
-        # check th
         predict_k = np.stack(
             [
                 self.anchor_manager.get_k(anchor_idx, user_items)

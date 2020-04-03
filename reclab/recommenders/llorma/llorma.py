@@ -66,10 +66,22 @@ class Llorma(recommender.PredictRecommender):
 
         """
         users, items, _ = list(zip(*user_item))
-        user_item = np.column_stack((users, items))
-        estimate = self.model.predict(user_item)
+        users = np.array(users)
+        items = np.array(items)
+        # check that both the item and the user have been seen in historical data
+        is_seen_uid = np.array(users <= (self.model.batch_manager.n_user - 1))
+        is_seen_iid = np.array(items <= (self.model.batch_manager.n_item - 1))
+        is_seen_id = np.logical_and(is_seen_iid, is_seen_uid)
+
+        seen_user_item = np.column_stack((users[is_seen_id], items[is_seen_id]))
+        seen_estimate = self.model.predict(seen_user_item)
         if round_rat:
-            estimate = estimate.astype(int)
+            seen_estimate = seen_estimate.astype(int)
+
+        # choose the mean of the seen values as the estimate for the unseen ids
+        unseen_estimate = np.mean(seen_estimate)
+        estimate = np.ones(len(users))*unseen_estimate
+        estimate[is_seen_id] = seen_estimate
         return estimate
 
     def update(self, users=None, items=None, ratings=None):  # noqa: W0221

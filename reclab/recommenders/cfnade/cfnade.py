@@ -32,18 +32,8 @@ class Cfnade(recommender.PredictRecommender):
         input dimension to construct the layer
     hidden_dim: int
         hidden dimension to construct the layer
-    std: float
-        hyper parameter in rating_cost_lambda_func
-    alpha: float
-        hyper parameter in rating_cost_lambda_func
-    lr: float
+    learning_rate: float
         learning rate
-    beta_1: float
-        hyper parameter for Adam optimizer
-    beta_2: float
-        hyper parameter for Adam optimizer
-    epsilon: float
-        hyper parameter for Adam optimizer
     cf_nade_model: Keras Model object
         Keras model for predictions
     optimizer: Adam
@@ -53,9 +43,8 @@ class Cfnade(recommender.PredictRecommender):
     def __init__(
             self, num_users, num_items,
             train_set=None, batch_size=64, train_epoch=10,
-            input_dim1=5, hidden_dim=250, std=0.0, alpha=1.0,
-            lr=0.001, beta_1=0.9,
-            beta_2=0.999, epsilon=1e-8):
+            input_dim1=5, hidden_dim=250,
+            learning_rate=0.001):
         """Create new Cfnade recommender."""
         super().__init__()
         self.num_users = num_users
@@ -66,14 +55,9 @@ class Cfnade(recommender.PredictRecommender):
         self.input_dim0 = self.num_users
         self.input_dim1 = input_dim1
         self.hidden_dim = hidden_dim
-        self.std = std
-        self.alpha = alpha
-        self.lr = lr
-        self.beta_1 = beta_1
-        self.beta_2 = beta_2
-        self.epsilon = epsilon
+        self.learning_rate = learning_rate
         self.train_epoch = train_epoch
-        self.train_rmse_callback = util.RMSE_eval(data_set=self.train_set, training_set=True)
+        self.train_rmse_callback = utils.RMSE_eval(data_set=self.train_set, training_set=True)
         # Prepare model
         input_layer = Input(shape=(self.input_dim0, self.input_dim1), name='input_ratings')
         output_ratings = Input(shape=(self.input_dim0, self.input_dim1), name='output_ratings')
@@ -92,17 +76,22 @@ class Cfnade(recommender.PredictRecommender):
             output_shape=utils.prediction_output_shape,
             name='predicted_ratings')(nade_layer)
 
-        d = Lambda(utils.d_layer, output_shape=utils.d_output_shape, name='d')(input_masks)
+        func_d = Lambda(
+            utils.d_layer, output_shape=utils.d_output_shape,
+            name='func_d')(input_masks)
         sum_masks = add([input_masks, output_masks])
-        D = Lambda(utils.D_layer, output_shape=utils.D_output_shape, name='D')(sum_masks)
+        func_d_2 = Lambda(
+            utils.D_layer, output_shape=utils.D_output_shape,
+            name='func_d_2')(sum_masks)
         loss_out = Lambda(
             utils.rating_cost_lambda_func, output_shape=(1, ),
-            name='nade_loss')([nade_layer, output_ratings, input_masks, output_masks, D, d])
+            name='nade_loss')([nade_layer, output_ratings,
+                               input_masks, output_masks, func_d_2, func_d])
 
         self.cf_nade_model = Model(
             inputs=[input_layer, output_ratings, input_masks, output_masks],
             outputs=[loss_out, predicted_ratings])
-        self.optimizer = Adam(self.lr, self.beta_1, self.beta_2, self.epsilon)
+        self.optimizer = Adam(self.learning_rate, 0.9, 0.999, 1e-8)
         self.cf_nade_model.compile(
             loss={'nade_loss': lambda y_true, y_pred: y_pred},
             optimizer=self.optimizer)

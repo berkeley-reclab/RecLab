@@ -3,7 +3,7 @@ import numpy as np
 from reclab.environments.fixed_rating import FixedRating
 from reclab.environments.latent_factors import LatentFactorBehavior, MovieLens100k
 from reclab.environments.topics import Topics
-from reclab.recommenders.libfm.libfm import LibFM
+from reclab.recommenders import LibFM
 from reclab.recommenders import TopPop
 from reclab.recommenders.autorec.autorec import Autorec
 from reclab.recommenders.llorma.llorma import Llorma
@@ -19,7 +19,7 @@ def main():
     # env = MovieLens100k(latent_dim=8, datapath="./data/ml-100k/", num_init_ratings=1000)
     # env = RandomPreferences(num_topics=10, num_users=100, num_items=1700, num_init_ratings=10000)
     recommender = TopPop()
-    recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=100, max_num_items=170, method="mcmc")
+    recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=100, max_num_items=170)
 
     # First generate the items and users to seed the dataset.
     print("Initializing environment and recommender")
@@ -30,7 +30,7 @@ def main():
     print("Making online recommendations")
     for i in range(100):
         online_users = env.online_users()
-        ret, predicted_ratings = recommender.recommend(online_users, num_recommendations=1)
+        ret, predicted_ratings = recommender.recommend(online_users, num_recommendations=2, strategy="thompson")
         recommendations = ret[:, 0]
         items, users, ratings, info = env.step(recommendations)
         recommender.update(users, items, ratings)

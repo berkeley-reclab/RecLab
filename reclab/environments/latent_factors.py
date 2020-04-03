@@ -170,9 +170,9 @@ class DatasetLatentFactor(LatentFactorBehavior):
             self._full_num_items = 1682
             # these parameters are the result of tuning
             reg = 0.1
-            ss = 0.005
+            learn_rate = 0.005
             self.train_params = dict(bias_reg=reg, one_way_reg=reg, two_way_reg=reg,
-                                     learning_rate=ss, num_iter=100)
+                                     learning_rate=learn_rate, num_iter=100)
         elif name == 'ml-10m':
             self.datapath = os.path.expanduser(os.path.join(datapath, 'ml-10M100K'))
             latent_dim = 128 if latent_dim is None else latent_dim
@@ -180,9 +180,9 @@ class DatasetLatentFactor(LatentFactorBehavior):
             self._full_num_items = 10677
             # these parameters are presented in "On the Difficulty of Baselines" by Rendle et al.
             reg = 0.04
-            ss = 0.003
+            learn_rate = 0.003
             self.train_params = dict(bias_reg=reg, one_way_reg=reg, two_way_reg=reg,
-                                     learning_rate=ss, num_iter=128)
+                                     learning_rate=learn_rate, num_iter=128)
         elif name == 'lastfm':
             self.datapath = os.path.expanduser(os.path.join(datapath, 'lastfm-dataset-1K'))
             latent_dim = 128 if latent_dim is None else latent_dim
@@ -190,9 +190,9 @@ class DatasetLatentFactor(LatentFactorBehavior):
             self._full_num_items = 177023
             # these parameters are presented in "Recommendations and User Agency" by Dean et al.
             reg = 0.08
-            ss = 0.001
+            learn_rate = 0.001
             self.train_params = dict(bias_reg=reg, one_way_reg=reg, two_way_reg=reg,
-                                     learning_rate=ss, num_iter=128)
+                                     learning_rate=learn_rate, num_iter=128)
         else:
             raise ValueError('dataset name not recognized')
         self._force_retrain = force_retrain
@@ -209,14 +209,16 @@ class DatasetLatentFactor(LatentFactorBehavior):
 
     def _generate_latent_factors(self):
         full_model_params = dict(num_user_features=0, num_item_features=0, num_rating_features=0,
-                            max_num_users=self._full_num_items, max_num_items=self._full_num_items,
-                            num_two_way_factors=self._latent_dim, **self.train_params)
+                                 max_num_users=self._full_num_items,
+                                 max_num_items=self._full_num_items,
+                                 num_two_way_factors=self._latent_dim, **self.train_params)
         if self._num_users < self._full_num_users or self._num_items < self._full_num_items:
             reduced_num_users_items = (min(self._num_users, self._full_num_users),
                                        min(self._num_items, self._full_num_items))
         else:
             reduced_num_users_items = None
-        return generate_latent_factors_from_data(self.dataset_name, self.datapath, full_model_params,
+        return generate_latent_factors_from_data(self.dataset_name, self.datapath,
+                                                 full_model_params,
                                                  force_retrain=self._force_retrain,
                                                  reduced_num_users_items=reduced_num_users_items)
 
@@ -230,12 +232,11 @@ def generate_latent_factors_from_data(dataset_name, datapath, params,
 
         users, items, ratings = data_utils.read_dataset(dataset_name)
         print('Initializing latent factor model')
-        recommender = LibFM(**params) # TODO: FULL NUMBER OF USERS HERE??
+        recommender = LibFM(**params)
         recommender.reset(users, items, ratings)
         print('Training latent factor model with parameters: {}'.format(params))
 
-        res = recommender.model_parameters()
-        global_bias, weights, pairwise_interactions = res
+        global_bias, weights, pairwise_interactions = recommender.model_parameters()
 
         # TODO: this logic is only correct if there are no additional user/item/rating features
         # Note that we discard the original data's user_ids and item_ids at this step

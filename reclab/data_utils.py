@@ -47,7 +47,27 @@ def split_ratings(ratings, proportion, shuffle=False):
 
     return split_1, split_2
 
+
 def find_zipped(zipped_dir_name, data_name, data_url, csv_params):
+    """Locate or download zipped file and load csv into DataFrame.
+
+    Parameters
+    ----------
+    zipped_dir_name : str
+        The directory within the downloaded zip.
+    data_name : str
+        The name of the data file to be loaded from the directory.
+    data_url : str
+        The location of the download.
+    csv_params : str
+        Parameters for loading csv into DataFrame.
+
+    Returns
+    -------
+    data : DataFrame
+        Dataset of interest.
+
+    """
     data_dir = os.path.join(DATA_DIR, zipped_dir_name)
     datafile = os.path.join(data_dir, data_name)
     if not os.path.isfile(datafile):
@@ -62,17 +82,38 @@ def find_zipped(zipped_dir_name, data_name, data_url, csv_params):
     data = pd.read_csv(datafile, **csv_params)
     return data
 
+
 def find_npz(dir_name, data_name, data_url, np_params):
+    """Locate or download npz file and load into DataFrame.
+
+    Parameters
+    ----------
+    dir_name : str
+        The directory to put the .npz file.
+    data_name : str
+        The name of the .npz file.
+    data_url : str
+        The location of the download.
+    csv_params : str
+        Parameters for loading the numpy array into DataFrame.
+
+    Returns
+    -------
+    data : DataFrame
+        Dataset of interest.
+
+    """
     download_dir = os.path.join(DATA_DIR, dir_name)
-    datafile = os.path.join(data_dir, data_name)
+    datafile = os.path.join(download_dir, data_name)
     if not os.path.isfile(datafile):
         os.makedirs(download_dir, exist_ok=True)
         urllib.request.urlretrieve(data_url, filename=datafile)
     data_np = np.load(datafile, allow_pickle=True)['train_data']
     data = pd.DataFrame(data_np, **np_params)
-    if 'rating' not in data.columns:
-        data['rating'] = 1 # implicit ratings
+    # TODO: deal better with implicit ratings
+    data['rating'] = 1
     return data
+
 
 def read_dataset(name, shuffle=True):
     """Read a dataset as specified by name.
@@ -90,29 +131,31 @@ def read_dataset(name, shuffle=True):
 
     """
     if name == 'ml-100k':
-        zipped_dir_name = 'ml-100k' # name of directory within zip
+        zipped_dir_name = 'ml-100k'
         data_name = 'u.data'
         data_url = 'http://files.grouplens.org/datasets/movielens/ml-100k.zip'
         csv_params = dict(sep='\t', header=None, usecols=[0, 1, 2, 3],
-                       names=['user_id', 'item_id', 'rating', 'timestamp'])
+                          names=['user_id', 'item_id', 'rating', 'timestamp'])
         data = find_zipped(zipped_dir_name, data_name, data_url, csv_params)
     elif name == 'ml-10m':
-        zipped_dir_name = 'ml-10M100K' # name of directory within zip
+        zipped_dir_name = 'ml-10M100K'
         data_name = 'ratings.dat'
         data_url = 'http://files.grouplens.org/datasets/movielens/ml-10m.zip'
         csv_params = dict(sep='::', header=None, usecols=[0, 1, 2, 3],
-                       names=['user_id', 'item_id', 'rating', 'timestamp'], engine='python')
+                          names=['user_id', 'item_id', 'rating', 'timestamp'], engine='python')
         data = find_zipped(zipped_dir_name, data_name, data_url, csv_params)
     elif name == 'citeulike-a':
         dir_name = 'citeulike-a'
         data_name = 'data.npz'
-        data_url = 'https://raw.githubusercontent.com/tebesu/CollaborativeMemoryNetwork/master/data/citeulike-a.npz'
+        data_url = ('https://raw.githubusercontent.com/tebesu/CollaborativeMemoryNetwork/'
+                    'master/data/citeulike-a.npz')
         np_params = dict(columns=['user_id', 'item_id'])
         data = find_npz(dir_name, data_name, data_url, np_params)
     elif name == 'pinterest':
         dir_name = 'pinterest'
         data_name = 'data.npz'
-        data_url = 'https://raw.githubusercontent.com/tebesu/CollaborativeMemoryNetwork/master/data/pinterest.npz'
+        data_url = ('https://raw.githubusercontent.com/tebesu/CollaborativeMemoryNetwork/'
+                    'master/data/pinterest.npz')
         np_params = dict(columns=['user_id', 'item_id'])
         data = find_npz(dir_name, data_name, data_url, np_params)
     elif name == 'lastfm':
@@ -123,19 +166,19 @@ def read_dataset(name, shuffle=True):
         try:
             data = pd.read_csv(datafile, **csv_params)
             # log transform for better scaling
-            data['rating'] = np.log(1+ data['rating'])
+            data['rating'] = np.log(1 + data['rating'])
             # TODO: remove artists with less than 50 total listens?
             # otherwise should probably retrain for hyperparameter tuning...
-        except Error as e:
-            print('LastFM data must be downloaded and preprocessed locally, '+
-                  'get files from https://drive.google.com/open?id=1qxmsQHeD8O-81CbHxvaFP8omMvMxgEh0')
-            raise e
+        except FileNotFoundError as error:
+            print(('LastFM data must be downloaded and preprocessed locally, '
+                   'get files from https://drive.google.com/open?id=1qxmsQHe'
+                   'D8O-81CbHxvaFP8omMvMxgEh0'))
+            raise error
     else:
         raise ValueError('dataset name not recognized')
 
     if shuffle:
         data = data.sample(frac=1).reset_index(drop=True)
-
 
     users = {user_id: np.zeros(0) for user_id in np.unique(data['user_id'])}
     items = {item_id: np.zeros(0) for item_id in np.unique(data['item_id'])}

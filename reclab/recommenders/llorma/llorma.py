@@ -48,7 +48,6 @@ class Llorma(recommender.PredictRecommender):
                  train_steps=1000,
                  batch_size=128,
                  use_cache=False,
-                 gpu_memory_frac=0.95,
                  result_path='results'):
         """Create new Local Low-Rank Matrix Approximation (LLORMA) recommender."""
         super().__init__()
@@ -56,7 +55,7 @@ class Llorma(recommender.PredictRecommender):
         self.model = llorma_g.Llorma(n_anchor, pre_rank,
                                      pre_learning_rate, pre_lambda_val, pre_train_steps,
                                      rank, learning_rate, lambda_val, train_steps,
-                                     batch_size, use_cache, gpu_memory_frac, result_path)
+                                     batch_size, use_cache, result_path)
 
     def _predict(self, user_item, round_rat=False):
         """

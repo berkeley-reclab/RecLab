@@ -6,6 +6,7 @@ import os
 import random
 import numpy as np
 import tensorflow as tf
+import warnings
 
 from .anchor import AnchorManager
 from .train_utils import get_train_op, init_latent_mat, init_session
@@ -46,8 +47,6 @@ class Llorma():
     use_cache : bool, optional
         If True use old saved models of the pre-train step,
         by default True
-    gpu_memory_frac : float, optional
-        by default 0.95
     result_path : str, optional
         directory name where model data will be saved,
         by default 'results'
@@ -56,7 +55,7 @@ class Llorma():
                  pre_learning_rate=2e-4, pre_lambda_val=10,
                  pre_train_steps=100, rank=10, learning_rate=1e-2,
                  lambda_val=1e-3, train_steps=1000, batch_size=1024,
-                 use_cache=True, gpu_memory_frac=0.95, result_path='results'):
+                 use_cache=True, result_path='results'):
         """ Initialize a LLORMA recommender
         """
         self.n_anchor = n_anchor
@@ -70,7 +69,6 @@ class Llorma():
         self.train_steps = train_steps
         self.batch_size = batch_size
         self.use_cache = use_cache
-        self.gpu_memory_frac = gpu_memory_frac
         self.result_path = result_path
         self.user_latent_init = None
         self.item_latent_init = None
@@ -95,10 +93,17 @@ class Llorma():
             Test data, each row is of the form
             (user_id, item_idm rating)
         """
+
         if not self.batch_manager:
             self.batch_manager = BatchManager(train_data, valid_data, test_data)
         else:
             self.batch_manager.update(train_data, valid_data, test_data)
+
+        N_ratings = self.batch_manager.train_data.shape[0]
+        if N_ratings < self.n_anchor:
+            warnings.warn("The data has fewer ratings than anchor points: {}<{}".format(
+                          N_ratings, self.n_anchor))
+            self.n_anchor = N_ratings
 
     def init_pre_model(self):
         """ Initialize TF variables, loss, objective and

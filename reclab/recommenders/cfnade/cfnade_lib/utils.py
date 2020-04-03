@@ -1,17 +1,22 @@
+""" Util functions for class Cfnade"""
 from itertools import islice
+import numpy as np
+from keras import backend as K
 
 
-def data_gen(df, batch_size, num_users, mode):
+def data_gen(
+         ratings_df, batch_size,
+         num_users, mode):
     """
     a generator function yields inputs for each batch
 
-    df: rating matrix, num_iters * num_users, entry is input rating rounded to integer
+    ratings_df: rating matrix, num_iters * num_users, entry is input rating rounded to integer
     batch_size: int, batch size, default is 64
     num_users: int, number of users, user_id starts from 0
     mode: int, 0 indicates train_set, 2 indicates test_set
     """
     while True:
-        next_n_data_lines = np.asarray(list(islice(df, batch_size)))
+        next_n_data_lines = np.asarray(list(islice(ratings_df, batch_size)))
         if not next_n_data_lines:
             break
 
@@ -19,16 +24,16 @@ def data_gen(df, batch_size, num_users, mode):
         output_ranking_vectors = np.zeros((batch_size, num_users, 5), dtype='int8')
         input_mask_vectors = np.zeros((batch_size, num_users), dtype='int8')
         output_mask_vectors = np.zeros((batch_size, num_users), dtype='int8')
-        for i,line in enemerate(next_n_data_lines):
+        for i, line in enumerate(next_n_data_lines):
             if mode == 0:
                 # a random ordered list 0 to len(user_ids)-1
                 ordering = np.random.permutation(np.arange(num_users))
-                d = np.random.randint(0, len(ordering))
-                flag_in = (ordering < d)
-                flag_out = (ordering >= d)
-                users_ids = range(num_users)
-                input_mask_vectors[i][users_ids_shifted] = flag_in
-                output_mask_vectors[i][users_ids_shifted] = flag_out
+                random_num = np.random.randint(0, len(ordering))
+                flag_in = (ordering < random_num)
+                flag_out = (ordering >= random_num)
+                user_ids = range(num_users)
+                input_mask_vectors[i][users_ids] = flag_in
+                output_mask_vectors[i][users_ids] = flag_out
 
                 for j, (user_id, value) in enumerate(zip(user_ids, line)):
                     if flag_in[j]:
@@ -37,10 +42,10 @@ def data_gen(df, batch_size, num_users, mode):
                         output_ranking_vectors[i, user_id, (value-1)] = 1
 
         inputs = {
-                 'input_ratings': input_ranking_vectors,
-                 'output_ratings': output_ranking_vectors,
-                 'input_masks': input_mask_vectors,
-                 'output_masks': output_mask_vectors}
+            'input_ratings': input_ranking_vectors,
+            'output_ratings': output_ranking_vectors,
+            'input_masks': input_mask_vectors,
+            'output_masks': output_mask_vectors}
 
         outputs = {'nade_loss': np.zeros([batch_size])}
         yield (inputs, outputs)
@@ -143,9 +148,8 @@ class RMSE_eval(Callback):
     def on_epoch_end(self, epoch, logs={}):
         score = self.eval_rmse()
         if self.training_set:
-            print("training set RMSE for epoch %d is %f " % (epoch, score))
+            print('training set RMSE for epoch %d is %f ' % (epoch, score))
         else:
-            print("validation set RMSE for epoch %d is %f " % (epoch, score))
+            print('validation set RMSE for epoch %d is %f ' % (epoch, score))
 
         self.rmses.append(score)
-

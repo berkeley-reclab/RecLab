@@ -57,14 +57,7 @@ class Llorma(recommender.PredictRecommender):
                                      rank, learning_rate, lambda_val, train_steps,
                                      batch_size, use_cache, result_path)
 
-    def _predict(self, user_item, round_rat=False):
-        """
-        Predict items for user-item pairs.
-
-        round_rat : bool
-            LLORMA treats ratings as continuous, not discrete. Set to true to round to integers.
-
-        """
+    def _predict(self, user_item):  # noqa: W0221
         users, items, _ = list(zip(*user_item))
         users = np.array(users)
         items = np.array(items)
@@ -75,9 +68,6 @@ class Llorma(recommender.PredictRecommender):
 
         seen_user_item = np.column_stack((users[is_seen_id], items[is_seen_id]))
         seen_estimate = self.model.predict(seen_user_item)
-        if round_rat:
-            seen_estimate = seen_estimate.astype(int)
-
         # choose the mean of the seen values as the estimate for the unseen ids
         unseen_estimate = np.mean(seen_estimate)
         estimate = np.ones(len(users))*unseen_estimate

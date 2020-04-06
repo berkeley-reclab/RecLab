@@ -38,7 +38,6 @@ class Autorec(recommender.PredictRecommender):
 
     """
 
-<<<<<<< HEAD
     def __init__(self,
                  num_users,
                  num_items,

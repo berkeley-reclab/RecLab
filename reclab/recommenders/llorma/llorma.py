@@ -34,6 +34,7 @@ class Llorma(recommender.PredictRecommender):
         If True use stored pre-trained item/user latent factors
     results_path :
         Folder to save model outputs and checkpoints.
+
     """
 
     def __init__(self,
@@ -57,7 +58,7 @@ class Llorma(recommender.PredictRecommender):
                                      rank, learning_rate, lambda_val, train_steps,
                                      batch_size, use_cache, result_path)
 
-    def _predict(self, user_item):  # noqa: W0221
+    def _predict(self, user_item):  # noqa: D102
         users, items, _ = list(zip(*user_item))
         users = np.array(users)
         items = np.array(items)
@@ -74,7 +75,7 @@ class Llorma(recommender.PredictRecommender):
         estimate[is_seen_id] = seen_estimate
         return estimate
 
-    def update(self, users=None, items=None, ratings=None):  # noqa: W0221
+    def update(self, users=None, items=None, ratings=None):  # noqa: D102
         super().update(users, items, ratings)
         updated_ratings = dict(self._ratings)
         user_items = np.array(list(updated_ratings.keys()))

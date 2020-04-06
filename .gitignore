@@ -10,3 +10,4 @@ predictions
 *.swp
 
 experiments/data
+experiments/results

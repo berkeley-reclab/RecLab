@@ -1,11 +1,8 @@
+"""Helper functions and classes for running experiments."""
 import os
-import sys
-sys.path.append('../')
 
 import matplotlib.pyplot as plt
 import numpy as np
-
-from reclab.recommenders import LibFM
 
 
 def plot_ratings_mses(ratings,
@@ -47,12 +44,12 @@ def plot_ratings_mses(ratings,
         return means, lower_bounds, upper_bounds
 
     plt.figure(figsize=[9, 4])
-    xs = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])
+    x_vals = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])
     plt.subplot(1, 2, 1)
     for recommender_ratings, label in zip(ratings, labels):
         means, lower_bounds, upper_bounds = get_stats(recommender_ratings)
-        plt.plot(xs, means, label=label)
-        plt.fill_between(xs, lower_bounds, upper_bounds, alpha=0.1)
+        plt.plot(x_vals, means, label=label)
+        plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
     plt.xlabel('# ratings')
     plt.ylabel('Mean Rating')
     plt.legend()
@@ -65,8 +62,8 @@ def plot_ratings_mses(ratings,
         rmse = np.sqrt(mse)
         lower_bounds = np.sqrt(lower_bounds)
         upper_bounds = np.sqrt(upper_bounds)
-        plt.plot(xs, rmse, label=label)
-        plt.fill_between(xs, lower_bounds, upper_bounds, alpha=0.1)
+        plt.plot(x_vals, rmse, label=label)
+        plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
     plt.xlabel('# ratings')
     plt.ylabel('RMSE')
     plt.legend()
@@ -124,7 +121,7 @@ def run_env_experiment(env,
         for recommender in recommenders:
             all_ratings.append([])
             all_predictions.append([])
-            for i in range(n_trials):
+            for _ in range(n_trials):
                 ratings, predictions = run_trial(env, recommender, len_trial)
                 all_ratings[-1].append(ratings)
                 all_predictions[-1].append(predictions)
@@ -172,11 +169,11 @@ def run_trial(env, recommender, len_trial):
     all_ratings = []
     all_predictions = []
     # Now recommend items to users.
-    for i in range(len_trial):
+    for _ in range(len_trial):
         online_users = env.online_users()
         recommendations, predictions = recommender.recommend(online_users, num_recommendations=1)
         recommendations = recommendations.flatten()
-        items, users, ratings, info = env.step(recommendations)
+        items, users, ratings, _ = env.step(recommendations)
         recommender.update(users, items, ratings)
         ratings = [rating for rating, _ in ratings.values()]
         all_ratings.append(ratings)

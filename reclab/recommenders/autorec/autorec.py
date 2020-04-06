@@ -1,4 +1,5 @@
 """Tensorflow implementation of AutoRec recommender."""
+import numpy as np
 import tensorflow as tf
 
 from .autorec_lib import autorec
@@ -37,6 +38,7 @@ class Autorec(recommender.PredictRecommender):
 
     """
 
+<<<<<<< HEAD
     def __init__(self,
                  num_users,
                  num_items,
@@ -86,6 +88,7 @@ class Autorec(recommender.PredictRecommender):
         for user_item in ratings:
             self.model.seen_users.add(user_item[0])
             self.model.seen_items.add(user_item[1])
-
-        self.model.R = self._ratings.toarray()
+        ratings = self._ratings.toarray()
+        self.model.R = ratings
+        self.model.mask_R = np.clip(ratings, a_min=0, a_max=1)
         self.model.run()

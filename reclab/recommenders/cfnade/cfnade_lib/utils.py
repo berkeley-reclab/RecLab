@@ -2,6 +2,7 @@
 from itertools import islice
 import numpy as np
 from keras import backend as K
+from keras.callbacks import Callback
 
 
 def data_gen(

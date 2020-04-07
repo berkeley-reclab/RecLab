@@ -6,6 +6,7 @@ from keras.layers import Input, Dropout, Lambda, add
 from keras.models import Model
 import keras.regularizers
 from keras.optimizers import Adam
+from keras.callbacks import Callback
 
 from .cfnade_lib.nade import NADE
 from .cfnade_lib import utils

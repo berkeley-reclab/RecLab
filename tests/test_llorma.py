@@ -10,7 +10,7 @@ from . import utils
 
 def test_llorma_predict():
     """Test that LLORMA predicts well and that it gets better with more data."""
-    users, items, ratings = data_utils.read_movielens100k()
+    users, items, ratings = data_utils.read_dataset('ml-100k')
     train_ratings, test_ratings = data_utils.split_ratings(ratings, 0.9, shuffle=True)
     train_ratings_1, train_ratings_2 = data_utils.split_ratings(train_ratings, 0.5)
     recommender = Llorma(n_anchor=10,

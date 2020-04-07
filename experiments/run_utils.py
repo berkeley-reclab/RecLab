@@ -2,7 +2,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from reclab.recommenders import LibFM
+
 
 
 def plot_ratings_mses(mean_ratings, mses, env_params):
@@ -112,7 +112,7 @@ class ModelTuner:
 
     """
 
-    def __init__(self, data, default_params, n_fold=5, verbose=True):
+    def __init__(self, data, default_params, recommender_object, n_fold=5, verbose=True):
         """Create a model tuner."""
         self.users, self.items, self.ratings = data
         self.default_params = default_params
@@ -120,6 +120,7 @@ class ModelTuner:
         self.num_items = len(self.items)
         self.verbose = verbose
         self._generate_n_folds(n_fold)
+        self.recommender_object = recommender_object
 
     def _generate_n_folds(self, n_fold):
         """Generate indices for n folds."""
@@ -136,10 +137,7 @@ class ModelTuner:
         # constructing model with given parameters
         defaults = {key: self.default_params[key] for key in self.default_params.keys()
                     if key not in params.keys()}
-        recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0,
-                            max_num_users=self.num_users, max_num_items=self.num_items,
-                            **defaults,
-                            **params)
+        recommender = self.recommender_object(**defaults, **params)
         mses = []
         if self.verbose:
             print('Evaluating:', params)

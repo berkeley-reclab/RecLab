@@ -106,6 +106,7 @@ class LibFM(recommender.PredictRecommender):
             data = []
             row_col = [[], []]
             new_rating_outputs = []
+            # TODO: create internal _update function for dealing with inner ids
             for row, ((user_id_outer, item_id_outer),
                       (rating, rating_context)) in enumerate(ratings.items()):
                 user_id = self._outer_to_inner_uid[user_id_outer]

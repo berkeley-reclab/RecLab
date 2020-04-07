@@ -18,7 +18,7 @@ def main():
     env = DatasetLatentFactor('lastfm', num_init_ratings=1000, max_num_users=1000, max_num_items=1700)
     # env = RandomPreferences(num_topics=10, num_users=100, num_items=1700, num_init_ratings=10000)
     recommender = TopPop()
-    recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=100, max_num_items=170)
+    recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=1000, max_num_items=1700)
 
     # First generate the items and users to seed the dataset.
     print("Initializing environment and recommender")

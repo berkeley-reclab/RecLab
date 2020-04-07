@@ -118,6 +118,15 @@ def find_npz(dir_name, data_name, data_url, np_params):
 def read_dataset(name, shuffle=True):
     """Read a dataset as specified by name.
 
+    Parameters
+    ----------
+    name : str
+        The name of the dataset. Must be one of: 'ml-100k', 'ml-10m', 'citeulike-a',
+        'pinterest', or 'lastfm'.
+    shuffle : bool, optional
+        A flag to indicate whether the dataset should be shuffled after loading,
+        true by default.
+
     Returns
     -------
     users : dict

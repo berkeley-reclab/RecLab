@@ -150,12 +150,18 @@ class DatasetLatentFactor(LatentFactorBehavior):
 
     Parameters
     ----------
+    name : str
+        The name of the dataset. Must be one of: 'ml-100k', 'ml-10m', 'lastfm'.
     latent_dim : int
         Size of latent factors p, q.
     datapath : str
         The path to the directory containing datafiles
     force_retrain : bool
         Forces retraining the latent factor model
+    max_num_users : int
+        The maximum number of users for the environment, if not the number in the dataset.
+    max_num_items : int
+        The maximum number of items for the environment, if not the number in the dataset.
 
     """
 

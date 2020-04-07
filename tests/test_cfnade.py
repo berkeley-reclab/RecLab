@@ -9,7 +9,7 @@ from . import utils
 
 
 def test_cfnade_predict():
-    """Test that LibFM trained with SGD predicts well and that it gets better with more data."""
+    """Test that CFNADE predicts well and that it gets better with more data."""
     users, items, ratings = data_utils.read_movielens100k()
     train_ratings, test_ratings = data_utils.split_ratings(ratings, 0.9, shuffle=True)
     train_ratings_1, train_ratings_2 = data_utils.split_ratings(train_ratings, 0.5)
@@ -37,7 +37,7 @@ def test_cfnade_predict():
 
 
 def test_cfnade_recommend():
-    """Test that LibFM trained with SGD will recommend reasonable items."""
+    """Test that CFNADE will recommend reasonable items."""
     users = {0: np.zeros((0,)),
              1: np.zeros((0,))}
     items = {0: np.zeros((0,)),

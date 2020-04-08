@@ -1,4 +1,4 @@
-"""Helper functions and classes for running experiments."""
+"""A utility module for running experiments."""
 import os
 
 import matplotlib.pyplot as plt
@@ -185,3 +185,92 @@ def run_trial(env, recommender, len_trial):
         all_predictions.append(predictions)
 
     return all_ratings, all_predictions
+
+
+class ModelTuner:
+    """The tuner allows for easy tuning.
+
+    Provides functionality for n-fold cross validation to
+    assess the performance of various model parameters.
+
+    Parameters
+    ----------
+    data : triple of iterables
+        The (user, items, ratings) data.
+    default_params : dict
+        Default model parameters.
+    n_fold : int, optional
+        The number of folds for cross validation.
+    verbose : bool, optional
+        Mode for printing results, defaults to True.
+
+    """
+
+    def __init__(self, data, default_params, recommender_object, n_fold=5, verbose=True):
+        """Create a model tuner."""
+        self.users, self.items, self.ratings = data
+        self.default_params = default_params
+        self.num_users = len(self.users)
+        self.num_items = len(self.items)
+        self.verbose = verbose
+        self._generate_n_folds(n_fold)
+        self.recommender_object = recommender_object
+
+    def _generate_n_folds(self, n_fold):
+        """Generate indices for n folds."""
+        indices = np.random.permutation(len(self.ratings))
+        size_fold = len(self.ratings) // n_fold
+        self.train_test_folds = []
+        for i in range(n_fold):
+            test_ind = indices[i*size_fold:(i+1)*size_fold]
+            train_ind = np.append(indices[:i*size_fold], indices[(i+1)*size_fold:])
+            self.train_test_folds.append((train_ind, test_ind))
+
+    def evaluate(self, params):
+        """Train and evaluate a model for parameter setting."""
+        # constructing model with given parameters
+        defaults = {key: self.default_params[key] for key in self.default_params.keys()
+                    if key not in params.keys()}
+        recommender = self.recommender_object(**defaults, **params)
+        mses = []
+        if self.verbose:
+            print('Evaluating:', params)
+        for i, fold in enumerate(self.train_test_folds):
+            if self.verbose:
+                print('Fold {}/{}, '.format(i+1, len(self.train_test_folds)),
+                      end='')
+            train_ind, test_ind = fold
+
+            # splitting data dictionaries
+            keys = list(self.ratings.keys())
+            ratings_test = {key: self.ratings[key] for key in [keys[i] for i in test_ind]}
+            ratings_train = {key: self.ratings[key] for key in [keys[i] for i in train_ind]}
+
+            recommender.reset(self.users, self.items, ratings_train)
+
+            # constructing test inputs
+            ratings_to_predict = []
+            true_ratings = []
+            for user, item in ratings_test.keys():
+                true_r, context = self.ratings[(user, item)]
+                ratings_to_predict.append((user, item, context))
+                true_ratings.append(true_r)
+
+            predicted_ratings = recommender.predict(ratings_to_predict)
+
+            mse = np.mean((predicted_ratings - true_ratings)**2)
+            if self.verbose:
+                print('mse={}'.format(mse))
+            mses.append(mse)
+
+        if self.verbose:
+            print('Average MSE:', np.mean(mses))
+        return mses
+
+    def evaluate_list(self, param_tag_list):
+        """Train over list of parameters."""
+        res_dict = {}
+        for tag, params in param_tag_list:
+            mses = self.evaluate(params)
+            res_dict[tag] = mses
+        return res_dict

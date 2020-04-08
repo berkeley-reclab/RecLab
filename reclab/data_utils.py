@@ -11,7 +11,7 @@ import pandas as pd
 DATA_DIR = os.path.join(os.path.dirname(__file__), '../data')
 
 
-def split_ratings(ratings, proportion, shuffle=False):
+def split_ratings(ratings, proportion, shuffle=False, seed=None):
     """Split a group of ratings into two groups.
 
     Parameters
@@ -37,6 +37,8 @@ def split_ratings(ratings, proportion, shuffle=False):
     iterator = list(ratings.items())
 
     if shuffle:
+        if seed is not None:
+            np.random.seed(seed)
         np.random.shuffle(iterator)
 
     for i, (key, val) in enumerate(iterator):

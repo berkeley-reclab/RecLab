@@ -93,7 +93,7 @@ class PredictRecommender(Recommender):
 
     """
 
-    def __init__(self, strategy=greedy):
+    def __init__(self, strategy='greedy'):
         """Create a new PredictRecommender object."""
         # The features associated with each user.
         self._users = []

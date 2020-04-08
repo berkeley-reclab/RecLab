@@ -28,6 +28,7 @@ def plot_ratings_mses(ratings,
         The number of ratings initially available to recommenders.
     labels : list of str
         The name of each recommender.
+
     """
     def get_stats(arr):
         # Swap the trial and step axes.

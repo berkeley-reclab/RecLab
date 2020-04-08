@@ -7,10 +7,15 @@ from reclab import data_utils
 NUM_USERS_ML100K = 943
 NUM_ITEMS_ML100K = 1682
 
+NUM_USERS_SIMPLE = 2
+NUM_ITEMS_SIMPLE = 3
+
 
 def test_predict_ml100k(recommender, rmse_threshold=1.1, seed=None):
     """Test that recommender predicts well and that it gets better with more data."""
     users, items, ratings = data_utils.read_dataset('ml-100k')
+    assert NUM_USERS_ML100K == len(users)
+    assert NUM_ITEMS_ML100K == len(items)
     train_ratings, test_ratings = data_utils.split_ratings(ratings, 0.9, shuffle=True, seed=seed)
     train_ratings_1, train_ratings_2 = data_utils.split_ratings(train_ratings, 0.5)
     recommender.reset(users, items, train_ratings_1)
@@ -37,6 +42,8 @@ def test_recommend_simple(recommender):
     items = {0: np.zeros((0,)),
              1: np.zeros((0,)),
              2: np.zeros((0,))}
+    assert NUM_USERS_SIMPLE == len(users)
+    assert NUM_ITEMS_SIMPLE == len(items)
     ratings = {(0, 0): (5, np.zeros((0,))),
                (0, 1): (1, np.zeros((0,))),
                (0, 2): (5, np.zeros((0,))),

@@ -14,7 +14,7 @@ def test_predict():
 
 def test_recommend():
     """Test that Autorec will recommend reasonable items."""
-    recommender = Autorec(utils.NUM_USERS_ML100K, utils.NUM_ITEMS_ML100K,
+    recommender = Autorec(utils.NUM_USERS_SIMPLE, utils.NUM_ITEMS_SIMPLE,
                           hidden_neuron=200, lambda_value=1,
                           train_epoch=50, batch_size=20, optimizer_method='Adam',
                           grad_clip=False, base_lr=1e-3, decay_epoch_step=int(500), display_step=20)

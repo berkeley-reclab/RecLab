@@ -45,6 +45,7 @@ class Cfnade(recommender.PredictRecommender):
             rating_bucket=5, hidden_dim=250,
             learning_rate=0.001):
         """Create new Cfnade recommender."""
+        print("Initialize...")
         super().__init__()
         self._num_users = num_users
         self._num_items = num_items
@@ -55,59 +56,71 @@ class Cfnade(recommender.PredictRecommender):
         self._hidden_dim = hidden_dim
         self._learning_rate = learning_rate
         self._train_epoch = train_epoch
-        self._train_rmse_callback = utils.RMSE_eval(data_set=None, training_set=True)
         # Prepare model
-        input_layer = Input(shape=(self._input_dim0, self._rating_bucket), name='input_ratings')
-        output_ratings = Input(shape=(self._input_dim0, self._rating_bucket), name='output_ratings')
-        input_masks = Input(shape=(self._input_dim0,), name='input_masks')
-        output_masks = Input(shape=(self._input_dim0,), name='output_masks')
-        nade_layer = Dropout(0.0)(input_layer)
-        nade_layer = NADE(
+        self.input_layer = Input(shape=(self._input_dim0, self._rating_bucket), name='input_ratings')
+        self.output_ratings = Input(shape=(self._input_dim0, self._rating_bucket), name='output_ratings')
+        self.input_masks = Input(shape=(self._input_dim0,), name='input_masks')
+        self.output_masks = Input(shape=(self._input_dim0,), name='output_masks')
+        self.nade_layer = Dropout(0.0)(self.input_layer)
+        self.nade_layer = NADE(
                         hidden_dim=self._hidden_dim, activation='tanh', bias=True,
                         W_regularizer=keras.regularizers.l2(0.02),
                         V_regularizer=keras.regularizers.l2(0.02),
                         b_regularizer=keras.regularizers.l2(0.02),
-                        c_regularizer=keras.regularizers.l2(0.02))(nade_layer)
+                        c_regularizer=keras.regularizers.l2(0.02))(self.nade_layer)
 
-        predicted_ratings = Lambda(
+        self.predicted_ratings = Lambda(
             utils.prediction_layer,
             output_shape=utils.prediction_output_shape,
-            name='predicted_ratings')(nade_layer)
+            name='predicted_ratings')(self.nade_layer)
 
-        func_d = Lambda(
+        self.func_d = Lambda(
             utils.d_layer, output_shape=utils.d_output_shape,
-            name='func_d')(input_masks)
-        sum_masks = add([input_masks, output_masks])
-        func_d_2 = Lambda(
+            name='func_d')(self.input_masks)
+        self.sum_masks = add([self.input_masks, self.output_masks])
+        self.func_d_2 = Lambda(
             utils.D_layer, output_shape=utils.D_output_shape,
-            name='func_d_2')(sum_masks)
-        loss_out = Lambda(
+            name='func_d_2')(self.sum_masks)
+        self.loss_out = Lambda(
             utils.rating_cost_lambda_func, output_shape=(1, ),
-            name='nade_loss')([nade_layer, output_ratings,
-                               input_masks, output_masks, func_d_2, func_d])
+            name='nade_loss')([self.nade_layer, self.output_ratings,
+                               self.input_masks, self.output_masks, self.func_d_2, self.func_d])
 
         self.cf_nade_model = Model(
-            inputs=[input_layer, output_ratings, input_masks, output_masks],
-            outputs=[loss_out, predicted_ratings])
+            inputs=[self.input_layer, self.output_ratings, self.input_masks, self.output_masks],
+            outputs=[self.loss_out, self.predicted_ratings])
         self.optimizer = Adam(self._learning_rate, 0.9, 0.999, 1e-8)
         self.cf_nade_model.compile(
             loss={'nade_loss': lambda y_true, y_pred: y_pred},
             optimizer=self.optimizer)
+        self.cf_nade_model.summary()
 
     def update(self, users=None, items=None, ratings=None):
         super().update(users, items, ratings)
+
         ratings_matrix = self._ratings.toarray()
         ratings_matrix = np.around(ratings_matrix.transpose())
-        train_set = ratings_matrix.astype(int)
+        ratings_matrix = ratings_matrix.astype(int)
+        train_set = utils.DataSet(ratings_matrix,
+        num_users=self._num_users,
+        num_items=self._num_items,
+        batch_size=self._batch_size,
+        rating_bucket=self._rating_bucket,
+        mode=0)
+
+        train_rmse_callback = utils.RMSE_eval(data_set=train_set, training_set=True, rate_score=self._rate_score)
 
         # Training
+        print("Training...")
+        print("items: ", self._num_items, "users: ", self._num_users)
+        print("batch size: ", self._batch_size, "epochs: ", self._train_epoch)
+        print("rating shape", ratings_matrix.shape)
         start_time = time.time()
         self.cf_nade_model.fit_generator(
-            utils.data_gen(train_set, self._batch_size, self._num_users, 0),
+            train_set.generate(),
             steps_per_epoch=(self._num_items//self._batch_size),
             epochs=self._train_epoch,
-            callbacks=[train_set, self._train_rmse_callback], verbose=1)
-        print('Training //', 'Epochs %d //' % (self._train_epoch))
+            callbacks=[train_set, train_rmse_callback], verbose=1)
         print('Elapsed time : %d sec' % (time.time() - start_time))
 
     def _predict(self, user_item):
@@ -115,8 +128,15 @@ class Cfnade(recommender.PredictRecommender):
         items = [triple[1] for triple in user_item]
         user_item = zip(users, items)
         test_df = np.zeros((self._num_items, self._num_users, 5))
+        test_set = utils.DataSet(test_df,
+        num_users=self._num_users,
+        num_items=self._num_items,
+        batch_size=self._batch_size,
+        rating_bucket=self._rating_bucket,
+        mode=2)
         pred_rating = []
-        for i, batch in enumerate(utils.data_gen(test_df, self._batch_size, len(users), 2)):
+        print("Predicting...")
+        for i, batch in enumerate(test_set.generate()):
             pred_matrix = self.cf_nade_model.predict(batch[0])[1]
             pred_rating_batch = (pred_matrix * self._rate_score[np.newaxis, np.newaxis, :]).sum(axis=2)
             pred_rating = pred_rating.append(pred_rating_batch)

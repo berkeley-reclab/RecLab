@@ -1,56 +1,73 @@
 """ Util functions for class Cfnade"""
 from itertools import islice
 import numpy as np
+import keras
 from keras import backend as K
 from keras.callbacks import Callback
 
-
-def data_gen(
-         ratings_df, batch_size,
-         num_users, mode):
+class DataSet(Callback):
     """
-    a generator function yields inputs for each batch
+    A datagenerator the feeds data in batches.
 
     ratings_df: rating matrix, num_iters * num_users, entry is input rating rounded to integer
     batch_size: int, batch size, default is 64
-    num_users: int, number of users, user_id starts from 0
-    mode: int, 0 indicates train_set, 2 indicates test_set
+    num_users: int, number of users
+    num_items: int, number of items
+    mode: int, 0 for train, 1 for eval, 2 for test
     """
-    while True:
-        next_n_data_lines = np.asarray(list(islice(ratings_df, batch_size)))
-        if not next_n_data_lines:
-            break
+    def __init__(self,ratings_df,
+        num_users,
+        num_items,
+        batch_size,
+        rating_bucket,
+        mode):
 
-        input_ranking_vectors = np.zeros((batch_size, num_users, 5), dtype='int8')
-        output_ranking_vectors = np.zeros((batch_size, num_users, 5), dtype='int8')
-        input_mask_vectors = np.zeros((batch_size, num_users), dtype='int8')
-        output_mask_vectors = np.zeros((batch_size, num_users), dtype='int8')
-        for i, line in enumerate(next_n_data_lines):
-            if mode == 0:
-                # a random ordered list 0 to len(user_ids)-1
-                ordering = np.random.permutation(np.arange(num_users))
-                random_num = np.random.randint(0, len(ordering))
-                flag_in = (ordering < random_num)
-                flag_out = (ordering >= random_num)
-                user_ids = range(num_users)
-                input_mask_vectors[i][users_ids] = flag_in
-                output_mask_vectors[i][users_ids] = flag_out
+        self.num_users = num_users
+        self.num_items = num_items
+        self.batch_size = batch_size
+        self.ratings_df = ratings_df
+        self.rating_bucket = rating_bucket
+        self.mode = mode
 
-                for j, (user_id, value) in enumerate(zip(user_ids, line)):
-                    if flag_in[j]:
-                        input_ranking_vectors[i, user_id, (value-1)] = 1
-                    else:
-                        output_ranking_vectors[i, user_id, (value-1)] = 1
+    def generate(self):
+        """
+        a generator function yields ratings_df for each batch
 
-        inputs = {
-            'input_ratings': input_ranking_vectors,
-            'output_ratings': output_ranking_vectors,
-            'input_masks': input_mask_vectors,
-            'output_masks': output_mask_vectors}
+        """
+        line_pointer = 0
+        while True:
+            next_n_data_lines = list(islice(self.ratings_df, line_pointer, line_pointer+self.batch_size))
+            if not next_n_data_lines:
+                break
+            input_ranking_vectors = np.zeros((self.batch_size, self.num_users, self.rating_bucket), dtype='int8')
+            output_ranking_vectors = np.zeros((self.batch_size, self.num_users, self.rating_bucket), dtype='int8')
+            input_mask_vectors = np.zeros((self.batch_size, self.num_users), dtype='int8')
+            output_mask_vectors = np.zeros((self.batch_size, self.num_users), dtype='int8')
+            for i, line in enumerate(next_n_data_lines):
+                if self.mode == 0:
+                    # a random ordered list 0 to len(user_ids)-1
+                    ordering = np.random.permutation(np.arange(self.num_users))
+                    random_num = np.random.randint(0, len(ordering))
+                    flag_in = (ordering < random_num)
+                    flag_out = (ordering >= random_num)
+                    user_ids = range(self.num_users)
+                    input_mask_vectors[i][user_ids] = flag_in
+                    output_mask_vectors[i][user_ids] = flag_out
 
-        outputs = {'nade_loss': np.zeros([batch_size])}
-        yield (inputs, outputs)
+                    for j, (user_id, value) in enumerate(zip(user_ids, line)):
+                        if flag_in[j]:
+                            input_ranking_vectors[i, user_id, (value-1)] = 1
+                        else:
+                            output_ranking_vectors[i, user_id, (value-1)] = 1
+            inputs = {
+                'input_ratings': input_ranking_vectors,
+                'output_ratings': output_ranking_vectors,
+                'input_masks': input_mask_vectors,
+                'output_masks': output_mask_vectors}
 
+            outputs = {'nade_loss': np.zeros([self.batch_size])}
+            yield (inputs, outputs)
+            line_pointer = line_pointer + self.batch_size 
 
 def prediction_layer(x):
     # x.shape = (?,6040,5)
@@ -110,17 +127,17 @@ def rating_cost_lambda_func(args):
 
 
 class RMSE_eval(Callback):
-    def __init__(self, data_set, training_set):
+    def __init__(self, data_set, training_set, rate_score):
 
         self.data_set = data_set
         self.rmses = []
-        self.rate_score = np.array([1, 2, 3, 4, 5], np.float32)
+        self.rate_score = rate_score
         self.training_set = training_set
 
     def eval_rmse(self):
         squared_error = []
         num_samples = []
-        for i, batch in enumerate(self.data_set.generate(max_iters=1)):
+        for i, batch in enumerate(self.data_set.generate()):
             inp_r = batch[0]['input_ratings']
             out_r = batch[0]['output_ratings']
             inp_m = batch[0]['input_masks']

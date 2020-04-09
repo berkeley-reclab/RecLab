@@ -13,6 +13,8 @@ def test_cfnade_predict():
     users, items, ratings = data_utils.read_movielens100k()
     train_ratings, test_ratings = data_utils.split_ratings(ratings, 0.9, shuffle=True)
     train_ratings_1, train_ratings_2 = data_utils.split_ratings(train_ratings, 0.5)
+    print("Initialize")
+    print("num_users ", len(users), "num_items", len(items))
     recommender = Cfnade(num_users=len(users),
                          num_items=len(items),
                          batch_size=64,
@@ -20,8 +22,10 @@ def test_cfnade_predict():
                          rating_bucket=5,
                          hidden_dim=250,
                          learning_rate=0.001)
+    print("Reset")
     recommender.reset(users, items, train_ratings_1)
     user_item = [(key[0], key[1], val[1]) for key, val in test_ratings.items()]
+    print("Predict")
     preds = recommender.predict(user_item)
     targets = [t[0] for t in test_ratings.values()]
     rmse1 = utils.rmse(preds, targets)

@@ -7,6 +7,7 @@ import random
 import numpy as np
 import tensorflow as tf
 import warnings
+import time
 
 from .anchor import AnchorManager
 from .train_utils import get_train_op, init_latent_mat, init_session
@@ -272,6 +273,7 @@ class Llorma():
     def pre_train(self):  # noqa: R0914
         """Pre-train a Matrix Factorization model for the full data
         """
+        start_time = time.time()
         if self.use_cache:
             try:
                 self.user_latent_init = np.load('{}/pre_train_p.npy'.format(self.result_path))
@@ -316,9 +318,8 @@ class Llorma():
             if itr >= min_valid_iter + 100:
                 break
 
-            print('>> ITER:', '{:3d}'.format(itr),
-                  '{:3f}, {:3f} {:3f} / {:3f}'.format(
-                      train_rmse, valid_rmse, test_rmse, final_test_rmse))
+        #print('Pre-train steps: {:3d}'.format(self.pre_train_steps))
+        #print('Final Test RMSE: {:.5f}'.format( final_test_rmse))
 
         saver.restore(pre_session, file_path)
         p_factor, q_factor = pre_session.run(
@@ -342,8 +343,14 @@ class Llorma():
     def train(self):  # noqa: R0914
         """ Train the LLORMA recommender
         """
+        start_time = time.time()
         self.pre_train()
+        pre_train_time = time.time()
+        print('Elapsed time pre_training:     {:.3f}'.format(pre_train_time - start_time))
+
+
         model = self.init_model()
+
 
         self.anchor_manager = AnchorManager(self.n_anchor,
                                             self.batch_manager,
@@ -365,6 +372,8 @@ class Llorma():
 
         batch_rmses = []
         train_data = self.batch_manager.train_data
+        model_init_time = time.time()
+        #print('Elapsed time initializing anchors: {:5f}'.format(model_init_time - pre_train_time))
 
         for itr in range(self.train_steps):
             for start_m in range(0, train_data.shape[0], self.batch_size):
@@ -383,10 +392,8 @@ class Llorma():
                     })
                 batch_rmses.append(results[0])
 
-                if start_m % (self.batch_size * 100) == 0:
-                    print('  - ', results[:1])
 
-            if itr % 10 == 0:
+            if (itr+1) % 10 == 0:
                 valid_rmse, test_rmse = self._get_rmse_model(session, model,
                                                              valid_k, test_k)
                 if valid_rmse < min_valid_rmse:
@@ -395,9 +402,11 @@ class Llorma():
 
                 batch_rmse = sum(batch_rmses) / len(batch_rmses)
                 batch_rmses = []
-                print('  - ITER{:4d}:'.format(itr),
-                      '{:.5f}, {:.5f} {:.5f} / {:.5f}'.format(
-                          batch_rmse, valid_rmse, test_rmse, final_test_rmse))
+                #print('  - ITER{:4d}:'.format(itr),
+                #      '{:.5f}, {:.5f} {:.5f} / {:.5f}'.format(
+                #          batch_rmse, valid_rmse, test_rmse, final_test_rmse))
+
+        print('Elapsed time training:                         {:3f}'.format(time.time() - model_init_time))
         self.session = session
         self.model = model
         return(session, model)
@@ -415,6 +424,7 @@ class Llorma():
         np.ndarray, shape (N,)
             Predicted ratings
         """
+        start_time = time.time()
         session = self.session
         model = self.model
 
@@ -435,6 +445,7 @@ class Llorma():
                 model['i']: user_items[:, 1],
                 model['k']: predict_k
             })
+        #print('Elapsed time predicting: {:5f}'.format(time.time() - start_time))
         return predict_r_hat
 
 
@@ -463,7 +474,7 @@ class LocalModel:  # noqa: R0903
         self.anchor_idx = anchor_idx
         self.anchor_manager = anchor_manager
 
-        print('>> update k in anchor_idx [{}].'.format(anchor_idx))
+        #print('>> update k in anchor_idx [{}].'.format(anchor_idx))
         self.train_k = anchor_manager.get_train_k(anchor_idx)
         self.valid_k = anchor_manager.get_valid_k(anchor_idx)
         self.test_k = anchor_manager.get_test_k(anchor_idx)

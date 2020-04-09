@@ -45,7 +45,7 @@ class Llorma(recommender.PredictRecommender):
                  rank=10,
                  learning_rate=1e-2,
                  lambda_val=1e-3,
-                 train_steps=1000,
+                 train_steps=100,
                  batch_size=128,
                  use_cache=False,
                  result_path='results'):

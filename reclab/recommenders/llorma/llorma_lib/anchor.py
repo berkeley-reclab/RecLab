@@ -48,7 +48,7 @@ def _init_anchor_points(data, n_anchor, row_k, col_k):
         if sum_a_of_anchor < 1:
             continue
 
-        print('>> %10d\t%d' % (anchor_idx, sum_a_of_anchor))
+        #print('>> %10d\t%d' % (anchor_idx, sum_a_of_anchor))
         anchor_idxs.append(anchor_idx)
 
     return anchor_idxs

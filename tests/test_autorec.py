@@ -9,7 +9,7 @@ def test_predict():
                           hidden_neuron=500, lambda_value=1,
                           train_epoch=50, batch_size=20, optimizer_method='Adam',
                           grad_clip=False, base_lr=1e-2, decay_epoch_step=int(500), display_step=20)
-    utils.test_predict_ml100k(recommender, rmse_threshold=1.1)
+    utils.test_predict_ml100k(recommender, rmse_threshold=1.5)
 
 
 def test_recommend():

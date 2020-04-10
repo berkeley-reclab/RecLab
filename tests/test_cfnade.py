@@ -10,7 +10,7 @@ from . import utils
 
 def test_cfnade_predict():
     """Test that CFNADE predicts well and that it gets better with more data."""
-    users, items, ratings = data_utils.read_movielens100k()
+    users, items, ratings = data_utils.read_dataset(name='ml-100k')
     train_ratings, test_ratings = data_utils.split_ratings(ratings, 0.9, shuffle=True)
     train_ratings_1, train_ratings_2 = data_utils.split_ratings(train_ratings, 0.5)
     print("Initialize")
@@ -18,7 +18,7 @@ def test_cfnade_predict():
     recommender = Cfnade(num_users=len(users),
                          num_items=len(items),
                          batch_size=64,
-                         train_epoch=10,
+                         train_epoch=3,
                          rating_bucket=5,
                          hidden_dim=250,
                          learning_rate=0.001)
@@ -30,7 +30,7 @@ def test_cfnade_predict():
     targets = [t[0] for t in test_ratings.values()]
     rmse1 = utils.rmse(preds, targets)
     # We should get a relatively low RMSE here.
-    assert rmse1 < 1.1
+    assert rmse1 < 1.2
 
     recommender.update(ratings=train_ratings_2)
     preds = recommender.predict(user_item)

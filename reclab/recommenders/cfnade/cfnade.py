@@ -50,6 +50,8 @@ class Cfnade(recommender.PredictRecommender):
         self._num_users = num_users
         self._num_items = num_items
         self._batch_size = batch_size
+        if num_items <= batch_size:
+            self._batch_size = num_items
         self._input_dim0 = num_users
         self._rating_bucket = rating_bucket
         self._rate_score = np.array(np.arange(1,rating_bucket+1), np.float32)
@@ -120,13 +122,14 @@ class Cfnade(recommender.PredictRecommender):
             train_set.generate(),
             steps_per_epoch=(self._num_items//self._batch_size),
             epochs=self._train_epoch,
-            callbacks=[train_set], verbose=1)
+            callbacks=[train_set, train_rmse_callback], verbose=1)
         print('Elapsed time : %d sec' % (time.time() - start_time))
 
     def _predict(self, user_item):
+        print('num of user_item ', len(user_item))
         users = [triple[0] for triple in user_item]
         items = [triple[1] for triple in user_item]
-        user_item = zip(users, items)
+        users_items = zip(users, items)
         test_df = np.zeros((self._num_items, self._num_users, 5))
         test_set = utils.DataSet(test_df,
         num_users=self._num_users,
@@ -141,6 +144,9 @@ class Cfnade(recommender.PredictRecommender):
             pred_rating_batch = (pred_matrix * self._rate_score[np.newaxis, np.newaxis, :]).sum(axis=2)
             pred_rating.append(pred_rating_batch)
         pred_rating = np.concatenate(pred_rating, axis=0)
-        predictions = np.ndarray(shape=(1, len(users)), dtype=float)
-        for i, (user, item) in user_item:
-            predictions[i] = pred_rating[item, user]
+        print('pred_rating shape', pred_rating.shape)
+        predictions = []
+        for i, (user, item) in enumerate(users_items):
+            predictions.append(pred_rating[item, user])
+        predictions = np.asarray(predictions)
+        return predictions

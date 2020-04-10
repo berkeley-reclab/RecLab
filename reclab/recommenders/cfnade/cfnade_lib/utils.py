@@ -29,7 +29,7 @@ class DataSet(Callback):
         self.rating_bucket = rating_bucket
         self.mode = mode
 
-    def generate(self):
+    def generate(self, eval=False):
         """
         a generator function yields ratings_df for each batch
 
@@ -38,8 +38,11 @@ class DataSet(Callback):
         while True:
             next_n_data_lines = list(islice(self.ratings_df, line_pointer, line_pointer+self.batch_size))
             if not next_n_data_lines:
-                line_pointer = 0
-                next_n_data_lines = list(islice(self.ratings_df, line_pointer, line_pointer+self.batch_size))
+                if self.mode == 0 and eval==False:
+                    line_pointer = 0
+                    next_n_data_lines = list(islice(self.ratings_df, line_pointer, line_pointer+self.batch_size))
+                else:
+                    break
             input_ranking_vectors = np.zeros((self.batch_size, self.num_users, self.rating_bucket), dtype='int8')
             output_ranking_vectors = np.zeros((self.batch_size, self.num_users, self.rating_bucket), dtype='int8')
             input_mask_vectors = np.zeros((self.batch_size, self.num_users), dtype='int8')
@@ -139,7 +142,7 @@ class RMSE_eval(Callback):
     def eval_rmse(self):
         squared_error = []
         num_samples = []
-        for i, batch in enumerate(self.data_set.generate()):
+        for i, batch in enumerate(self.data_set.generate(eval=True)):
             inp_r = batch[0]['input_ratings']
             out_r = batch[0]['output_ratings']
             inp_m = batch[0]['input_masks']

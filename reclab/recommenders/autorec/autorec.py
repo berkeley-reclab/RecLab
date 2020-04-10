@@ -15,8 +15,6 @@ class Autorec(recommender.PredictRecommender):
         Number of users in the environment.
     num_items : int
         Number of items in the environment.
-    ratings : np.matrix
-        Matrix of shape (num_users, num_items) populated with user ratings.
     hidden_neuron : int
         Output dimension of hidden neuron.
     lambda_value : float
@@ -33,17 +31,26 @@ class Autorec(recommender.PredictRecommender):
         Base learning rate for optimizer.
     decay_epoch_step : int
         Number of epochs before the optimizer decays the learning rate.
-    random_seed : int
+    seed : int
         Random seed to reproduce results.
     display_step : int
         Number of training steps before printing display text.
 
     """
 
-    def __init__(self, num_users, num_items, ratings=None,
-                 hidden_neuron=50, lambda_value=1, train_epoch=10, batch_size=100,
-                 optimizer_method='Adam', grad_clip=False, base_lr=1e-3, decay_epoch_step=10,
-                 random_seed=1000, display_step=1):
+    def __init__(self,
+                 num_users,
+                 num_items,
+                 hidden_neuron=50,
+                 lambda_value=1,
+                 train_epoch=10,
+                 batch_size=100,
+                 optimizer_method='Adam',
+                 grad_clip=False,
+                 base_lr=1e-4,
+                 decay_epoch_step=50,
+                 seed=0,
+                 display_step=None):
         """Create new Autorec recommender."""
         super().__init__()
         config = tf.ConfigProto()
@@ -54,7 +61,7 @@ class Autorec(recommender.PredictRecommender):
         self.model = autorec.AutoRec(sess,
                                      num_users,
                                      num_items,
-                                     ratings,
+                                     None,
                                      seen_users,
                                      seen_items,
                                      hidden_neuron,
@@ -65,7 +72,7 @@ class Autorec(recommender.PredictRecommender):
                                      grad_clip,
                                      base_lr,
                                      decay_epoch_step,
-                                     random_seed,
+                                     seed,
                                      display_step)
 
     def _predict(self, user_item):  # noqa: D102

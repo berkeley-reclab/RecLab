@@ -9,3 +9,4 @@ scipy
 tensorflow<=1.14
 wpyfm
 sklearn
+matplotlib

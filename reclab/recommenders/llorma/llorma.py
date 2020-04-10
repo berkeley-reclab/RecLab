@@ -34,6 +34,7 @@ class Llorma(recommender.PredictRecommender):
         If True use stored pre-trained item/user latent factors
     results_path :
         Folder to save model outputs and checkpoints.
+
     """
 
     def __init__(self,
@@ -57,14 +58,7 @@ class Llorma(recommender.PredictRecommender):
                                      rank, learning_rate, lambda_val, train_steps,
                                      batch_size, use_cache, result_path)
 
-    def _predict(self, user_item, round_rat=False):
-        """
-        Predict items for user-item pairs.
-
-        round_rat : bool
-            LLORMA treats ratings as continuous, not discrete. Set to true to round to integers.
-
-        """
+    def _predict(self, user_item):  # noqa: D102
         users, items, _ = list(zip(*user_item))
         users = np.array(users)
         items = np.array(items)
@@ -75,16 +69,13 @@ class Llorma(recommender.PredictRecommender):
 
         seen_user_item = np.column_stack((users[is_seen_id], items[is_seen_id]))
         seen_estimate = self.model.predict(seen_user_item)
-        if round_rat:
-            seen_estimate = seen_estimate.astype(int)
-
         # choose the mean of the seen values as the estimate for the unseen ids
         unseen_estimate = np.mean(seen_estimate)
         estimate = np.ones(len(users))*unseen_estimate
         estimate[is_seen_id] = seen_estimate
         return estimate
 
-    def update(self, users=None, items=None, ratings=None):  # noqa: W0221
+    def update(self, users=None, items=None, ratings=None):  # noqa: D102
         super().update(users, items, ratings)
         updated_ratings = dict(self._ratings)
         user_items = np.array(list(updated_ratings.keys()))

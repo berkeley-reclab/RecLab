@@ -81,9 +81,19 @@ class PredictRecommender(Recommender):
     Each user is assumed to have a unique hashable id, likewise for all items. User and item
     features as well as rating contexts are assumed to be dense arrays.
 
+    Parameters
+    ----------
+    strategy : str, optional
+        The item selection strategy to use.
+        Valid strategies are:
+            'greedy': chooses the unseen item with largest predicted rating
+            'eps_greedy': with probability 1-eps chooses the unseen item with largest
+                           predicted rating, with probability eps chooses a random unseen item
+            'thompson': picks an item with probability proportional to the expected rating
+
     """
 
-    def __init__(self):
+    def __init__(self, strategy='greedy'):
         """Create a new PredictRecommender object."""
         # The features associated with each user.
         self._users = []
@@ -100,6 +110,10 @@ class PredictRecommender(Recommender):
         self._inner_to_outer_uid = []
         self._outer_to_inner_iid = {}
         self._inner_to_outer_iid = []
+        # The sampling strategy to use.
+        self._strategy = strategy
+        # Check that the strategy is of valid type.
+        assert self._strategy in ['greedy', 'eps_greedy', 'thompson']
 
     def reset(self, users=None, items=None, ratings=None):
         """Reset the recommender with optional starting user, item, and rating data.
@@ -181,7 +195,7 @@ class PredictRecommender(Recommender):
                 assert inner_uid < len(self._users)
                 assert inner_iid < len(self._items)
 
-    def recommend(self, user_contexts, num_recommendations, strategy='greedy'):
+    def recommend(self, user_contexts, num_recommendations):
         """Recommend items to users.
 
         Parameters
@@ -191,8 +205,6 @@ class PredictRecommender(Recommender):
             the value is the rating features.
         num_recommendations : int
             The number of items to recommend to each user.
-        strategy : str
-            Item selection strategy, default 'greedy'
 
         Returns
         -------
@@ -228,7 +240,7 @@ class PredictRecommender(Recommender):
         predicted_ratings = []
         for item_ids, predictions in zip(all_item_ids, all_predictions):
             recs, predicted_ratings = self._select_item(item_ids, predictions,
-                                                       num_recommendations, strategy)
+                                                        num_recommendations)
             # Convert the recommendations to outer item ids.
             all_recs.append([self._inner_to_outer_iid[rec] for rec in recs])
         return np.array(all_recs), np.array(predicted_ratings)
@@ -257,7 +269,7 @@ class PredictRecommender(Recommender):
             inner_user_item.append((inner_uid, inner_iid, context))
         return self._predict(inner_user_item)
 
-    def _select_item(self, item_ids, predictions, num_recommendations, strategy='greedy'):
+    def _select_item(self, item_ids, predictions, num_recommendations):
         """Select items given a strategy.
 
         Parameters
@@ -268,31 +280,20 @@ class PredictRecommender(Recommender):
             corresponding predicted ratings for these items
         num_recommendations : int
             number of items to select
-        strategy : str, optional
-            item selection strategy, default 'greedy'
-            Valid strategies are:
-                'greedy' : chooses the unseen item with largest predicted rating
-                'eps_greedy' : with probability 1-eps chooses the unseen item with largest
-                               predicted rating, with probability eps chooses a random unseen item
-                'thompson': picks an item with probability proportional to the expected rating
 
         Returns
         -------
-        recs: np.ndarray of int
+        recs : np.ndarray of int
             the indices of the items to be recommended
-        predicted_ratings: np.ndarray
+        predicted_ratings : np.ndarray
             predicted ratings for the selected items
+
         """
-
-        # Check that the strategy is of valid type
-        valid_strategies = ['greedy', 'eps_greedy', 'thompson']
-        assert strategy in valid_strategies
-
         assert len(item_ids) == len(predictions)
         num_items = len(item_ids)
-        if strategy == 'greedy':
+        if self._strategy == 'greedy':
             selected_indices = np.argsort(predictions)[-num_recommendations:]
-        elif strategy == 'eps_greedy':
+        elif self._strategy == 'eps_greedy':
             eps = 0.1
             num_explore = np.random.binomial(num_recommendations, eps)
             num_exploit = num_recommendations - num_explore
@@ -303,7 +304,7 @@ class PredictRecommender(Recommender):
             explore_indices = np.random.choice([x for x in range(0, num_items)
                                                 if x not in exploit_indices], num_explore)
             selected_indices = np.concatenate((exploit_indices, explore_indices))
-        elif strategy == 'thompson':
+        elif self._strategy == 'thompson':
             # artificial parameter to boost the probability of the more likely items
             power = np.ceil(np.log(len(predictions)))
             selection_probs = np.power(predictions/sum(predictions), power)

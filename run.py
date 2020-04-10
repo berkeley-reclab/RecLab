@@ -13,7 +13,7 @@ from reclab.recommenders import KNNRecommender
 def main():
     params = {'topic_change': 0.1, 'memory_length': 5, 'rating_frequency':0.1,
               'boredom_threshold': 2, 'boredom_penalty': 1.0}
-    env = Topics(num_topics=5, num_users=2000, num_items=2000, num_init_ratings=100000, **params)
+    env = Topics(num_topics=5, num_users=200, num_items=200, num_init_ratings=1000, **params)
     params = {'affinity_change': 0.1, 'memory_length': 5,
               'boredom_threshold': 0.5, 'boredom_penalty': 1.0}
     # env = LatentFactorBehavior(latent_dim=8, num_users=100, num_items=170, num_init_ratings=1000, **params)
@@ -21,7 +21,7 @@ def main():
     # env = RandomPreferences(num_topics=10, num_users=100, num_items=1700, num_init_ratings=10000)
     recommender = TopPop()
     #recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=200, max_num_items=200)
-    recommender = Llorma(pre_train_steps=1, train_steps=10)
+    recommender = Llorma(pre_train_steps=10, train_steps=10, use_cache=True)
     #recommender = Autorec(num_items=200, num_users=200)
 
     # First generate the items and users to seed the dataset.
@@ -49,13 +49,13 @@ def main():
                 rating_arr.append([rating, pred])
             rating_arr = np.array(rating_arr)
             errors = rating_arr[:,0] - rating_arr[:,1]
-            #print("Iter:", i, "Mean:", np.mean(rating_arr[:, 0]), "MSE:", np.mean(errors**2))
+            print("Iter:", i, "Mean:", np.mean(rating_arr[:, 0]), "MSE:", np.mean(errors**2))
         else:
             for (rating, _) in ratings.values():
                 rating_arr.append(rating)
             rating_arr = np.array(rating_arr)
             print("Iter:", i, "Mean:", np.mean(rating_arr))
-        #print('<< {:.3f} << Total loop time:'.format(time.time() - loop_start))
+        print('<< {:.3f} << Total loop time:'.format(time.time() - loop_start))
         loop_times[i] = time.time() - loop_start
 
     ratings = env.all_ratings()

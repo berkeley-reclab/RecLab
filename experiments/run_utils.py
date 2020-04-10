@@ -72,19 +72,19 @@ def plot_ratings_mses(ratings,
     plt.show()
 
 
-def run_env_experiment(env,
+def run_env_experiment(environments,
                        recommenders,
                        n_trials,
                        len_trial,
                        exp_dirname,
                        data_filename,
                        overwrite=False):
-    """Run repeated trials for a given list of recommenders on a fixed environment.
+    """Run repeated trials for a given list of recommenders on a list of environments.
 
     Parameters
     ----------
-    env : Environment
-        The environment to run the experiments with.
+    environments : Environment
+        The environments to run the experiments with.
     recommenders : list of Recommender
         The recommenders to run the experiments with.
     len_trial : int
@@ -101,15 +101,16 @@ def run_env_experiment(env,
     Returns
     -------
     ratings : np.ndarray
-        The array of all ratings made by users throughout all trials. ratings[i, j, k, l]
-        corresponds to the rating made by the l-th online user during the k-th step of the
-        j-th trial for the i-th recommender.
+        The array of all ratings made by users throughout all trials. ratings[i, j, k, l, m]
+        corresponds to the rating made by the m-th online user during the l-th step of the
+        k-th trial for the j-th recommender on the i-th environment.
     predictions : np.ndarray
         The array of all predictions made by recommenders throughout all trials.
-        predictions[i, j, k, l] corresponds to the prediction that the i-th recommender
-        made on the rating of the l-th online user during the k-th step of the
-        j-th trial for the aforementioned recommender. Note that if the recommender does
-        not make predictions to make recommendations then that element will be np.nan.
+        predictions[i, j, k, l, m] corresponds to the prediction that the j-th recommender
+        made on the rating of the m-th online user during the l-th step of the
+        k-th trial for the aforementioned recommender while running the i-th environment.
+        Note that if the recommender does not make predictions to make recommendations
+        then that element will be np.nan.
 
     """
     datadirname = os.path.join('data', exp_dirname)
@@ -119,13 +120,16 @@ def run_env_experiment(env,
     if not os.path.exists(filename) or overwrite:
         all_ratings = []
         all_predictions = []
-        for recommender in recommenders:
+        for environment in environments:
             all_ratings.append([])
             all_predictions.append([])
-            for _ in range(n_trials):
-                ratings, predictions = run_trial(env, recommender, len_trial)
-                all_ratings[-1].append(ratings)
-                all_predictions[-1].append(predictions)
+            for recommender in recommenders:
+                all_ratings[-1].append([])
+                all_predictions[-1].append([])
+                for _ in range(n_trials):
+                    ratings, predictions = run_trial(environment, recommender, len_trial)
+                    all_ratings[-1][-1].append(ratings)
+                    all_predictions[-1][-1].append(predictions)
         all_ratings = np.array(all_ratings)
         all_predictions = np.array(all_predictions)
         np.savez(filename, all_ratings=all_ratings, all_predictions=all_predictions)

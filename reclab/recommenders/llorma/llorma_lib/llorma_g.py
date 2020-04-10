@@ -384,7 +384,7 @@ class Llorma():
         start_time = time.time()
         self.pre_train()
         pre_train_time = time.time()
-        print('Elapsed time pre_training:     {:.3f}'.format(pre_train_time - start_time))
+        #print('Elapsed time pre_training:     {:.3f}'.format(pre_train_time - start_time))
 
 
         #model = self.init_model()
@@ -442,7 +442,7 @@ class Llorma():
                 batch_rmse = sum(batch_rmses) / len(batch_rmses)
                 batch_rmses = []
 
-        print('Elapsed time training:                         {:3f}'.format(time.time() - model_init_time))
+        #print('Elapsed time training:                         {:3f}'.format(time.time() - model_init_time))
         self.session = session
         return(session, model)
 

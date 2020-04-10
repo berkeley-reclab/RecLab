@@ -110,7 +110,7 @@ class AutoRec():
             batch_cost = batch_cost + Cost
         self.train_cost_list.append(batch_cost)
 
-        if (itr+1) % self.display_step == 0:
+        if self.display_step is not None and (itr+1) % self.display_step == 0:
             print ("Training //", "Epoch %d //" % (itr), " Total cost = {:.2f}".format(batch_cost),
                "Elapsed time : %d sec" % (time.time() - start_time))
 

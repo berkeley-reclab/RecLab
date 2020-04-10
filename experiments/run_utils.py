@@ -181,6 +181,7 @@ def run_trial(env, recommender, len_trial):
         items, users, ratings, _ = env.step(recommendations)
         recommender.update(users, items, ratings)
         ratings = [rating for rating, _ in ratings.values()]
+        # TODO: We probably also want to the recommender's ratings on all items this round.
         all_ratings.append(ratings)
         if predictions is None:
             predictions = np.ones(ratings.shape) * np.nan

@@ -50,7 +50,7 @@ class Autorec(recommender.PredictRecommender):
                  base_lr=1e-4,
                  decay_epoch_step=50,
                  seed=0,
-                 display_step=1):
+                 display_step=None):
         """Create new Autorec recommender."""
         super().__init__()
         config = tf.ConfigProto()

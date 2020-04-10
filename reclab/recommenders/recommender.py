@@ -228,7 +228,7 @@ class PredictRecommender(Recommender):
         predicted_ratings = []
         for item_ids, predictions in zip(all_item_ids, all_predictions):
             recs, predicted_ratings = self._select_item(item_ids, predictions,
-                                                       num_recommendations, strategy)
+                                                        num_recommendations, strategy)
             # Convert the recommendations to outer item ids.
             all_recs.append([self._inner_to_outer_iid[rec] for rec in recs])
         return np.array(all_recs), np.array(predicted_ratings)

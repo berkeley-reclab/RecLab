@@ -38,7 +38,8 @@ class DataSet(Callback):
         while True:
             next_n_data_lines = list(islice(self.ratings_df, line_pointer, line_pointer+self.batch_size))
             if not next_n_data_lines:
-                break
+                line_pointer = 0
+                next_n_data_lines = list(islice(self.ratings_df, line_pointer, line_pointer+self.batch_size))
             input_ranking_vectors = np.zeros((self.batch_size, self.num_users, self.rating_bucket), dtype='int8')
             output_ranking_vectors = np.zeros((self.batch_size, self.num_users, self.rating_bucket), dtype='int8')
             input_mask_vectors = np.zeros((self.batch_size, self.num_users), dtype='int8')
@@ -68,6 +69,7 @@ class DataSet(Callback):
             outputs = {'nade_loss': np.zeros([self.batch_size])}
             yield (inputs, outputs)
             line_pointer = line_pointer + self.batch_size 
+
 
 def prediction_layer(x):
     # x.shape = (?,6040,5)

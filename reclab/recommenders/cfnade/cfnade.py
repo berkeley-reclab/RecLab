@@ -120,7 +120,7 @@ class Cfnade(recommender.PredictRecommender):
             train_set.generate(),
             steps_per_epoch=(self._num_items//self._batch_size),
             epochs=self._train_epoch,
-            callbacks=[train_set, train_rmse_callback], verbose=1)
+            callbacks=[train_set], verbose=1)
         print('Elapsed time : %d sec' % (time.time() - start_time))
 
     def _predict(self, user_item):
@@ -139,7 +139,7 @@ class Cfnade(recommender.PredictRecommender):
         for i, batch in enumerate(test_set.generate()):
             pred_matrix = self.cf_nade_model.predict(batch[0])[1]
             pred_rating_batch = (pred_matrix * self._rate_score[np.newaxis, np.newaxis, :]).sum(axis=2)
-            pred_rating = pred_rating.append(pred_rating_batch)
+            pred_rating.append(pred_rating_batch)
         pred_rating = np.concatenate(pred_rating, axis=0)
         predictions = np.ndarray(shape=(1, len(users)), dtype=float)
         for i, (user, item) in user_item:

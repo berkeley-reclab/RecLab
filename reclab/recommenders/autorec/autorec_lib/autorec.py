@@ -36,7 +36,7 @@ class AutoRec():
         self.decay_epoch_step = decay_epoch_step
         self.decay_step = self.decay_epoch_step * self.num_batch
         self.lr = tf.train.exponential_decay(self.base_lr, self.global_step,
-                                                   self.decay_step, 0.96, staircase=True)
+                                             self.decay_step, 0.96, staircase=True)
         self.lambda_value = lambda_value
 
         self.train_cost_list = []
@@ -54,7 +54,6 @@ class AutoRec():
     def prepare_model(self):
         self.input_R = tf.placeholder(dtype=tf.float32, shape=[None, self.num_items], name="input_R")
         self.input_mask_R = tf.placeholder(dtype=tf.float32, shape=[None, self.num_items], name="input_R")
-
         V = tf.Variable(name="V", initial_value=tf.truncated_normal(shape=[self.num_items, self.hidden_neuron],
                                          mean=0, stddev=0.03),dtype=tf.float32)
         W = tf.Variable(name="W", initial_value=tf.truncated_normal(shape=[self.hidden_neuron, self.num_items],
@@ -111,7 +110,7 @@ class AutoRec():
             batch_cost = batch_cost + Cost
         self.train_cost_list.append(batch_cost)
 
-        if (itr+1) % self.display_step == 0:
+        if self.display_step is not None and (itr+1) % self.display_step == 0:
             print ("Training //", "Epoch %d //" % (itr), " Total cost = {:.2f}".format(batch_cost),
                "Elapsed time : %d sec" % (time.time() - start_time))
 

@@ -1,96 +1,195 @@
 """A utility module for running experiments."""
 import os
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 
+def plot_ratings_mses(ratings,
+                      predictions,
+                      num_init_ratings,
+                      labels):
+    """Plot the performance results for multiple recommenders.
 
-def plot_ratings_mses(mean_ratings, mses, env_params):
-    """Plot ratings over time."""
+    Parameters
+    ----------
+    ratings : np.ndarray
+        The array of all ratings made by users throughout all trials. ratings[i, j, k, l]
+        corresponds to the rating made by the l-th online user during the k-th step of the
+        j-th trial for the i-th recommender.
+    predictions : np.ndarray
+        The array of all predictions made by recommenders throughout all trials.
+        predictions[i, j, k, l] corresponds to the prediction that the i-th recommender
+        made on the rating of the l-th online user during the k-th step of the
+        j-th trial for the aforementioned recommender. If a recommender does not make
+        predictions then its associated elements can be np.nan. It will not be displayed
+        during RMSE plotting.
+    num_init_ratings : int
+        The number of ratings initially available to recommenders.
+    labels : list of str
+        The name of each recommender.
+
+    """
+    def get_stats(arr):
+        # Swap the trial and step axes.
+        arr = np.swapaxes(arr, 0, 1)
+        # Flatten the trial and user axes together.
+        arr = arr.reshape(arr.shape[0], -1)
+        # Compute the means and standard deviations of the means for each step.
+        means = arr.mean(axis=1)
+        # Use Bessel's correction here.
+        stds = arr.std(axis=1) / np.sqrt(arr.shape[1] - 1)
+        # Compute the 95% confidence intervals using the CLT.
+        upper_bounds = means + 2 * stds
+        lower_bounds = np.maximum(means - 2 * stds, 0)
+        return means, lower_bounds, upper_bounds
+
     plt.figure(figsize=[9, 4])
-    x_vals = (env_params['num_init_ratings'] +
-              env_params['num_users'] * env_params['rating_frequency']
-              * np.arange(mean_ratings.shape[1]))
+    x_vals = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])
     plt.subplot(1, 2, 1)
-    plt.plot(x_vals, np.mean(mean_ratings, axis=0), label='mean rating')
+    for recommender_ratings, label in zip(ratings, labels):
+        means, lower_bounds, upper_bounds = get_stats(recommender_ratings)
+        plt.plot(x_vals, means, label=label)
+        plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
     plt.xlabel('# ratings')
-    plt.ylabel('mean rating')
+    plt.ylabel('Mean Rating')
+    plt.legend()
+
     plt.subplot(1, 2, 2)
-    plt.plot(x_vals, np.mean(mses, axis=0), label='mse')
+    squared_diffs = (ratings - predictions) ** 2
+    for recommender_squared_diffs, label in zip(squared_diffs, labels):
+        mse, lower_bounds, upper_bounds = get_stats(recommender_squared_diffs)
+        # Transform the MSE into the RMSE and correct the associated intervals.
+        rmse = np.sqrt(mse)
+        lower_bounds = np.sqrt(lower_bounds)
+        upper_bounds = np.sqrt(upper_bounds)
+        plt.plot(x_vals, rmse, label=label)
+        plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
     plt.xlabel('# ratings')
-    plt.ylabel('mse')
+    plt.ylabel('RMSE')
+    plt.legend()
     plt.tight_layout()
     plt.show()
 
 
-def run_env_experiment(env, exp_params, env_params, params, expdirname,
-                       datafilename, overwrite=False):
-    """Run multiple trials."""
-    datadirname = os.path.join('data', expdirname)
-    if not os.path.exists('data/'):
-        os.makedirs('data/')
-    if not os.path.exists(datadirname):
-        os.makedirs(datadirname)
-    filename = os.path.join(datadirname, datafilename)
+def run_env_experiment(environments,
+                       recommenders,
+                       n_trials,
+                       len_trial,
+                       exp_dirname,
+                       data_filename,
+                       overwrite=False):
+    """Run repeated trials for a given list of recommenders on a list of environments.
 
+    Parameters
+    ----------
+    environments : Environment
+        The environments to run the experiments with.
+    recommenders : list of Recommender
+        The recommenders to run the experiments with.
+    len_trial : int
+        The number of steps to run each trial for.
+    n_trials : int
+        The number of trials to run for each recommender.
+    exp_dirname : str
+        The directory in which to save or load the experiment results.
+    data_filename : str
+        The name of the file in which to save or load the experiment results.
+    overwrite : bool
+        Whether to re-run the experiment even if a matching file is found.
+
+    Returns
+    -------
+    ratings : np.ndarray
+        The array of all ratings made by users throughout all trials. ratings[i, j, k, l, m]
+        corresponds to the rating made by the m-th online user during the l-th step of the
+        k-th trial for the j-th recommender on the i-th environment.
+    predictions : np.ndarray
+        The array of all predictions made by recommenders throughout all trials.
+        predictions[i, j, k, l, m] corresponds to the prediction that the j-th recommender
+        made on the rating of the m-th online user during the l-th step of the
+        k-th trial for the aforementioned recommender while running the i-th environment.
+        Note that if the recommender does not make predictions to make recommendations
+        then that element will be np.nan.
+
+    """
+    datadirname = os.path.join('data', exp_dirname)
+    os.makedirs(datadirname, exist_ok=True)
+
+    filename = os.path.join(datadirname, data_filename)
     if not os.path.exists(filename) or overwrite:
-        all_mean_ratings = []
-        all_mses = []
-        recommender = LibFM(num_user_features=0, num_item_features=0,
-                            num_rating_features=0,
-                            max_num_users=env_params['num_users'],
-                            max_num_items=env_params['num_items'])
-        for _ in range(exp_params['n_trials']):
-            mean_ratings, mses = run_trial(env, recommender, exp_params['len_trial'])
-            all_mean_ratings.append(mean_ratings)
-            all_mses.append(mses)
-        all_mean_ratings = np.array(all_mean_ratings)
-        all_mses = np.array(all_mses)
-        np.savez(filename, all_mean_ratings=all_mean_ratings, all_mses=all_mses,
-                 params=params, env_params=env_params, exp_params=exp_params)
-        print('saving to', filename)
+        all_ratings = []
+        all_predictions = []
+        for environment in environments:
+            all_ratings.append([])
+            all_predictions.append([])
+            for recommender in recommenders:
+                all_ratings[-1].append([])
+                all_predictions[-1].append([])
+                for _ in range(n_trials):
+                    ratings, predictions = run_trial(environment, recommender, len_trial)
+                    all_ratings[-1][-1].append(ratings)
+                    all_predictions[-1][-1].append(predictions)
+        all_ratings = np.array(all_ratings)
+        all_predictions = np.array(all_predictions)
+        np.savez(filename, all_ratings=all_ratings, all_predictions=all_predictions)
+        print('Saving to', filename)
     else:
-        print('reading from', filename)
+        print('Reading from', filename)
         data = np.load(filename, allow_pickle=True)
-        all_mean_ratings = data['all_mean_ratings']
-        all_mses = data['all_mses']
-        if data['params'] != params:
-            print('Warning: params differ.')
-        if data['env_params'] != env_params:
-            print('Warning: env_params differ.')
-        if data['exp_params'] != exp_params:
-            print('Warning: exp_params differ.')
-    return all_mean_ratings, all_mses
+        all_ratings = data['all_ratings']
+        all_predictions = data['all_predictions']
+
+    return all_ratings, all_predictions
 
 
 def run_trial(env, recommender, len_trial):
-    """Run a trial."""
+    """Logic for running each trial.
+
+    Parameters
+    ----------
+    env : Environment
+        The environment to use for this trial.
+    recommender : Recommender
+        The recommender to use for this trial.
+    len_trial : int
+        The number of recommendation steps to run the trial for.
+
+    Returns
+    -------
+    ratings : np.ndarray
+        The array of all ratings made by users. ratings[i, j] is the rating
+        made on round i by the j-th online user on the item recommended to them.
+    predictions : np.ndarray
+        The array of all predictions made by the recommender. preds[i, j] is the
+        prediction the user made on round i for the item recommended to the j-th
+        user. If the recommender does not predict items then each element is set
+        to np.nan.
+
+    """
     # First generate the items and users to seed the dataset.
-    print('Initializing environment and recommender')
     items, users, ratings = env.reset()
     recommender.reset(items, users, ratings)
 
-    mean_ratings = []
-    mses = []
+    all_ratings = []
+    all_predictions = []
     # Now recommend items to users.
-    print('Making online recommendations')
-    for i in range(len_trial):
+    for _ in range(len_trial):
         online_users = env.online_users()
-        ret, predicted_ratings = recommender.recommend(online_users, num_recommendations=1)
-        recommendations = ret[:, 0]
+        recommendations, predictions = recommender.recommend(online_users, num_recommendations=1)
+        recommendations = recommendations.flatten()
         items, users, ratings, _ = env.step(recommendations)
         recommender.update(users, items, ratings)
-        rating_arr = []
-        for (rating, _), pred in zip(ratings.values(), predicted_ratings):
-            rating_arr.append([rating, pred])
-        rating_arr = np.array(rating_arr)
-        errors = rating_arr[:, 0] - rating_arr[:, 1]
-        mean_ratings.append(np.mean(rating_arr[:, 0]))
-        mses.append(np.mean(errors**2))
-        print('Iter:', i, 'Mean:', mean_ratings[-1], 'MSE:', mses[-1])
+        ratings = [rating for rating, _ in ratings.values()]
+        # TODO: We probably also want to the recommender's ratings on all items this round.
+        all_ratings.append(ratings)
+        if predictions is None:
+            predictions = np.ones(ratings.shape) * np.nan
+        else:
+            predictions = predictions.flatten()
+        all_predictions.append(predictions)
 
-    ratings = env.all_ratings()
-    return mean_ratings, mses
+    return all_ratings, all_predictions
 
 
 class ModelTuner:

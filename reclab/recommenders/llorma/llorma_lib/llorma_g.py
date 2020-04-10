@@ -77,6 +77,11 @@ class Llorma():
         self.anchor_manager = None
         self.session = None
         self.model = None
+        self.pre_model = self.init_pre_model()
+        self.model = self.init_model()
+
+    def prepare_stuff(self):
+        self.pre_model = self.init_pre_model()
 
     def reset_data(self, train_data, valid_data, test_data):
         """ Reset the data of a recommender by instantiating a
@@ -114,14 +119,29 @@ class Llorma():
         i_var = tf.placeholder(tf.int64, [None], name='i')
         r_var = tf.placeholder(tf.float64, [None], name='r')
 
-        p_factor = init_latent_mat(self.batch_manager.n_user,
+        p_factor = init_latent_mat(200,
+                                   # self.batch_manager.n_user,
+                                   self.pre_rank,
+                                   # self.batch_manager.mu,
+                                   # self.batch_manager.std
+                                   3,
+                                   1.5)
+        q_factor = init_latent_mat(200,
+                                   # self.batch_manager.n_item,
+                                   self.pre_rank,
+                                   # self.batch_manager.mu,
+                                   # self.batch_manager.std
+                                   3,
+                                   1.5)
+
+        """ p_factor = init_latent_mat(self.batch_manager.n_user,
                                    self.pre_rank,
                                    self.batch_manager.mu,
                                    self.batch_manager.std)
         q_factor = init_latent_mat(self.batch_manager.n_item,
                                    self.pre_rank,
                                    self.batch_manager.mu,
-                                   self.batch_manager.std)
+                                   self.batch_manager.std) """
 
         p_lookup = tf.nn.embedding_lookup(p_factor, u_var)
         q_lookup = tf.nn.embedding_lookup(q_factor, i_var)
@@ -161,7 +181,23 @@ class Llorma():
         # init weights
         all_p_factors, all_q_factors, r_hats = [], [], []
         for _ in range(self.n_anchor):
-            p_factor = init_latent_mat(self.batch_manager.n_user,
+            p_factor = init_latent_mat(200,
+                                       # self.batch_manager.n_user,
+                                       self.rank,
+                                       # self.batch_manager.mu,
+                                       # self.batch_manager.std
+                                       3,
+                                       0.5)
+
+            q_factor = init_latent_mat(200,
+                                       #self.batch_manager.n_item,
+                                       self.rank,
+                                       # self.batch_manager.mu,
+                                       # self.batch_manager.std
+                                       3,
+                                       0.5)
+
+            """ p_factor = init_latent_mat(self.batch_manager.n_user,
                                        self.rank,
                                        self.batch_manager.mu,
                                        self.batch_manager.std)
@@ -169,7 +205,7 @@ class Llorma():
             q_factor = init_latent_mat(self.batch_manager.n_item,
                                        self.rank,
                                        self.batch_manager.mu,
-                                       self.batch_manager.std)
+                                       self.batch_manager.std) """
             all_p_factors.append(p_factor)
             all_q_factors.append(q_factor)
 
@@ -278,10 +314,12 @@ class Llorma():
             try:
                 self.user_latent_init = np.load('{}/pre_train_p.npy'.format(self.result_path))
                 self.item_latent_init = np.load('{}/pre_train_q.npy'.format(self.result_path))
+                return
             except FileNotFoundError:
                 print('>> There is no cached p and q factors.')
 
-        pre_model = self.init_pre_model()
+        #pre_model = self.init_pre_model()
+        pre_model = self.pre_model
 
         pre_session = tf.Session()
         pre_session.run(tf.global_variables_initializer())
@@ -349,7 +387,8 @@ class Llorma():
         print('Elapsed time pre_training:     {:.3f}'.format(pre_train_time - start_time))
 
 
-        model = self.init_model()
+        #model = self.init_model()
+        model = self.model
 
 
         self.anchor_manager = AnchorManager(self.n_anchor,
@@ -402,13 +441,9 @@ class Llorma():
 
                 batch_rmse = sum(batch_rmses) / len(batch_rmses)
                 batch_rmses = []
-                #print('  - ITER{:4d}:'.format(itr),
-                #      '{:.5f}, {:.5f} {:.5f} / {:.5f}'.format(
-                #          batch_rmse, valid_rmse, test_rmse, final_test_rmse))
 
         print('Elapsed time training:                         {:3f}'.format(time.time() - model_init_time))
         self.session = session
-        self.model = model
         return(session, model)
 
     def predict(self, user_items):
@@ -446,6 +481,7 @@ class Llorma():
                 model['k']: predict_k
             })
         #print('Elapsed time predicting: {:5f}'.format(time.time() - start_time))
+        session.close()
         return predict_r_hat
 
 

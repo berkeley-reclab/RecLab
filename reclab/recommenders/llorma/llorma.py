@@ -39,15 +39,15 @@ class Llorma(recommender.PredictRecommender):
     def __init__(self,
                  n_anchor=10,
                  pre_rank=5,
-                 pre_learning_rate=2e-4,
+                 pre_learning_rate=1e-3,
                  pre_lambda_val=10,
-                 pre_train_steps=100,
+                 pre_train_steps=10,
                  rank=10,
                  learning_rate=1e-2,
                  lambda_val=1e-3,
-                 train_steps=100,
+                 train_steps=10,
                  batch_size=128,
-                 use_cache=False,
+                 use_cache=True,
                  result_path='results'):
         """Create new Local Low-Rank Matrix Approximation (LLORMA) recommender."""
         super().__init__()

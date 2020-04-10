@@ -5,6 +5,8 @@ import numpy as np
 import scipy.sparse
 import scipy.sparse.linalg
 
+import time
+
 from . import recommender
 
 
@@ -46,6 +48,7 @@ class KNNRecommender(recommender.PredictRecommender):
         self._feature_matrix = scipy.sparse.csr_matrix((0, 0))
         self._similarity_matrix = np.empty((0, 0))
         self._means = np.empty(0)
+        self._ratings_matrix = np.empty((0, 0))
         super().reset(users, items, ratings)
 
     def update(self, users=None, items=None, ratings=None):  # noqa: D102
@@ -54,8 +57,8 @@ class KNNRecommender(recommender.PredictRecommender):
             self._feature_matrix = scipy.sparse.csr_matrix(self._ratings)
         else:
             self._feature_matrix = scipy.sparse.csr_matrix(self._ratings.T)
-        self._means = (flatten(self._feature_matrix.sum(axis=1)) /
-                       self._feature_matrix.getnnz(axis=1))
+        self._means = divide_zero(flatten(self._feature_matrix.sum(axis=1)),
+                                  self._feature_matrix.getnnz(axis=1))
         if self._use_content:
             if self._user_based:
                 self._feature_matrix = scipy.sparse.hstack([self._feature_matrix, self._users])
@@ -63,6 +66,8 @@ class KNNRecommender(recommender.PredictRecommender):
                 self._feature_matrix = scipy.sparse.hstack([self._feature_matrix, self._items])
         self._similarity_matrix = cosine_similarity(self._feature_matrix, self._feature_matrix,
                                                     self._shrinkage)
+        # TODO: this may not be the best way to store ratings, but it does speed access
+        self._ratings_matrix = self._ratings.A
 
     def _predict(self, user_item):  # noqa: D102
         preds = []
@@ -71,23 +76,32 @@ class KNNRecommender(recommender.PredictRecommender):
                 relevant_idxs = nlargest_indices(self._neighborhood_size,
                                                  self._similarity_matrix[user_id])
                 similarities = self._similarity_matrix[relevant_idxs, user_id]
-                ratings = flatten(self._ratings[relevant_idxs, item_id])
+                ratings = self._ratings_matrix[relevant_idxs, item_id].ravel()
                 mean = self._means[user_id]
             else:
                 relevant_idxs = nlargest_indices(self._neighborhood_size,
                                                  self._similarity_matrix[item_id])
                 similarities = self._similarity_matrix[relevant_idxs, item_id]
-                ratings = flatten(self._ratings.T[relevant_idxs, user_id])
+                ratings = self._ratings_matrix.T[relevant_idxs, user_id].ravel()
                 mean = self._means[item_id]
             relevant_means = self._means[relevant_idxs]
             nonzero = ratings != 0
             ratings = ratings[nonzero]
             similarities = similarities[nonzero]
+            # ensure that we aren't weighting by all 0
+            if np.all(np.isclose(similarities, 0)):
+                similarities = np.ones_like(similarities)
             if self._use_means:
-                preds.append(mean + np.average(ratings - relevant_means[nonzero],
-                                               weights=similarities))
+                if len(ratings) == 0:
+                    preds.append(mean)
+                else:
+                    preds.append(mean + np.average(ratings - relevant_means[nonzero],
+                                                   weights=similarities))
             else:
-                preds.append(np.average(ratings, weights=similarities))
+                if len(ratings) == 0:
+                    preds.append(0)
+                else:
+                    preds.append(np.average(ratings, weights=similarities))
 
         return np.array(preds)
 
@@ -111,8 +125,8 @@ def cosine_similarity(X, Y, shrinkage):
         is the cosine similarity between X[i] and Y[j].
 
     """
-    return (X @ Y.T).A / (scipy.sparse.linalg.norm(X, axis=1)[:, np.newaxis] *
-                          scipy.sparse.linalg.norm(Y, axis=1)[np.newaxis, :] + shrinkage)
+    return divide_zero((X @ Y.T).A, scipy.sparse.linalg.norm(X, axis=1)[:, np.newaxis] *
+                       scipy.sparse.linalg.norm(Y, axis=1)[np.newaxis, :] + shrinkage)
 
 
 def nlargest_indices(n, iterable):
@@ -138,4 +152,10 @@ def nlargest_indices(n, iterable):
 
 def flatten(matrix):
     """Given a matrix return a flattened numpy array."""
-    return matrix.A.flatten()
+    return matrix.A.ravel()
+
+
+def divide_zero(num, denom):
+    """Divide a and b but return 0 instead of nan for divide by 0."""
+    # TODO: is this the desired zero-division behavior?
+    return np.divide(num, denom, out=np.zeros_like(num), where=(denom != 0))

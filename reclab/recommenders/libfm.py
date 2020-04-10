@@ -64,9 +64,10 @@ class LibFM(recommender.PredictRecommender):
                  two_way_reg=0.0,
                  init_stdev=0.1,
                  num_iter=100,
-                 seed=0):
+                 seed=0,
+                 **kwargs):
         """Create a LibFM recommender."""
-        super().__init__()
+        super().__init__(**kwargs)
         self._max_num_users = max_num_users
         self._max_num_items = max_num_items
         self._train_data = None

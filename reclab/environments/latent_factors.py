@@ -215,7 +215,7 @@ class DatasetLatentFactor(LatentFactorBehavior):
 
     def _generate_latent_factors(self):
         full_model_params = dict(num_user_features=0, num_item_features=0, num_rating_features=0,
-                                 max_num_users=self._full_num_items,
+                                 max_num_users=self._full_num_users,
                                  max_num_items=self._full_num_items,
                                  num_two_way_factors=self._latent_dim, **self.train_params)
         if self._num_users < self._full_num_users or self._num_items < self._full_num_items:

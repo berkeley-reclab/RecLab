@@ -3,4 +3,7 @@ pycodestyle reclab --max-line-length=100 --exclude=reclab/recommenders/autorec/a
 pydocstyle reclab --match-dir="^(?!autorec_lib|cfnade_lib|llorma_lib).*" 
 pylint --rcfile=.pylintrc tests -f parseable -r n --load-plugins pylint_quotes
 pycodestyle tests --max-line-length=100
-pydocstyle tests  
+pydocstyle tests
+pylint --rcfile=.pylintrc experiments -f parseable -r n --load-plugins pylint_quotes
+pycodestyle experiments --max-line-length=100
+pydocstyle experiments

@@ -9,4 +9,6 @@ predictions
 *.swo
 *.swp
 
+results
 experiments/data
+experiments/results

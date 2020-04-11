@@ -13,12 +13,10 @@ def test_cfnade_predict():
     users, items, ratings = data_utils.read_dataset(name='ml-100k')
     train_ratings, test_ratings = data_utils.split_ratings(ratings, 0.9, shuffle=True)
     train_ratings_1, train_ratings_2 = data_utils.split_ratings(train_ratings, 0.5)
-    print("Initialize")
-    print("num_users ", len(users), "num_items", len(items))
     recommender = Cfnade(num_users=len(users),
                          num_items=len(items),
                          batch_size=64,
-                         train_epoch=3,
+                         train_epoch=10,
                          rating_bucket=5,
                          hidden_dim=250,
                          learning_rate=0.001)

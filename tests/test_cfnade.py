@@ -1,4 +1,4 @@
-"""Tests for the LibFM recommender."""
+"""Tests for the CFNADE recommender."""
 import collections
 
 import numpy as np

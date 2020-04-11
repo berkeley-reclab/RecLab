@@ -87,18 +87,18 @@ class Cfnade(recommender.PredictRecommender):
             name='nade_loss')([nade_layer, output_ratings,
                                input_masks, output_masks, func_d_2, func_d])
 
-        self.cf_nade_model = Model(
+        self._cf_nade_model = Model(
             inputs=[input_layer, output_ratings, input_masks, output_masks],
             outputs=[loss_out, predicted_ratings])
         optimizer = Adam(self._learning_rate, 0.9, 0.999, 1e-8)
-        self.cf_nade_model.compile(
+        self._cf_nade_model.compile(
             loss={'nade_loss': lambda y_true, y_pred: y_pred},
             optimizer=optimizer)
-        self.cf_nade_model.save_weights('model.h5')
+        self._cf_nade_model.save_weights('model.h5')
 
     def update(self, users=None, items=None, ratings=None):
         super().update(users, items, ratings)
-        self.cf_nade_model.load_weights('model.h5')
+        self._cf_nade_model.load_weights('model.h5')
 
         ratings_matrix = self._ratings.toarray()
         ratings_matrix = np.around(ratings_matrix.transpose())
@@ -113,7 +113,7 @@ class Cfnade(recommender.PredictRecommender):
         # Training
         print("Training...")
         start_time = time.time()
-        self.cf_nade_model.fit_generator(
+        self._cf_nade_model.fit_generator(
             train_set.generate(),
             steps_per_epoch=(self._num_items//self._batch_size),
             epochs=self._train_epoch,
@@ -134,7 +134,7 @@ class Cfnade(recommender.PredictRecommender):
         pred_rating = []
         print("Predicting...")
         for i, batch in enumerate(test_set.generate()):
-            pred_matrix = self.cf_nade_model.predict(batch[0])[1]
+            pred_matrix = self._cf_nade_model.predict(batch[0])[1]
             pred_rating_batch = (pred_matrix * self._rate_score[np.newaxis, np.newaxis, :]).sum(axis=2)
             pred_rating.append(pred_rating_batch)
         pred_rating = np.concatenate(pred_rating, axis=0)

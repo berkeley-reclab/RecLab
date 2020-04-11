@@ -98,6 +98,8 @@ class Cfnade(recommender.PredictRecommender):
 
     def update(self, users=None, items=None, ratings=None):
         super().update(users, items, ratings)
+        self.cf_nade_model.load_weights('model.h5')
+
         ratings_matrix = self._ratings.toarray()
         ratings_matrix = np.around(ratings_matrix.transpose())
         ratings_matrix = ratings_matrix.astype(int)

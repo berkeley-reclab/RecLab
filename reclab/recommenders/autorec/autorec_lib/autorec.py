@@ -36,7 +36,7 @@ class AutoRec():
         self.decay_epoch_step = decay_epoch_step
         self.decay_step = self.decay_epoch_step * self.num_batch
         self.lr = tf.train.exponential_decay(self.base_lr, self.global_step,
-                                                   self.decay_step, 0.96, staircase=True)
+                                             self.decay_step, 0.96, staircase=True)
         self.lambda_value = lambda_value
 
         self.train_cost_list = []
@@ -53,20 +53,20 @@ class AutoRec():
 
     def prepare_model(self):
         self.input_R = tf.placeholder(dtype=tf.float32, shape=[None, self.num_items], name="input_R")
-
-        V = tf.get_variable(name="V", initializer=tf.truncated_normal(shape=[self.num_items, self.hidden_neuron],
+        self.input_mask_R = tf.placeholder(dtype=tf.float32, shape=[None, self.num_items], name="input_R")
+        V = tf.Variable(name="V", initial_value=tf.truncated_normal(shape=[self.num_items, self.hidden_neuron],
                                          mean=0, stddev=0.03),dtype=tf.float32)
-        W = tf.get_variable(name="W", initializer=tf.truncated_normal(shape=[self.hidden_neuron, self.num_items],
+        W = tf.Variable(name="W", initial_value=tf.truncated_normal(shape=[self.hidden_neuron, self.num_items],
                                          mean=0, stddev=0.03),dtype=tf.float32)
-        mu = tf.get_variable(name="mu", initializer=tf.zeros(shape=self.hidden_neuron),dtype=tf.float32)
-        b = tf.get_variable(name="b", initializer=tf.zeros(shape=self.num_items), dtype=tf.float32)
+        mu = tf.Variable(name="mu", initial_value=tf.zeros(shape=self.hidden_neuron),dtype=tf.float32)
+        b = tf.Variable(name="b", initial_value=tf.zeros(shape=self.num_items), dtype=tf.float32)
 
         pre_Encoder = tf.matmul(self.input_R,V) + mu
         self.Encoder = tf.nn.sigmoid(pre_Encoder)
         pre_Decoder = tf.matmul(self.Encoder,W) + b
         self.Decoder = tf.identity(pre_Decoder)
 
-        pre_rec_cost = self.input_R - self.Decoder
+        pre_rec_cost = tf.multiply((self.input_R - self.Decoder), self.input_mask_R)
         rec_cost = tf.square(self.l2_norm(pre_rec_cost))
         pre_reg_cost = tf.square(self.l2_norm(W)) + tf.square(self.l2_norm(V))
         reg_cost = self.lambda_value * 0.5 * pre_reg_cost
@@ -103,12 +103,14 @@ class AutoRec():
 
             _, Cost = self.sess.run(
                 [self.optimizer, self.cost],
-                feed_dict={self.input_R: self.R[batch_set_idx, :]})
+                feed_dict={self.input_R: self.R[batch_set_idx, :],
+                    self.input_mask_R: self.mask_R[batch_set_idx, :]
+                    })
 
             batch_cost = batch_cost + Cost
         self.train_cost_list.append(batch_cost)
 
-        if (itr+1) % self.display_step == 0:
+        if self.display_step is not None and (itr+1) % self.display_step == 0:
             print ("Training //", "Epoch %d //" % (itr), " Total cost = {:.2f}".format(batch_cost),
                "Elapsed time : %d sec" % (time.time() - start_time))
 
@@ -119,15 +121,15 @@ class AutoRec():
         user_item = zip(users, items)
         Cost, Decoder = self.sess.run(
                 [self.cost, self.Decoder],
-                feed_dict={self.input_R: self.R})
+                feed_dict={self.input_R: self.R,
+                    self.input_mask_R: self.mask_R
+                    })
         user_idx = set(users)
         item_idx = set(items)
         Estimated_R = Decoder.clip(min=1, max=5)
-        unseen_user_test_list = list(user_idx - self.seen_users)
-        unseen_item_test_list = list(item_idx - self.seen_items)
-        for user in unseen_user_test_list:
-            for item in unseen_item_test_list:
-                 if (user, item) in user_item: # exist in test set
+        for user in range(self.R.shape[0]):
+            for item in range(self.R.shape[1]):
+                if user not in self.seen_users and item not in self.seen_items:
                     Estimated_R[user,item] = 3
         idx = [tuple(users), tuple(items)]
         return np.array((Estimated_R[idx]))

@@ -6,4 +6,8 @@ pylint
 pylint_quotes
 pytest
 scipy
+tensorflow<=1.14
 wpyfm
+sklearn
+keras
+matplotlib

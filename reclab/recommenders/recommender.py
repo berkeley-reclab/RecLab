@@ -81,9 +81,19 @@ class PredictRecommender(Recommender):
     Each user is assumed to have a unique hashable id, likewise for all items. User and item
     features as well as rating contexts are assumed to be dense arrays.
 
+    Parameters
+    ----------
+    strategy : str, optional
+        The item selection strategy to use.
+        Valid strategies are:
+            'greedy': chooses the unseen item with largest predicted rating
+            'eps_greedy': with probability 1-eps chooses the unseen item with largest
+                           predicted rating, with probability eps chooses a random unseen item
+            'thompson': picks an item with probability proportional to the expected rating
+
     """
 
-    def __init__(self):
+    def __init__(self, strategy='greedy'):
         """Create a new PredictRecommender object."""
         # The features associated with each user.
         self._users = []
@@ -100,6 +110,10 @@ class PredictRecommender(Recommender):
         self._inner_to_outer_uid = []
         self._outer_to_inner_iid = {}
         self._inner_to_outer_iid = []
+        # The sampling strategy to use.
+        self._strategy = strategy
+        # Check that the strategy is of valid type.
+        assert self._strategy in ['greedy', 'eps_greedy', 'thompson']
 
     def reset(self, users=None, items=None, ratings=None):
         """Reset the recommender with optional starting user, item, and rating data.
@@ -221,13 +235,12 @@ class PredictRecommender(Recommender):
         all_predictions = np.split(all_predictions,
                                    list(itertools.accumulate(item_lens)))
 
-        # Pick the top predicted items along with their predicted ratings.
+        # Pick items according to the strategy, along with their predicted ratings.
         all_recs = []
         predicted_ratings = []
         for item_ids, predictions in zip(all_item_ids, all_predictions):
-            best_indices = np.argsort(predictions)[-num_recommendations:]
-            predicted_ratings.append(predictions[best_indices])
-            recs = item_ids[best_indices]
+            recs, predicted_ratings = self._select_item(item_ids, predictions,
+                                                        num_recommendations)
             # Convert the recommendations to outer item ids.
             all_recs.append([self._inner_to_outer_iid[rec] for rec in recs])
         return np.array(all_recs), np.array(predicted_ratings)
@@ -255,6 +268,53 @@ class PredictRecommender(Recommender):
             inner_iid = self._outer_to_inner_iid[item_id]
             inner_user_item.append((inner_uid, inner_iid, context))
         return self._predict(inner_user_item)
+
+    def _select_item(self, item_ids, predictions, num_recommendations):
+        """Select items given a strategy.
+
+        Parameters
+        ----------
+        item_ids : np.ndarray of int
+            ids of the items available for recommendation at this time step
+        predictions : np.ndarray
+            corresponding predicted ratings for these items
+        num_recommendations : int
+            number of items to select
+
+        Returns
+        -------
+        recs : np.ndarray of int
+            the indices of the items to be recommended
+        predicted_ratings : np.ndarray
+            predicted ratings for the selected items
+
+        """
+        assert len(item_ids) == len(predictions)
+        num_items = len(item_ids)
+        if self._strategy == 'greedy':
+            selected_indices = np.argsort(predictions)[-num_recommendations:]
+        elif self._strategy == 'eps_greedy':
+            eps = 0.1
+            num_explore = np.random.binomial(num_recommendations, eps)
+            num_exploit = num_recommendations - num_explore
+            if num_exploit > 0:
+                exploit_indices = np.argsort(predictions)[-num_exploit:]
+            else:
+                exploit_indices = []
+            explore_indices = np.random.choice([x for x in range(0, num_items)
+                                                if x not in exploit_indices], num_explore)
+            selected_indices = np.concatenate((exploit_indices, explore_indices))
+        elif self._strategy == 'thompson':
+            # artificial parameter to boost the probability of the more likely items
+            power = np.ceil(np.log(len(predictions)))
+            selection_probs = np.power(predictions/sum(predictions), power)
+            selection_probs = selection_probs/sum(selection_probs)
+            selected_indices = np.random.choice(range(0, num_items),
+                                                num_recommendations, p=selection_probs)
+        selected_indices = selected_indices.astype('int')
+        predicted_ratings = predictions[selected_indices]
+        recs = item_ids[selected_indices]
+        return recs, predicted_ratings
 
     @abc.abstractmethod
     def _predict(self, user_item):

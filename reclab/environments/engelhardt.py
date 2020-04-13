@@ -21,8 +21,9 @@ class User:
         Initialize user with features and known/unknown utility weight.
 
         Each user's fraction of known utility is drawn from a beta distribution parameterized by
-        a combination of the same known_weight and beta_var. known_weight and beta_var need to be
-        manipulated before becoming the alpha and beta parameters to each user's distribution.
+        a combination of the same known_weight and beta_var. known_weight
+        and beta_var need to be manipulated
+        before becoming the alpha and beta parameters to each user's distribution.
 
         Parameters
         ----------
@@ -66,6 +67,7 @@ class Engelhardt(environment.DictEnvironment):
 
     Based on "How Algorithmic Confounding in Recommendation Systems Increases Homogeneity
     and Decreases Utility" by Chaney, Stewart, and Engelhardt (2018).
+
     """
 
     def __init__(self, num_topics, num_users, num_items, rating_frequency=0.2,
@@ -101,8 +103,9 @@ class Engelhardt(environment.DictEnvironment):
             This will always be an array where every row has
             size 0 since items don't have features.
         ratings : np.ndarray
-            The initial ratings where ratings[i, 0] corresponds to the id of the user that
-            made the rating, ratings[i, 1] corresponds to the id of the item that was rated
+            The initial ratings where ratings[i, 0] corresponds to
+            the id of the user that made the rating,
+            ratings[i, 1] corresponds to the id of the item that was rated
             and ratings[i, 2] is the rating given to that item.
         util : np.ndarray
             The initial ratings where util[i, 0] corresponds to the id of the user that

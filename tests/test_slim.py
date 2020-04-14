@@ -9,6 +9,7 @@ def test_predict():
     # We want a very high rmse threshold since SLIM doesn't try to drive RMSE down.
     utils.test_binary_recommend_ml100k(recommender, 0.1)
 
+
 def test_recommend():
     """Test that Autorec will recommend reasonable items."""
     recommender = SLIM(alpha=0.1, l1_ratio=1e-3, seed=0)

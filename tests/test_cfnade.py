@@ -1,16 +1,12 @@
 """Tests for the CFNADE recommender."""
-import collections
-
-import numpy as np
-
 from reclab.recommenders.cfnade import Cfnade
 from . import utils
 
 
 def test_cfnade_predict():
     """Test that CFNADE predicts well and that it gets better with more data."""
-    recommender = Cfnade(num_users=len(users),
-                         num_items=len(items),
+    recommender = Cfnade(num_users=utils.NUM_USERS_ML100K,
+                         num_items=utils.NUM_ITEMS_ML100K,
                          batch_size=64,
                          train_epoch=10,
                          rating_bucket=5,
@@ -21,8 +17,8 @@ def test_cfnade_predict():
 
 def test_cfnade_recommend():
     """Test that CFNADE will recommend reasonable items."""
-    recommender = Cfnade(num_users=len(users),
-                         num_items=len(items),
+    recommender = Cfnade(num_users=utils.NUM_USERS_SIMPLE,
+                         num_items=utils.NUM_ITEMS_SIMPLE,
                          batch_size=64,
                          train_epoch=10,
                          rating_bucket=5,

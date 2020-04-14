@@ -44,8 +44,31 @@ class SLIM(recommender.PredictRecommender):
                                  max_iter=max_iter,
                                  tol=tol,
                                  random_state=seed)
+        self._weights = None
         super().__init__()
 
+    def update(self, users=None, items=None, ratings=None):  # noqa: D102
+        super().update(users, items, ratings)
+        num_items = len(self._items)
+        self._weights = scipy.sparse.dok_matrix((num_items, num_items))
+        ratings = self._ratings.tocsc()
+        for item_id in range(num_items):
+            target = ratings[:, item_id].toarray()
+            # Zero out the column of the current item to prevent a trivial solution.
+            ratings[:, item_id] = 0
+            # Fit the mode and save the weights
+            self.model.fit(ratings, target)
+            self._weights[:, item_id] = self.model.sparse_coef_
+            self._weights[item_id, item_id] = 0
+            # Restore the rating column.
+            ratings[:, item_id] = target
+        self._weights = self._weights.tocsr()
+
     def _predict(self, user_item):  # noqa: D102
-        # TODO: Implement this.
-        pass
+        # Predict on all user-item pairs.
+        all_predictions = self._ratings @ self._weights
+        predictions = []
+        for (user_id, item_id), _ in user_item:
+            predictions.append(all_predictions[user_id, item_id])
+
+        return np.array(predictions)

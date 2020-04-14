@@ -4,7 +4,7 @@ See http://glaros.dtc.umn.edu/gkhome/node/774 for details.
 """
 import numpy as np
 import scipy.sparse
-import sklearn
+import sklearn.linear_model
 
 from . import recommender
 
@@ -52,24 +52,24 @@ class SLIM(recommender.PredictRecommender):
         super().update(users, items, ratings)
         num_items = len(self._items)
         self._weights = scipy.sparse.dok_matrix((num_items, num_items))
-        ratings = self._ratings.tocsc()
+        ratings = self._ratings.tolil()
         for item_id in range(num_items):
             target = ratings[:, item_id].toarray()
             # Zero out the column of the current item to prevent a trivial solution.
             ratings[:, item_id] = 0
-            # Fit the mode and save the weights
+            # Fit the mode and save the weights.
             self._model.fit(ratings, target)
-            self._weights[:, item_id] = self._model.sparse_coef_
+            self._weights[:, item_id] = self._model.sparse_coef_.T
             self._weights[item_id, item_id] = 0
             # Restore the rating column.
             ratings[:, item_id] = target
-        self._weights = self._weights.tocsr()
+        self._weights = scipy.sparse.csr_matrix(self._weights)
 
     def _predict(self, user_item):  # noqa: D102
         # Predict on all user-item pairs.
         all_predictions = self._ratings @ self._weights
         predictions = []
-        for (user_id, item_id), _ in user_item:
+        for user_id, item_id, _ in user_item:
             predictions.append(all_predictions[user_id, item_id])
 
         return np.array(predictions)

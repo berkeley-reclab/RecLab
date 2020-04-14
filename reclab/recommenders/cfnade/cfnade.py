@@ -129,7 +129,7 @@ class Cfnade(recommender.PredictRecommender):
         pred_rating = np.concatenate(pred_rating, axis=0)
 
         predictions = []
-        for (user, item), _ in user_item:
+        for user, item, _ in user_item:
             predictions.append(pred_rating[item, user])
 
         return np.array(predictions)

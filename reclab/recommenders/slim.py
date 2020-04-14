@@ -4,6 +4,7 @@ See http://glaros.dtc.umn.edu/gkhome/node/774 for details.
 """
 import numpy as np
 import scipy.sparse
+import sklearn
 
 from . import recommender
 
@@ -34,16 +35,16 @@ class SLIM(recommender.PredictRecommender):
                  tol=1e-4,
                  seed=0):
         """Create a SLIM recommender."""
-        self._model = ElasticNet(alpha=alpha,
-                                 l1_ratio=l1_ratio,
-                                 positive=positive,
-                                 fit_intercept=False,
-                                 copy_X=False,
-                                 precompute=True,
-                                 selection='random',
-                                 max_iter=max_iter,
-                                 tol=tol,
-                                 random_state=seed)
+        self._model = sklearn.linear_model.ElasticNet(alpha=alpha,
+                                                      l1_ratio=l1_ratio,
+                                                      positive=positive,
+                                                      fit_intercept=False,
+                                                      copy_X=False,
+                                                      precompute=True,
+                                                      selection='random',
+                                                      max_iter=max_iter,
+                                                      tol=tol,
+                                                      random_state=seed)
         self._weights = None
         super().__init__()
 
@@ -57,8 +58,8 @@ class SLIM(recommender.PredictRecommender):
             # Zero out the column of the current item to prevent a trivial solution.
             ratings[:, item_id] = 0
             # Fit the mode and save the weights
-            self.model.fit(ratings, target)
-            self._weights[:, item_id] = self.model.sparse_coef_
+            self._model.fit(ratings, target)
+            self._weights[:, item_id] = self._model.sparse_coef_
             self._weights[item_id, item_id] = 0
             # Restore the rating column.
             ratings[:, item_id] = target

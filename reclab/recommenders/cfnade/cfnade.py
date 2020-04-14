@@ -1,12 +1,9 @@
-"""Implementation of cfnade recommender using Keras."""
-import time
-
-import numpy as np
+"""Implementation of the CF-NADE recommender using Keras."""
 from keras.layers import Input, Dropout, Lambda, add
 from keras.models import Model
 import keras.regularizers
 from keras.optimizers import Adam
-from keras.callbacks import Callback
+import numpy as np
 
 from .cfnade_lib.nade import NADE
 from .cfnade_lib import utils
@@ -37,6 +34,7 @@ class Cfnade(recommender.PredictRecommender):
         hidden dimension to construct the layer
     learning_rate: float
         learning rate
+
     """
 
     def __init__(
@@ -53,7 +51,7 @@ class Cfnade(recommender.PredictRecommender):
             self._batch_size = num_items
         self._input_dim0 = num_users
         self._rating_bucket = rating_bucket
-        self._rate_score = np.array(np.arange(1,rating_bucket+1), np.float32)
+        self._rate_score = np.array(np.arange(1, rating_bucket+1), np.float32)
         self._hidden_dim = hidden_dim
         self._learning_rate = learning_rate
         self._train_epoch = train_epoch
@@ -96,7 +94,7 @@ class Cfnade(recommender.PredictRecommender):
             optimizer=optimizer)
         self._cf_nade_model.save_weights('model.h5')
 
-    def update(self, users=None, items=None, ratings=None):
+    def update(self, users=None, items=None, ratings=None):  # noqa: D102
         super().update(users, items, ratings)
         self._cf_nade_model.load_weights('model.h5')
 
@@ -104,42 +102,34 @@ class Cfnade(recommender.PredictRecommender):
         ratings_matrix = np.around(ratings_matrix.transpose())
         ratings_matrix = ratings_matrix.astype(int)
         train_set = utils.DataSet(ratings_matrix,
-        num_users=self._num_users,
-        num_items=self._num_items,
-        batch_size=self._batch_size,
-        rating_bucket=self._rating_bucket,
-        mode=0)
+                                  num_users=self._num_users,
+                                  num_items=self._num_items,
+                                  batch_size=self._batch_size,
+                                  rating_bucket=self._rating_bucket,
+                                  mode=0)
+        self._cf_nade_model.fit_generator(train_set.generate(),
+                                          steps_per_epoch=(self._num_items // self._batch_size),
+                                          epochs=self._train_epoch,
+                                          callbacks=[train_set], verbose=1)
 
-        # Training
-        print("Training...")
-        start_time = time.time()
-        self._cf_nade_model.fit_generator(
-            train_set.generate(),
-            steps_per_epoch=(self._num_items//self._batch_size),
-            epochs=self._train_epoch,
-            callbacks=[train_set], verbose=1)
-        print('Elapsed time : %d sec' % (time.time() - start_time))
-
-    def _predict(self, user_item):
-        users = [triple[0] for triple in user_item]
-        items = [triple[1] for triple in user_item]
-        users_items = zip(users, items)
+    def _predict(self, user_item):  # noqa: D102
         test_df = np.zeros((self._num_items, self._num_users, 5))
         test_set = utils.DataSet(test_df,
-        num_users=self._num_users,
-        num_items=self._num_items,
-        batch_size=self._batch_size,
-        rating_bucket=self._rating_bucket,
-        mode=2)
+                                 num_users=self._num_users,
+                                 num_items=self._num_items,
+                                 batch_size=self._batch_size,
+                                 rating_bucket=self._rating_bucket,
+                                 mode=2)
         pred_rating = []
-        print("Predicting...")
-        for i, batch in enumerate(test_set.generate()):
+        for batch in test_set.generate():
             pred_matrix = self._cf_nade_model.predict(batch[0])[1]
-            pred_rating_batch = (pred_matrix * self._rate_score[np.newaxis, np.newaxis, :]).sum(axis=2)
+            pred_rating_batch = pred_matrix * self._rate_score[np.newaxis, np.newaxis, :]
+            pred_rating_batch = pred_rating_batch.sum(axis=2)
             pred_rating.append(pred_rating_batch)
         pred_rating = np.concatenate(pred_rating, axis=0)
+
         predictions = []
-        for i, (user, item) in enumerate(users_items):
+        for (user, item), _ in user_item:
             predictions.append(pred_rating[item, user])
-        predictions = np.asarray(predictions)
-        return predictions
+
+        return np.array(predictions)

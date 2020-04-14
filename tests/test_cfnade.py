@@ -20,10 +20,8 @@ def test_cfnade_predict():
                          rating_bucket=5,
                          hidden_dim=250,
                          learning_rate=0.001)
-    print("Reset")
     recommender.reset(users, items, train_ratings_1)
     user_item = [(key[0], key[1], val[1]) for key, val in test_ratings.items()]
-    print("Predict")
     preds = recommender.predict(user_item)
     targets = [t[0] for t in test_ratings.values()]
     rmse1 = utils.rmse(preds, targets)

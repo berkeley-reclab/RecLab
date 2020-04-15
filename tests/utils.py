@@ -36,7 +36,7 @@ def test_predict_ml100k(recommender, rmse_threshold=1.1, seed=None):
 
 
 def test_binary_recommend_ml100k(recommender, hit_rate_threshold, seed=None):
-    """Test that recommender predicts well and that it gets better with more data."""
+    """Test that the recommender will recommend good items and it gets better with more data."""
     users, items, ratings = data_utils.read_dataset('ml-100k')
     assert NUM_USERS_ML100K == len(users)
     assert NUM_ITEMS_ML100K == len(items)

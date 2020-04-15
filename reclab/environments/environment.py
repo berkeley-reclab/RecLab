@@ -125,8 +125,9 @@ class Environment(abc.ABC):
 class DictEnvironment(Environment):
     """An environment where data gets passed around as dictionaries.
 
-    Environments can subclass this class by implementing _rate_item and _reset_state.
-    Optionally environments can also implement _update_state, _rating_env, and _select_online_users.
+    Environments can subclass this class by implementing name, true_ratings, _rate_item and
+    _reset_state. Optionally environments can also implement _update_state, _rating_env, and
+    _select_online_users.
 
     Parameters
     ----------
@@ -297,6 +298,21 @@ class DictEnvironment(Environment):
 
         """
         return self._ratings.copy()
+
+    @abc.abstractmethod
+    def true_ratings(self):
+        """Return all the true ratings on every user-item pair at the current timestep.
+
+        A true rating is defined as the rating a user would make with all noise removed.
+
+        Returns
+        -------
+        true_ratings : np.ndarray
+            The array of all true ratings where true_ratings[i, j] is the rating by user i
+            on item j.
+
+        """
+        raise NotImplementedError
 
     def seed(self, seed=None):
         """Set the seed for this environment's random number generator."""

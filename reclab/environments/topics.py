@@ -80,6 +80,8 @@ class Topics(environment.DictEnvironment):
         """Get a user to rate an item and update the internal rating state."""
         rating = self._get_rating(user_id, item_id)
         # Updating underlying preference
+        topic = self._item_topics[item_id]
+        preference = self._user_preferences[user_id, topic]
         if preference <= 5:
             self._user_preferences[user_id, topic] += self._topic_change
             self._user_preferences[user_id, np.arange(self._num_topics) != topic] -= (

@@ -18,7 +18,7 @@ class RandomRec(recommender.PredictRecommender):
 
     """
 
-    def __init__(self, rating_range=(0,5), seed=0):
+    def __init__(self, rating_range=(0, 5), seed=0):
         """Create a SLIM recommender."""
         self._range = rating_range
         np.random.seed(seed)
@@ -27,11 +27,12 @@ class RandomRec(recommender.PredictRecommender):
     def _predict(self, user_item):  # noqa: D102
         # Random predictions for all pairs.
         predictions = []
-        for user_id, item_id, _ in user_item:
+        for _, _, _ in user_item:
             predictions.append(np.random.uniform(low=self._range[0],
                                                  high=self._range[1]))
 
         return np.array(predictions)
+
 
 class PerfectRec(recommender.PredictRecommender):
     """A perfect recommendation model.

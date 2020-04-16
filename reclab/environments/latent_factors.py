@@ -108,7 +108,7 @@ class LatentFactorBehavior(environment.DictEnvironment):
                     boredom_penalty += (similarity - self._boredom_threshold)
         boredom_penalty *= self._boredom_penalty
         rating = np.clip(raw_rating - boredom_penalty + self._random.randn() * self._noise, 0, 5)
-        
+
         return rating
 
     def _rate_item(self, user_id, item_id):

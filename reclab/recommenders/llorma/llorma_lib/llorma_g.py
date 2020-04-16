@@ -4,10 +4,10 @@ Code modified from https://github.com/JoonyoungYi/LLORMA-tensorflow
 """
 import os
 import random
+import warnings
+
 import numpy as np
 import tensorflow as tf
-import warnings
-import time
 
 from .anchor import AnchorManager
 from .train_utils import get_train_op, init_latent_mat, init_session
@@ -18,6 +18,10 @@ class Llorma():
 
     Parameters
     ----------
+    max_user : int
+        Maximum number of users in the environment
+    max_item  : int
+        Maximum number of items in the environment
     n_anchor : int, optional
         number of anchor-points, by default 10
     pre_rank : int, optional
@@ -52,13 +56,15 @@ class Llorma():
         directory name where model data will be saved,
         by default 'results'
     """
-    def __init__(self, n_anchor=10, pre_rank=5,
+    def __init__(self, max_user, max_item, n_anchor=10, pre_rank=5,
                  pre_learning_rate=2e-4, pre_lambda_val=10,
                  pre_train_steps=100, rank=10, learning_rate=1e-2,
                  lambda_val=1e-3, train_steps=1000, batch_size=1024,
                  use_cache=True, result_path='results'):
         """ Initialize a LLORMA recommender
         """
+        self.max_user = max_user
+        self.max_item = max_item
         self.n_anchor = n_anchor
         self.pre_rank = pre_rank
         self.pre_learning_rate = pre_learning_rate
@@ -116,11 +122,11 @@ class Llorma():
         i_var = tf.placeholder(tf.int64, [None], name='i')
         r_var = tf.placeholder(tf.float64, [None], name='r')
 
-        p_factor = init_latent_mat(self.batch_manager.n_user,
+        p_factor = init_latent_mat(self.max_user,
                                    self.pre_rank,
                                    self.batch_manager.mu,
                                    self.batch_manager.std)
-        q_factor = init_latent_mat(self.batch_manager.n_item,
+        q_factor = init_latent_mat(self.max_item,
                                    self.pre_rank,
                                    self.batch_manager.mu,
                                    self.batch_manager.std)
@@ -163,12 +169,12 @@ class Llorma():
         # init weights
         all_p_factors, all_q_factors, r_hats = [], [], []
         for _ in range(self.n_anchor):
-            p_factor = init_latent_mat(self.batch_manager.n_user,
+            p_factor = init_latent_mat(self.max_user,
                                        self.rank,
                                        self.batch_manager.mu,
                                        self.batch_manager.std)
 
-            q_factor = init_latent_mat(self.batch_manager.n_item,
+            q_factor = init_latent_mat(self.max_item,
                                        self.rank,
                                        self.batch_manager.mu,
                                        self.batch_manager.std)
@@ -289,7 +295,6 @@ class Llorma():
         pre_session.run(tf.global_variables_initializer())
 
         min_valid_rmse = float('Inf')
-        final_test_rmse = float('Inf')
 
         random_model_idx = random.randint(0, 1000000)
 
@@ -303,18 +308,16 @@ class Llorma():
         saver = tf.train.Saver()
         for itr in range(self.pre_train_steps):
             for train_op in pre_model['train_ops']:
-                _, _, train_rmse = pre_session.run(
-                    (train_op, pre_model['loss'], pre_model['rmse']),
+                pre_session.run((train_op, pre_model['loss'], pre_model['rmse']),
                     feed_dict={pre_model['u']: u_vec,
                                pre_model['i']: i_vec,
                                pre_model['r']: r_vec})
 
-            valid_rmse, test_rmse = self._get_rmse_pre_model(pre_session, pre_model)
+            valid_rmse, _ = self._get_rmse_pre_model(pre_session, pre_model)
 
             if valid_rmse < min_valid_rmse:
                 min_valid_rmse = valid_rmse
                 min_valid_iter = itr
-                final_test_rmse = test_rmse
                 saver.save(pre_session, file_path)
 
             if itr >= min_valid_iter + 100:
@@ -364,11 +367,8 @@ class Llorma():
         test_k = _get_local_k(local_models, kind='test')
 
         min_valid_rmse = float('Inf')
-        final_test_rmse = float('Inf')
 
-        batch_rmses = []
         train_data = self.batch_manager.train_data
-        model_init_time = time.time()
 
         for itr in range(self.train_steps):
             for start_m in range(0, train_data.shape[0], self.batch_size):
@@ -385,7 +385,6 @@ class Llorma():
                         model['r']: r_vec,
                         model['k']: k_vec,
                     })
-                batch_rmses.append(results[0])
 
 
             if (itr+1) % 10 == 0:
@@ -394,9 +393,6 @@ class Llorma():
                 if valid_rmse < min_valid_rmse:
                     min_valid_rmse = valid_rmse
                     final_test_rmse = test_rmse
-
-                batch_rmse = sum(batch_rmses) / len(batch_rmses)
-                batch_rmses = []
 
         self.session = session
         return(session, model)

@@ -22,7 +22,7 @@ def main():
     # env = RandomPreferences(num_topics=10, num_users=100, num_items=1700, num_init_ratings=10000)
     # recommender = TopPop()
     # recommender = LibFM(num_user_features=0, num_item_features=0, num_rating_features=0, max_num_users=1000, max_num_items=1700)
-    recommender = Llorma(use_cache=True)
+    recommender = Llorma(max_user=100, max_item=170, use_cache=True)
 
     # First generate the items and users to seed the dataset.
     print("Initializing environment and recommender")

@@ -10,6 +10,10 @@ class Llorma(recommender.PredictRecommender):
 
     Parameters
     ---------
+    max_user : int
+        Maximum number of users in the environment
+    max_item  : int
+        Maximum number of items in the environment
     n_anchor : int
         Number of local model to build in the train phase
     pre_rank : int
@@ -38,6 +42,8 @@ class Llorma(recommender.PredictRecommender):
     """
 
     def __init__(self,
+                 max_user,
+                 max_item,
                  n_anchor=10,
                  pre_rank=5,
                  pre_learning_rate=1e-3,
@@ -53,7 +59,7 @@ class Llorma(recommender.PredictRecommender):
         """Create new Local Low-Rank Matrix Approximation (LLORMA) recommender."""
         super().__init__()
 
-        self.model = llorma_g.Llorma(n_anchor, pre_rank,
+        self.model = llorma_g.Llorma(max_user, max_item, n_anchor, pre_rank,
                                      pre_learning_rate, pre_lambda_val, pre_train_steps,
                                      rank, learning_rate, lambda_val, train_steps,
                                      batch_size, use_cache, result_path)

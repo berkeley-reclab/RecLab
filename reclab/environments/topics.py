@@ -74,6 +74,7 @@ class Topics(environment.DictEnvironment):
         if recent_topics.count(topic) > self._boredom_threshold:
             rating -= self._boredom_penalty
         rating = np.clip(rating, 1, 5)
+        return rating
 
     def _rate_item(self, user_id, item_id):
         """Get a user to rate an item and update the internal rating state."""

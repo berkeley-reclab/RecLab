@@ -65,8 +65,8 @@ class Topics(environment.DictEnvironment):
         """Name of environment, used for saving."""
         return 'topics'
 
-    def _rate_item(self, user_id, item_id):
-        """Get a user to rate an item and update the internal rating state."""
+    def _get_rating(self, user_id, item_id):
+        """Compute user's rating of item based on model."""
         topic = self._item_topics[item_id]
         preference = self._user_preferences[user_id, topic]
         rating = np.clip(np.round(preference + self._random.randn() * self._noise), 1, 5)
@@ -74,6 +74,10 @@ class Topics(environment.DictEnvironment):
         if recent_topics.count(topic) > self._boredom_threshold:
             rating -= self._boredom_penalty
         rating = np.clip(rating, 1, 5)
+
+    def _rate_item(self, user_id, item_id):
+        """Get a user to rate an item and update the internal rating state."""
+        rating = self._get_rating(user_id, item_id)
         # Updating underlying preference
         if preference <= 5:
             self._user_preferences[user_id, topic] += self._topic_change

@@ -77,8 +77,8 @@ class LatentFactorBehavior(environment.DictEnvironment):
         """Name of environment, used for saving."""
         return 'latent'
 
-    def _rate_item(self, user_id, item_id):
-        """Get a user to rate an item and update the internal rating state.
+    def _get_rating(self, user_id, item_id):
+        """Compute user's rating of item based on model.
 
         Parameters
         ----------
@@ -108,6 +108,26 @@ class LatentFactorBehavior(environment.DictEnvironment):
                     boredom_penalty += (similarity - self._boredom_threshold)
         boredom_penalty *= self._boredom_penalty
         rating = np.clip(raw_rating - boredom_penalty + self._random.randn() * self._noise, 0, 5)
+        
+        return rating
+
+    def _rate_item(self, user_id, item_id):
+        """Get a user to rate an item and update the internal rating state.
+
+        Parameters
+        ----------
+        user_id : int
+            The id of the user making the rating.
+        item_id : int
+            The id of the item being rated.
+
+        Returns
+        -------
+        rating : int
+            The rating the item was given by the user.
+
+        """
+        rating = self._get_rating(user_id, item_id)
 
         # Updating underlying affinity
         self._user_factors[user_id] = ((1.0 - self._affinity_change) * self._user_factors[user_id]

@@ -3,4 +3,5 @@ from .autorec import Autorec
 from .knn_recommender import KNNRecommender
 from .libfm import LibFM
 from .llorma import Llorma
+from .slim import SLIM
 from .top_pop import TopPop

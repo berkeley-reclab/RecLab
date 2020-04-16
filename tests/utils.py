@@ -35,6 +35,33 @@ def test_predict_ml100k(recommender, rmse_threshold=1.1, seed=None):
     assert rmse1 > rmse2
 
 
+def test_binary_recommend_ml100k(recommender, hit_rate_threshold, seed=None):
+    """Test that the recommender will recommend good items and it gets better with more data."""
+    users, items, ratings = data_utils.read_dataset('ml-100k')
+    assert NUM_USERS_ML100K == len(users)
+    assert NUM_ITEMS_ML100K == len(items)
+    train_ratings, test_ratings = data_utils.split_ratings(ratings, 0.9, shuffle=True, seed=seed)
+    train_ratings_1, train_ratings_2 = data_utils.split_ratings(train_ratings, 0.5)
+    all_contexts = collections.OrderedDict([(user_id, np.zeros(0)) for user_id in users])
+
+    recommender.reset(users, items, train_ratings_1)
+    recs, _ = recommender.recommend(all_contexts, 1)
+    num_hits = sum((user_id, rec) in test_ratings for user_id, rec in zip(users, recs[:, 0]))
+    hit_rate1 = num_hits / NUM_USERS_ML100K
+
+    # We should get a relatively low hit rate here.
+    assert hit_rate1 > hit_rate_threshold
+
+    recommender.reset(users, items, train_ratings_1)
+    recommender.update(ratings=train_ratings_2)
+    recs, _ = recommender.recommend(all_contexts, 1)
+    num_hits = sum((user_id, rec) in test_ratings for user_id, rec in zip(users, recs[:, 0]))
+    hit_rate2 = num_hits / NUM_USERS_ML100K
+
+    # The hit rate should have increased.
+    assert hit_rate1 < hit_rate2
+
+
 def test_recommend_simple(recommender):
     """Test that recommender will recommend reasonable items in simple setting."""
     users = {0: np.zeros((0,)),

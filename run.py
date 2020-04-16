@@ -1,4 +1,5 @@
 import numpy as np
+import time
 
 from reclab.environments.fixed_rating import FixedRating
 from reclab.environments.latent_factors import DatasetLatentFactor
@@ -13,7 +14,7 @@ from reclab.recommenders import KNNRecommender
 def main():
     params = {'topic_change': 0.1, 'memory_length': 5, 'rating_frequency': 0.2,
              'boredom_threshold': 2, 'boredom_penalty': 1.0}
-    env = Topics(num_topics=5, num_users=100, num_items=100, num_init_ratings=1000, **params)
+    env = Topics(num_topics=5, num_users=100, num_items=170, num_init_ratings=1000, **params)
     # params = {'affinity_change': 0.1, 'memory_length': 5,
     #           'boredom_threshold': 0.5, 'boredom_penalty': 1.0}
     # env = LatentFactorBehavior(latent_dim=8, num_users=100, num_items=170, num_init_ratings=1000, **params)
@@ -32,17 +33,20 @@ def main():
     print("Making online recommendations")
     for i in range(100):
         online_users = env.online_users()
+        start_time = time.time()
         ret, predicted_ratings = recommender.recommend(online_users, num_recommendations=1)
         recommendations = ret[:, 0]
-        items, users, ratings, info = env.step(recommendations)
+        users, items, ratings, info = env.step(recommendations)
         recommender.update(users, items, ratings)
+        stop_time = time.time()
+        print('Run time: {:.2f}'.format(stop_time-start_time))
         rating_arr = []
         if predicted_ratings is not None:
             for (rating, _), pred in zip(ratings.values(), predicted_ratings):
                 rating_arr.append([rating, pred])
             rating_arr = np.array(rating_arr)
-            errors = rating_arr[:,0] - rating_arr[:,1]
-            print("Iter:", i, "Mean:", np.mean(rating_arr[:, 0]), "MSE:", np.mean(errors**2))
+            errors = np.abs(rating_arr[:,0] - rating_arr[:,1])
+            print("Iter:", i, "Mean:", np.mean(rating_arr[:, 0]), "RMSE:", np.mean(errors))
         else:
             for (rating, _) in ratings.values():
                 rating_arr.append(rating)

@@ -149,7 +149,7 @@ class LatentFactorBehavior(environment.DictEnvironment):
     def _generate_latent_factors(self):
         """Generate random latent factors."""
         # Initialization size determined such that ratings generally fall in 0-5 range
-        factor_sd = np.sqrt(np.sqrt(0.5 * self._latent_dim))
+        factor_sd = np.sqrt(np.sqrt(0.5 / self._latent_dim))
         # User latent factors are normally distributed
         user_bias = np.random.normal(loc=0., scale=0.5, size=self._num_users)
         user_factors = np.random.normal(loc=0., scale=factor_sd,

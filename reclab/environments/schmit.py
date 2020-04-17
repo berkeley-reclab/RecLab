@@ -1,5 +1,6 @@
 """
 Contains implementation for environment in "Human Interaction with Recommendation Systems."
+https://arxiv.org/pdf/1703.00535.pdf
 
 """
 
@@ -15,9 +16,9 @@ class Schmit(environment.DictEnvironment):
 
     Parameters
     ----------
-    _num_users : int
+    num_users : int
         The number of users in the environment.
-    _num_items : int
+    num_items : int
         The number of items in the environment.
     rating_frequency : float
         What proportion of users will need a recommendation at each step.
@@ -80,11 +81,12 @@ class Schmit(environment.DictEnvironment):
             Item id.
 
         """
-        return float(self.true_score(user, item)
+        ratings = float(self.true_score(user, item)
                      + self.X[user] @ self.Y[item].T
                      + self._random.normal(loc=0, scale=self.sigma)
                      + 3
                      )
+        return np.clip(ratings, 1, 5)
 
     def _reset_state(self):
         self._users = {user_id: np.zeros((0,))

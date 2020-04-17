@@ -177,7 +177,7 @@ class DictEnvironment(Environment):
         """
         # Initialize the state of the environment.
         self._timestep = -1
-        self._users, self._items = self._reset_state()
+        self._reset_state()
         self._user_histories = collections.defaultdict(list)
         num_users = len(self._users)
         num_items = len(self._items)
@@ -389,7 +389,7 @@ class DictEnvironment(Environment):
             represents the visible features of the user.
 
         """
-        return OrderedDict(), OrderedDict()
+        return collections.OrderedDict(), collections.OrderedDict()
 
     def _rating_context(self, user_id):  # pylint: disable=no-self-use, unused-argument
         """Get the visible features of the context that the user will make the rating in.

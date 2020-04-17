@@ -4,6 +4,7 @@ In this environment users and items both have latent vectors, and
 the rating is determined by the inner product. Users and item both
 have bias terms, and there is an underlying bias as well.
 """
+import collections
 import json
 import os
 
@@ -82,7 +83,7 @@ class LatentFactorBehavior(environment.DictEnvironment):
                    self._item_biases[np.newaxis, :] + self._offset)
         # Compute the boredom penalties.
         penalties = self._item_factors @ self._item_factors.T
-        penalties = np.max(similarities - self._boredom_penalty, 0)
+        penalties = np.max(penalties - self._boredom_penalty, 0)
         for user_id in range(self._num_users):
             for item_id in self._user_histories[user_id]:
                 if item_id is not None:
@@ -157,9 +158,9 @@ class LatentFactorBehavior(environment.DictEnvironment):
         self._offset = offset
 
         self._users = collections.OrderedDict((user_id, np.zeros(0))
-                                              for user_id in range(self._num_users)}
+                                              for user_id in range(self._num_users))
         self._items = collections.OrderedDict((item_id, np.zeros(0))
-                                              for item_id in range(self._num_items)}
+                                              for item_id in range(self._num_items))
 
     def _generate_latent_factors(self):
         """Generate random latent factors."""

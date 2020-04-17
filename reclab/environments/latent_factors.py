@@ -156,8 +156,10 @@ class LatentFactorBehavior(environment.DictEnvironment):
         self._item_biases = item_bias
         self._offset = offset
 
-        self._users = {user_id: np.zeros((0,)) for user_id in range(self._num_users)}
-        self._items = {item_id: np.zeros((0,)) for item_id in range(self._num_items)}
+        self._users = collections.OrderedDict((user_id, np.zeros(0))
+                                              for user_id in range(self._num_users)}
+        self._items = collections.OrderedDict((item_id, np.zeros(0))
+                                              for item_id in range(self._num_items)}
 
     def _generate_latent_factors(self):
         """Generate random latent factors."""

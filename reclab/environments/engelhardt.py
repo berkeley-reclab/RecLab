@@ -102,12 +102,12 @@ class Engelhardt(environment.DictEnvironment):
         self._users_full = {user_id: User(self._num_topics, self.known_weight,
                                           self.user_topic_weights, self.beta_var)
                             for user_id in range(self._num_users)}
-        self._users = {user_id: np.zeros((0,))
-                       for user_id in range(self._num_users)}
-        self._items = {item_id: np.zeros((0,))
-                       for item_id in range(self._num_items)}
         self._item_attrs = {item_id: np.random.dirichlet(self.item_topic_weights)
                             for item_id in range(self._num_items)}
+        self._users = collections.OrderedDict((user_id, np.zeros(0))
+                                              for user_id in range(self._num_users))
+        self._items = collections.OrderedDict((item_id, np.zeros(0))
+                                              for item_id in range(self._num_items))
 
     def _rate_item(self, user_id, item_id):  # noqa: D102
         item_attr = self._item_attrs[item_id]

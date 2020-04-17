@@ -80,8 +80,7 @@ class Topics(environment.DictEnvironment):
 
         return ratings
 
-    def _get_rating(self, user_id, item_id):
-        """Compute user's rating of item based on model."""
+    def _get_rating(self, user_id, item_id):  # noqa: D102
         topic = self._item_topics[item_id]
         preference = self._user_preferences[user_id, topic]
         recent_topics = [self._item_topics[item] for item in self._user_histories[user_id]]
@@ -90,8 +89,7 @@ class Topics(environment.DictEnvironment):
         rating = np.clip(rating + self._random.randn() * self._noise, 1, 5)
         return rating
 
-    def _rate_item(self, user_id, item_id):
-        """Get a user to rate an item and update the internal rating state."""
+    def _rate_item(self, user_id, item_id):  # noqa: D102
         rating = self._get_rating(user_id, item_id)
         # Updating underlying preference
         topic = self._item_topics[item_id]
@@ -102,10 +100,11 @@ class Topics(environment.DictEnvironment):
                 self._topic_change / (self._num_topics - 1))
         return rating
 
-    def _reset_state(self):
-        """Reset the state of the environment."""
+    def _reset_state(self):  # noqa: D102
         self._user_preferences = np.random.uniform(low=0.5, high=5.5,
                                                    size=(self._num_users, self._num_topics))
         self._item_topics = np.random.choice(self._num_topics, size=self._num_items)
-        self._users = {user_id: np.zeros((0,)) for user_id in range(self._num_users)}
-        self._items = {item_id: np.zeros((0,)) for item_id in range(self._num_items)}
+        self._users = collections.OrderedDict((user_id: np.zeros(0))
+                                              for user_id in range(self._num_users))
+        self._items = collections.OrderedDict((item_id: np.zeros(0))
+                                              for item_id in range(self._num_items))

@@ -163,10 +163,10 @@ class DictEnvironment(Environment):
 
         Returns
         -------
-        users : dict
+        users : OrderedDict
             The initial users where the key represents the user id and the value represents
             the visible features associated with the user.
-        items : dict
+        items : OrderedDict
             The initial items where the key represents the item id and the value represents
             the visible features associated with the item.
         ratings : dict
@@ -177,7 +177,7 @@ class DictEnvironment(Environment):
         """
         # Initialize the state of the environment.
         self._timestep = -1
-        self._reset_state()
+        self._users, self._items = self._reset_state()
         self._user_histories = collections.defaultdict(list)
         num_users = len(self._users)
         num_items = len(self._items)
@@ -213,10 +213,10 @@ class DictEnvironment(Environment):
 
         Returns
         -------
-        users : dict
+        users : OrderedDict
             The new users where the key represents the user id and the value represents
             the visible features associated with the user.
-        items : dict
+        items : OrderedDict
             The new items where the key represents the item id and the value represents
             the visible features associated with the item.
         ratings : dict
@@ -262,7 +262,7 @@ class DictEnvironment(Environment):
 
         Returns
         -------
-        users_contexts : ordered dict
+        users_contexts : OrderedDict
             The users that are online. The key is the user id and the value is the
             features that represent the context in which the rating will be made.
 
@@ -278,7 +278,7 @@ class DictEnvironment(Environment):
 
         Returns
         -------
-        users : dict
+        users : OrderedDict
             All users in the environment, the key represents the user id and the value is the
             visible features associated with the user.
 
@@ -291,7 +291,7 @@ class DictEnvironment(Environment):
 
         Returns
         -------
-        items : dict
+        items : OrderedDict
             All items in the environment, the key represents the item id and the value is the
             visible features associated with the item.
 
@@ -381,15 +381,15 @@ class DictEnvironment(Environment):
 
         Returns
         -------
-        new_users : dict
+        new_users : OrderedDict
             The newly added users. The key represents the user id and the value
             represents the visible features of the user.
-        new_items : dict
+        new_items : OrderedDict
             The newly added items. The key represents the user id and the value
             represents the visible features of the user.
 
         """
-        return {}, {}
+        return OrderedDict(), OrderedDict()
 
     def _rating_context(self, user_id):  # pylint: disable=no-self-use, unused-argument
         """Get the visible features of the context that the user will make the rating in.
@@ -409,7 +409,7 @@ class DictEnvironment(Environment):
             will consume and rate the content.
 
         """
-        return np.zeros((0,))
+        return np.zeros(0)
 
     def _select_online_users(self):
         """Select the online users at this timestep.

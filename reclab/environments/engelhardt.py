@@ -87,32 +87,10 @@ class Engelhardt(environment.DictEnvironment):
         self._ratings = None
 
     @property
-    def name(self):
-        """Name of environment, used for saving."""
+    def name(self):  # noqa: D102
         return 'engelhardt'
 
-    def _reset_state(self):
-        """Reset the environment to its original state. Must be called before the first step.
-
-        Returns
-        -------
-        users : np.ndarray
-            This will always be an array where every row has
-            size 0 since users don't have features.
-        items : np.ndarray
-            This will always be an array where every row has
-            size 0 since items don't have features.
-        ratings : np.ndarray
-            The initial ratings where ratings[i, 0] corresponds to
-            the id of the user that made the rating,
-            ratings[i, 1] corresponds to the id of the item that was rated
-            and ratings[i, 2] is the rating given to that item.
-        util : np.ndarray
-            The initial ratings where util[i, 0] corresponds to the id of the user that
-            made the rating, util[i, 1] corresponds to the id of the item that was rated
-            and util[i, 2] is the true utility given of the interaction.
-
-        """
+    def _reset_state(self):  # noqa: D102
         self._users_full = {user_id: User(self._num_topics, self.known_weight,
                                           self.user_topic_weights, self.beta_var)
                             for user_id in range(self._num_users)}
@@ -123,23 +101,7 @@ class Engelhardt(environment.DictEnvironment):
         self._item_attrs = {item_id: np.random.dirichlet(self.item_topic_weights)
                             for item_id in range(self._num_items)}
 
-    def _rate_item(self, user_id, item_id):
-        """Get a user to rate an item and update the internal rating state.
-
-        Parameters
-        ----------
-        user_id : int
-            The id of the user making the rating.
-        item_id : int
-            The id of the item being rated.
-
-        Returns
-        -------
-        rating : int
-            The rating the item was given by the user.
-
-        """
+    def _rate_item(self, user_id, item_id):  # noqa: D102
         item_attr = self._item_attrs[item_id]
         util, rating = self._users_full[user_id].rate(item_attr)
-        print('Util is {} and rating is {}'.format(util, rating))
         return rating

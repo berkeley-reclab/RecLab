@@ -65,6 +65,13 @@ class Topics(environment.DictEnvironment):
         """Name of environment, used for saving."""
         return 'topics'
 
+    def dense_ratings(self):  # noqa: D102
+        ratings = np.zeros([self._num_users, self._num_items])
+        for item_id in range(self._num_items):
+            topic = self._item_topics[item_id]
+            ratings[:, item_id] = self._user_preferences[:, topic]
+        return ratings
+
     def _rate_item(self, user_id, item_id):
         """Get a user to rate an item and update the internal rating state."""
         topic = self._item_topics[item_id]

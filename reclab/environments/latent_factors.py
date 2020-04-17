@@ -77,6 +77,10 @@ class LatentFactorBehavior(environment.DictEnvironment):
         """Name of environment, used for saving."""
         return 'latent'
 
+    def true_ratings(self):  # noqa: D102
+        return (self._user_factors @ self._item_factors + self._user_biases[:, np.newaxis] +
+                self._item_biases[np.newaxis, :] + self._offset)
+
     def _rate_item(self, user_id, item_id):
         """Get a user to rate an item and update the internal rating state.
 

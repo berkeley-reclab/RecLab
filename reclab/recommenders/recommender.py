@@ -237,13 +237,14 @@ class PredictRecommender(Recommender):
 
         # Pick items according to the strategy, along with their predicted ratings.
         all_recs = []
-        predicted_ratings = []
+        all_predicted_ratings = []
         for item_ids, predictions in zip(all_item_ids, all_predictions):
             recs, predicted_ratings = self._select_item(item_ids, predictions,
                                                         num_recommendations)
             # Convert the recommendations to outer item ids.
             all_recs.append([self._inner_to_outer_iid[rec] for rec in recs])
-        return np.array(all_recs), np.array(predicted_ratings)
+            all_predicted_ratings.append(predicted_ratings)
+        return np.array(all_recs), np.array(all_predicted_ratings)
 
     def predict(self, user_item):
         """Predict the ratings of user-item pairs.

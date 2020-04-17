@@ -61,27 +61,41 @@ class Topics(environment.DictEnvironment):
         self._boredom_penalty = boredom_penalty
 
     @property
-    def name(self):
-        """Name of environment, used for saving."""
+    def name(self):  # noqa: D102
         return 'topics'
 
-    def dense_ratings(self):  # noqa: D102
+    def _get_dense_ratings(self):  # noqa: D102
         ratings = np.zeros([self._num_users, self._num_items])
         for item_id in range(self._num_items):
             topic = self._item_topics[item_id]
             ratings[:, item_id] = self._user_preferences[:, topic]
+
+        # Account for boredom.
+        for user_id in range(self._num_users):
+            recent_topics = [self._item_topics[item] for item in self._user_histories[user_id]]
+            recent_topics, counts = np.unique(recent_topics, return_counts=True)
+            recent_topics = recent_topics[counts > self._boredom_threshold]
+            for topic_id in recent_topics:
+                ratings[user_id, self._item_topics == topic_id] -= self._boredom_penalty
+
         return ratings
 
-    def _rate_item(self, user_id, item_id):
-        """Get a user to rate an item and update the internal rating state."""
+    def _get_rating(self, user_id, item_id):
+        """Compute user's rating of item based on model."""
         topic = self._item_topics[item_id]
         preference = self._user_preferences[user_id, topic]
-        rating = np.clip(np.round(preference + self._random.randn() * self._noise), 1, 5)
         recent_topics = [self._item_topics[item] for item in self._user_histories[user_id]]
         if recent_topics.count(topic) > self._boredom_threshold:
             rating -= self._boredom_penalty
-        rating = np.clip(rating, 1, 5)
+        rating = np.clip(rating + self._random.randn() * self._noise, 1, 5)
+        return rating
+
+    def _rate_item(self, user_id, item_id):
+        """Get a user to rate an item and update the internal rating state."""
+        rating = self._get_rating(user_id, item_id)
         # Updating underlying preference
+        topic = self._item_topics[item_id]
+        preference = self._user_preferences[user_id, topic]
         if preference <= 5:
             self._user_preferences[user_id, topic] += self._topic_change
             self._user_preferences[user_id, np.arange(self._num_topics) != topic] -= (

@@ -184,7 +184,7 @@ def run_trial(env, recommender, len_trial):
         # TODO: We probably also want to the recommender's ratings on all items this round.
         all_ratings.append(ratings)
         if predictions is None:
-            predictions = np.ones(ratings.shape) * np.nan
+            predictions = np.ones_like(ratings) * np.nan
         else:
             predictions = predictions.flatten()
         all_predictions.append(predictions)

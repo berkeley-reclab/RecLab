@@ -42,8 +42,8 @@ class Schmit(environment.DictEnvironment):
         self.sigma = sigma
 
         # constants
-        self.item0 = np.random.randn(num_items, 1) / 1.5
-        self.user0 = np.random.randn(num_users, 1) / 3
+        self.item_bias = np.random.randn(num_items, 1) / 1.5
+        self.user_bias = np.random.randn(num_users, 1) / 3
 
         # unobserved by agents
         self.U = np.random.randn(num_users, rank) / np.sqrt(self.rank)
@@ -69,7 +69,7 @@ class Schmit(environment.DictEnvironment):
 
         """
 
-        return float(self.item0[item] + self.user0[user] + self.U[user] @ self.V[item].T)
+        return float(self.item_bias[item] + self.user_bias[user] + self.U[user] @ self.V[item].T)
 
     def value(self, user, item):
         """

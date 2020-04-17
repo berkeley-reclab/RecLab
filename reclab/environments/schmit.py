@@ -82,7 +82,9 @@ class Schmit(environment.DictEnvironment):
         """
         return float(self.true_score(user, item)
                      + self.X[user] @ self.Y[item].T
-                     + self._random.normal(loc=0, scale=self.sigma))
+                     + self._random.normal(loc=0, scale=self.sigma)
+                     + 3
+                     )
 
     def _reset_state(self):
         self._users = {user_id: np.zeros((0,))

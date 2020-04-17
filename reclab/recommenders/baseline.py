@@ -53,8 +53,5 @@ class PerfectRec(recommender.PredictRecommender):
         # Use provided functions to predict for all pairs
         predictions = []
         for user_id, item_id, _ in user_item:
-            outer_uid = self._inner_to_outer_uid[user_id]
-            outer_iid = self._inner_to_outer_iid[item_id]
-            predictions.append(self._rating_function(outer_uid,
-                                                     outer_iid))
+            predictions.append(self._rating_function(user_id, item_id))
         return np.array(predictions)

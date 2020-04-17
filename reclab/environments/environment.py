@@ -68,8 +68,9 @@ class Environment(abc.ABC):
         """
         raise NotImplementedError
 
+    @property
     @abc.abstractmethod
-    def all_users(self):
+    def users(self):
         """Return all users currently in the environment.
 
         Returns
@@ -80,8 +81,9 @@ class Environment(abc.ABC):
         """
         raise NotImplementedError
 
+    @property
     @abc.abstractmethod
-    def all_items(self):
+    def items(self):
         """Return all items currently in the environment.
 
         Returns
@@ -92,8 +94,9 @@ class Environment(abc.ABC):
         """
         raise NotImplementedError
 
+    @property
     @abc.abstractmethod
-    def all_ratings(self):
+    def ratings(self):
         """Return all ratings that have been made in the environment.
 
         Returns
@@ -150,6 +153,7 @@ class DictEnvironment(Environment):
         self._users = None
         self._items = None
         self._ratings = None
+        self._dense_ratings = None
         self._online_users = None
         self._user_histories = collections.defaultdict(list)
         self._memory_length = memory_length
@@ -177,6 +181,9 @@ class DictEnvironment(Environment):
         self._user_histories = collections.defaultdict(list)
         num_users = len(self._users)
         num_items = len(self._items)
+
+        # We will lazily compute dense ratings.
+        self._dense_ratings = None
 
         # Fill the rating dict with initial data.
         idx_1d = self._random.choice(num_users * num_items, self._num_init_ratings,
@@ -224,6 +231,9 @@ class DictEnvironment(Environment):
         """
         assert len(recommendations) == len(self._online_users)
         new_users, new_items = self._update_state()
+        # Old dense ratings are now invalid so set it to None and lazily recompute.
+        self._dense_ratings = None
+
         # Get online users to rate the recommended items.
         ratings = {}
         for user_id, item_id in zip(self._online_users, recommendations):
@@ -262,7 +272,8 @@ class DictEnvironment(Environment):
             user_contexts[user_id] = self._rating_context(user_id)
         return user_contexts
 
-    def all_users(self):
+    @property
+    def users(self):
         """Return all users currently in the environment.
 
         Returns
@@ -272,9 +283,10 @@ class DictEnvironment(Environment):
             visible features associated with the user.
 
         """
-        return self._users.copy()
+        return self._users
 
-    def all_items(self):
+    @property
+    def items(self):
         """Return all items currently in the environment.
 
         Returns
@@ -284,9 +296,10 @@ class DictEnvironment(Environment):
             visible features associated with the item.
 
         """
-        return self._items.copy()
+        return self._items
 
-    def all_ratings(self):
+    @property
+    def ratings(self):
         """Return all ratings that have been made in the environment.
 
         Returns
@@ -297,26 +310,43 @@ class DictEnvironment(Environment):
             with the setting in which the rating was made.
 
         """
-        return self._ratings.copy()
+        return self._ratings
 
-    @abc.abstractmethod
-    def true_ratings(self):
+    @property
+    def dense_ratings(self):
         """Return all the true ratings on every user-item pair at the current timestep.
 
         A true rating is defined as the rating a user would make with all noise removed.
 
         Returns
         -------
-        true_ratings : np.ndarray
+        dense_ratings : np.ndarray
+            The array of all true ratings where true_ratings[i, j] is the rating by user i
+            on item j.
+
+        """
+        if self._dense_ratings is None:
+            self._dense_ratings = self._get_dense_ratings()
+        return self._dense_ratings
+
+    def seed(self, seed=None):
+        """Set the seed for this environment's random number generator."""
+        self._random.seed(seed)
+
+    @abc.abstractmethod
+    def _get_dense_ratings(self):
+        """Compute all the true ratings on every user-item pair at the current timestep.
+
+        A true rating is defined as the rating a user would make with all noise removed.
+
+        Returns
+        -------
+        dense_ratings : np.ndarray
             The array of all true ratings where true_ratings[i, j] is the rating by user i
             on item j.
 
         """
         raise NotImplementedError
-
-    def seed(self, seed=None):
-        """Set the seed for this environment's random number generator."""
-        self._random.seed(seed)
 
     @abc.abstractmethod
     def _rate_item(self, user_id, item_id):

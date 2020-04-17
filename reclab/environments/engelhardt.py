@@ -90,6 +90,14 @@ class Engelhardt(environment.DictEnvironment):
     def name(self):  # noqa: D102
         return 'engelhardt'
 
+    def _get_dense_ratings(self):  # noqa: D102
+        ratings = np.zeros([self._num_users, self._num_items])
+        for user_id in range(self._num_users):
+            for item_id in range(self._num_items):
+                item_attr = self._item_attrs[item_id]
+                ratings[user_id, item_id] = self._users_full[user_id].rate(item_attr)
+        return ratings
+
     def _reset_state(self):  # noqa: D102
         self._users_full = {user_id: User(self._num_topics, self.known_weight,
                                           self.user_topic_weights, self.beta_var)

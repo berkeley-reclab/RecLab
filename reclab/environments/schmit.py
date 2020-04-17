@@ -1,20 +1,15 @@
-import collections
-import functools as ft
-import math
-import json
-import random
+"""
+Contains implementation for environment in "Human Interaction with Recommendation Systems."
+
+"""
 
 import numpy as np
-import scipy as sp
-import scipy.linalg
 
 from . import environment
 
-
 class Schmit(environment.DictEnvironment):
     """
-    Implementation of environment with static private user preferences and
-    defined user-item interactions.
+    Implementation of environment with static private user preferences and user-item interactions.
 
     Based on "Human Interaction with Recommendation Systems" by Schmit and Riquelme (2018).
 
@@ -35,30 +30,27 @@ class Schmit(environment.DictEnvironment):
 
     """
 
-    def __init__(self, _num_users, _num_items, rating_frequency=0.2,
+    def __init__(self, num_users, num_items, rating_frequency=0.2,
                  num_init_ratings=0, rank=10, sigma=0.2):
+        """Create an environment."""
         super().__init__(rating_frequency, num_init_ratings)
-        self._num_users = _num_users
-        self._num_items = _num_items
+        self._num_users = num_users
+        self._num_items = num_items
 
         self.rank = rank
         self.sigma = sigma
 
-        alpha_rank = 10
-        nobs_user = int(alpha_rank * rank)
-        perc_data = nobs_user / _num_items
-
         # constants
-        self.item0 = np.random.randn(_num_items, 1) / 1.5
-        self.user0 = np.random.randn(_num_users, 1) / 3
+        self.item0 = np.random.randn(num_items, 1) / 1.5
+        self.user0 = np.random.randn(num_users, 1) / 3
 
         # unobserved by agents
-        self.U = np.random.randn(_num_users, rank) / np.sqrt(self.rank)
-        self.V = np.random.randn(_num_items, rank) / np.sqrt(self.rank)
+        self.U = np.random.randn(num_users, rank) / np.sqrt(self.rank)
+        self.V = np.random.randn(num_items, rank) / np.sqrt(self.rank)
 
         # observed by agents
-        self.X = np.random.randn(_num_users, rank) / np.sqrt(self.rank)
-        self.Y = np.random.randn(_num_items, rank) / np.sqrt(self.rank)
+        self.X = np.random.randn(num_users, rank) / np.sqrt(self.rank)
+        self.Y = np.random.randn(num_items, rank) / np.sqrt(self.rank)
 
     @property
     def name(self):
@@ -67,19 +59,30 @@ class Schmit(environment.DictEnvironment):
 
     def true_score(self, user, item):
         """
-        Model:
-        V_ij = a_i + b_j + u_i @ v_j + x_i @ y_j + eps
-        where x_i @ y_j is the private information known to the user.
+        Calculate true score.
+
+        user : int
+            User id for calculating preferences.
+        item : int
+            Item id.
 
         """
 
         return float(self.item0[item] + self.user0[user] + self.U[user] @ self.V[item].T)
 
     def value(self, user, item):
-        return float(self.true_score(user, item) + self.X[user] @ self.Y[item].T + random.gauss(0, self.sigma))
+        """
+        Adds private user preferences and Gaussian noise to true score.
 
-    def unbiased_value(self, user, item):
-        return self.true_score(user, item) + random.gauss(0, self.sigma)
+        user : int
+            User id for calculating preferences.
+        item : int
+            Item id.
+
+        """
+        return float(self.true_score(user, item)
+                     + self.X[user] @ self.Y[item].T
+                     + self._random.normal(loc=0, scale=self.sigma))
 
     def _reset_state(self):
         self._users = {user_id: np.zeros((0,))
@@ -92,9 +95,8 @@ class Schmit(environment.DictEnvironment):
 
         self.U = np.random.randn(self._num_users, self.rank) / np.sqrt(self.rank)
         self.V = np.random.randn(self._num_items, self.rank) / np.sqrt(self.rank)
-
-        self.U = np.random.randn(self._num_users, self.rank) / np.sqrt(self.rank)
-        self.V = np.random.randn(self._num_items, self.rank) / np.sqrt(self.rank)
+        self.X = np.random.randn(self._num_users, self.rank) / np.sqrt(self.rank)
+        self.Y = np.random.randn(self._num_items, self.rank) / np.sqrt(self.rank)
 
     def _rate_item(self, user_id, item_id):
         return self.value(user_id, item_id)

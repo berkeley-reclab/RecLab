@@ -3,6 +3,7 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+import tqdm
 
 
 def plot_ratings_mses(ratings,
@@ -121,12 +122,15 @@ def run_env_experiment(environments,
         all_ratings = []
         all_predictions = []
         for environment in environments:
+            print("Started experiments on environment:", environment.name)
             all_ratings.append([])
             all_predictions.append([])
             for recommender in recommenders:
+                print("Running trials for recommender:", recommender.name)
                 all_ratings[-1].append([])
                 all_predictions[-1].append([])
-                for _ in range(n_trials):
+                for i in range(n_trials):
+                    print("Running trial:", i)
                     ratings, predictions = run_trial(environment, recommender, len_trial)
                     all_ratings[-1][-1].append(ratings)
                     all_predictions[-1][-1].append(predictions)
@@ -174,7 +178,7 @@ def run_trial(env, recommender, len_trial):
     all_ratings = []
     all_predictions = []
     # Now recommend items to users.
-    for _ in range(len_trial):
+    for _ in tqdm.tqdm(range(len_trial)):
         online_users = env.online_users()
         recommendations, predictions = recommender.recommend(online_users, num_recommendations=1)
         recommendations = recommendations.flatten()

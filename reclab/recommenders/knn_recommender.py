@@ -43,6 +43,10 @@ class KNNRecommender(recommender.PredictRecommender):
         self._similarity_matrix = np.empty((0, 0))
         self._ratings_matrix = np.empty((0, 0))
 
+    @property
+    def name(self):
+        return 'knn'
+
     def reset(self, users=None, items=None, ratings=None):  # noqa: D102
         self._feature_matrix = scipy.sparse.csr_matrix((0, 0))
         self._similarity_matrix = np.empty((0, 0))

@@ -48,6 +48,10 @@ class SLIM(recommender.PredictRecommender):
         self._weights = None
         super().__init__()
 
+    @property
+    def name(self):
+        return 'slim'
+
     def update(self, users=None, items=None, ratings=None):  # noqa: D102
         super().update(users, items, ratings)
         num_items = len(self._items)

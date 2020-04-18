@@ -11,6 +11,7 @@ class RandomRec(recommender.PredictRecommender):
     """A random recommendation model.
 
     Parameters
+    ----------
     range : tuple
         Upper and lower bounds for the uniformly random predictions.
     seed : int
@@ -23,6 +24,10 @@ class RandomRec(recommender.PredictRecommender):
         self._range = rating_range
         np.random.seed(seed)
         super().__init__()
+
+    @property
+    def name(self):  # noqa: D102
+        return 'random'
 
     def _predict(self, user_item):  # noqa: D102
         # Random predictions for all pairs.
@@ -38,6 +43,7 @@ class PerfectRec(recommender.PredictRecommender):
     """A perfect recommendation model.
 
     Parameters
+    ----------
     rating_function : function
         The function which generates true user ratings.
 
@@ -48,6 +54,10 @@ class PerfectRec(recommender.PredictRecommender):
         self._rating_function = rating_function
         # TODO or shoud it be env._rate_item?? is this mutable?
         super().__init__()
+
+    @property
+    def name(self):  # noqa: D102
+        return 'perfect'
 
     def _predict(self, user_item):  # noqa: D102
         # Use provided functions to predict for all pairs

@@ -77,8 +77,8 @@ class LatentFactorBehavior(environment.DictEnvironment):
         """Name of environment, used for saving."""
         return 'latent'
 
-    def _rate_item(self, user_id, item_id):
-        """Get a user to rate an item and update the internal rating state.
+    def _get_rating(self, user_id, item_id):
+        """Compute user's rating of item based on model.
 
         Parameters
         ----------
@@ -109,6 +109,26 @@ class LatentFactorBehavior(environment.DictEnvironment):
         boredom_penalty *= self._boredom_penalty
         rating = np.clip(raw_rating - boredom_penalty + self._random.randn() * self._noise, 0, 5)
 
+        return rating
+
+    def _rate_item(self, user_id, item_id):
+        """Get a user to rate an item and update the internal rating state.
+
+        Parameters
+        ----------
+        user_id : int
+            The id of the user making the rating.
+        item_id : int
+            The id of the item being rated.
+
+        Returns
+        -------
+        rating : int
+            The rating the item was given by the user.
+
+        """
+        rating = self._get_rating(user_id, item_id)
+
         # Updating underlying affinity
         self._user_factors[user_id] = ((1.0 - self._affinity_change) * self._user_factors[user_id]
                                        + self._affinity_change * self._item_factors[item_id])
@@ -129,7 +149,7 @@ class LatentFactorBehavior(environment.DictEnvironment):
     def _generate_latent_factors(self):
         """Generate random latent factors."""
         # Initialization size determined such that ratings generally fall in 0-5 range
-        factor_sd = np.sqrt(np.sqrt(0.5 * self._latent_dim))
+        factor_sd = np.sqrt(np.sqrt(0.5 / self._latent_dim))
         # User latent factors are normally distributed
         user_bias = np.random.normal(loc=0., scale=0.5, size=self._num_users)
         user_factors = np.random.normal(loc=0., scale=factor_sd,

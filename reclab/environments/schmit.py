@@ -1,5 +1,6 @@
 """
-Contains implementation for environment in "Human Interaction with Recommendation Systems."
+Contains implementation for environment in "Human Interaction with Recommendation Systems".
+
 https://arxiv.org/pdf/1703.00535.pdf
 
 """
@@ -7,6 +8,7 @@ https://arxiv.org/pdf/1703.00535.pdf
 import numpy as np
 
 from . import environment
+
 
 class Schmit(environment.DictEnvironment):
     """
@@ -68,12 +70,11 @@ class Schmit(environment.DictEnvironment):
             Item id.
 
         """
-
         return float(self.item_bias[item] + self.user_bias[user] + self.U[user] @ self.V[item].T)
 
     def value(self, user, item):
         """
-        Adds private user preferences and Gaussian noise to true score.
+        Add private user preferences and Gaussian noise to true score.
 
         user : int
             User id for calculating preferences.
@@ -82,10 +83,10 @@ class Schmit(environment.DictEnvironment):
 
         """
         ratings = float(self.true_score(user, item)
-                     + self.X[user] @ self.Y[item].T
-                     + self._random.normal(loc=0, scale=self.sigma)
-                     + 3
-                     )
+                        + self.X[user] @ self.Y[item].T
+                        + self._random.normal(loc=0, scale=self.sigma)
+                        + 3
+                       )
         return np.clip(ratings, 1, 5)
 
     def _reset_state(self):
@@ -94,8 +95,8 @@ class Schmit(environment.DictEnvironment):
         self._items = {item_id: np.zeros((0,))
                        for item_id in range(self._num_items)}
 
-        self.item0 = np.random.randn(self._num_items, 1) / 1.5
-        self.user0 = np.random.randn(self._num_users, 1) / 3
+        self.item_bias = np.random.randn(self._num_items, 1) / 1.5
+        self.user_bias = np.random.randn(self._num_users, 1) / 3
 
         self.U = np.random.randn(self._num_users, self.rank) / np.sqrt(self.rank)
         self.V = np.random.randn(self._num_items, self.rank) / np.sqrt(self.rank)

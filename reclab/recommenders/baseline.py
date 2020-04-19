@@ -1,5 +1,4 @@
-"""An implementation of baseline perfect and random recommenders.
-"""
+"""An implementation of baseline perfect and random recommenders."""
 import numpy as np
 
 from . import recommender

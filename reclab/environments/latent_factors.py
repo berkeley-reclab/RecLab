@@ -169,11 +169,11 @@ class LatentFactorBehavior(environment.DictEnvironment):
         # User latent factors are normally distributed
         user_bias = self._random.normal(loc=0., scale=0.5, size=self._num_users)
         user_factors = self._random.normal(loc=0., scale=factor_sd,
-                                        size=(self._num_users, self._latent_dim))
+                                           size=(self._num_users, self._latent_dim))
         # Item latent factors are normally distributed
         item_bias = self._random.normal(loc=0., scale=0.5, size=self._num_items)
         item_factors = self._random.normal(loc=0., scale=factor_sd,
-                                        size=(self._num_items, self._latent_dim))
+                                           size=(self._num_items, self._latent_dim))
         # Shift up the mean
         offset = 3.0
         return user_factors, user_bias, item_factors, item_bias, offset
@@ -260,12 +260,12 @@ class DatasetLatentFactor(LatentFactorBehavior):
         else:
             reduced_num_users_items = None
         return generate_latent_factors_from_data(self.dataset_name, self.datapath,
-                                                 full_model_params,
+                                                 full_model_params, self._random,
                                                  force_retrain=self._force_retrain,
                                                  reduced_num_users_items=reduced_num_users_items)
 
 
-def generate_latent_factors_from_data(dataset_name, datapath, params,
+def generate_latent_factors_from_data(dataset_name, datapath, params, random,
                                       force_retrain=False, reduced_num_users_items=None):
     """Create latent factors based on a dataset."""
     model_file = os.path.join(datapath, 'fm_model.npz')
@@ -311,10 +311,10 @@ def generate_latent_factors_from_data(dataset_name, datapath, params,
         num_users, num_items = reduced_num_users_items
         # TODO: may want to reduce the number in some other way
         # e.g. related to popularity
-        user_indices = self._random.choice(user_factors.shape[0], size=num_users,
-                                           replace=False)
-        item_indices = self._random.choice(item_factors.shape[0], size=num_items,
-                                           replace=False)
+        user_indices = random.choice(user_factors.shape[0], size=num_users,
+                                     replace=False)
+        item_indices = random.choice(item_factors.shape[0], size=num_items,
+                                     replace=False)
         user_factors = user_factors[user_indices]
         user_bias = user_bias[user_indices]
         item_factors = item_factors[item_indices]

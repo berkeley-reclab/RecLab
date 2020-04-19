@@ -44,7 +44,7 @@ class KNNRecommender(recommender.PredictRecommender):
         self._ratings_matrix = np.empty((0, 0))
 
     @property
-    def name(self):
+    def name(self):  # noqa: D102
         return 'knn'
 
     def reset(self, users=None, items=None, ratings=None):  # noqa: D102

@@ -59,7 +59,7 @@ class Llorma(recommender.PredictRecommender):
                                      batch_size, use_cache, result_path)
 
     @property
-    def name(self):  # noqa: D10w
+    def name(self):  # noqa: D102
         return 'llorma'
 
     def _predict(self, user_item):  # noqa: D102

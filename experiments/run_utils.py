@@ -129,19 +129,19 @@ def run_env_experiment(environments,
         all_dense_ratings = []
         all_dense_predictions = []
         for environment in environments:
-            print("Started experiments on environment:", environment.name)
+            print('Started experiments on environment:', environment.name)
             all_ratings.append([])
             all_predictions.append([])
             all_dense_ratings.append([])
             all_dense_predictions.append([])
             for recommender in recommenders:
-                print("Running trials for recommender:", recommender.name)
+                print('Running trials for recommender:', recommender.name)
                 all_ratings[-1].append([])
                 all_predictions[-1].append([])
                 all_dense_ratings[-1].append([])
                 all_dense_predictions[-1].append([])
                 for i in range(n_trials):
-                    print("Running trial:", i)
+                    print('Running trial:', i)
                     ratings, predictions, dense_ratings, dense_predictions = run_trial(
                         environment, recommender, len_trial, i)
                     all_ratings[-1][-1].append(ratings)

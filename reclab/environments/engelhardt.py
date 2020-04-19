@@ -86,6 +86,7 @@ class Engelhardt(environment.DictEnvironment):
         self._users_full = None
         self._items = None
         self._ratings = None
+        self._item_attrs = None
 
     @property
     def name(self):  # noqa: D102
@@ -113,5 +114,5 @@ class Engelhardt(environment.DictEnvironment):
 
     def _rate_item(self, user_id, item_id):  # noqa: D102
         item_attr = self._item_attrs[item_id]
-        util, rating = self._users_full[user_id].rate(item_attr)
+        _, rating = self._users_full[user_id].rate(item_attr)
         return rating

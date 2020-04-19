@@ -16,7 +16,7 @@ class TopPop(recommender.Recommender):
         self._ranked_items = []
 
     @property
-    def name(self):  #noqa: D102
+    def name(self):  # noqa: D102
         return 'top-pop'
 
     def reset(self, users=None, items=None, ratings=None):

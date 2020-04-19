@@ -49,7 +49,7 @@ class SLIM(recommender.PredictRecommender):
         super().__init__()
 
     @property
-    def name(self):
+    def name(self):  # noqa: D102
         return 'slim'
 
     def update(self, users=None, items=None, ratings=None):  # noqa: D102

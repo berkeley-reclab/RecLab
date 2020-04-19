@@ -95,7 +95,7 @@ class LibFM(recommender.PredictRecommender):
         self._train_data = wpyfm.Data(rating_inputs, rating_outputs)
 
     @property
-    def name(self):
+    def name(self):  # noqa: D102
         return 'libfm'
 
     def reset(self, users=None, items=None, ratings=None):  # noqa: D102

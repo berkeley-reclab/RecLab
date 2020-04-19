@@ -3,6 +3,7 @@
 In this environment users have a hidden preference for each topic and each item has a
 hidden topic assigned to it.
 """
+import collections
 import numpy as np
 
 from . import environment
@@ -82,7 +83,7 @@ class Topics(environment.DictEnvironment):
 
     def _get_rating(self, user_id, item_id):  # noqa: D102
         topic = self._item_topics[item_id]
-        preference = self._user_preferences[user_id, topic]
+        rating = self._user_preferences[user_id, topic]
         recent_topics = [self._item_topics[item] for item in self._user_histories[user_id]]
         if recent_topics.count(topic) > self._boredom_threshold:
             rating -= self._boredom_penalty

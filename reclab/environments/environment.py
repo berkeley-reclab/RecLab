@@ -422,4 +422,4 @@ class DictEnvironment(Environment):
         """
         num_users = len(self._users)
         num_online = int(self._rating_frequency * num_users)
-        return np.random.choice(num_users, size=num_online, replace=False)
+        return self._random.choice(num_users, size=num_online, replace=False)

@@ -16,7 +16,7 @@ class User:
     """Create custom User object for use in Engelhardt environment."""
 
     def __init__(self, num_topics, known_weight,
-                 user_topic_weights, beta_var):
+                 user_topic_weights, beta_var, random):
         """
         Initialize user with features and known/unknown utility weight.
 
@@ -40,8 +40,8 @@ class User:
         self.num_topics = num_topics
         alpha = ((1 - known_weight) / (beta_var ** 2) - (1 / known_weight)) * (known_weight ** 2)
         beta = alpha * ((1 / known_weight) - 1)
-        self.known_weight = np.random.beta(alpha, beta)
-        self.preferences = np.random.dirichlet(user_topic_weights)
+        self.known_weight = random.beta(alpha, beta)
+        self.preferences = random.dirichlet(user_topic_weights)
 
     def rate(self, item_attributes):
         """
@@ -76,8 +76,8 @@ class Engelhardt(environment.DictEnvironment):
         super().__init__(rating_frequency, num_init_ratings)
         self.known_weight = known_weight
         self.beta_var = beta_var
-        self.user_topic_weights = scipy.special.softmax(np.random.rand(num_topics))
-        self.item_topic_weights = scipy.special.softmax(np.random.rand(num_topics))
+        self.user_topic_weights = scipy.special.softmax(self._random.rand(num_topics))
+        self.item_topic_weights = scipy.special.softmax(self._random.rand(num_topics))
         self._num_topics = num_topics
         self._num_users = num_users
         self._num_items = num_items
@@ -100,9 +100,10 @@ class Engelhardt(environment.DictEnvironment):
 
     def _reset_state(self):  # noqa: D102
         self._users_full = {user_id: User(self._num_topics, self.known_weight,
-                                          self.user_topic_weights, self.beta_var)
+                                          self.user_topic_weights, self.beta_var,
+                                          self._random)
                             for user_id in range(self._num_users)}
-        self._item_attrs = {item_id: np.random.dirichlet(self.item_topic_weights)
+        self._item_attrs = {item_id: self._random.dirichlet(self.item_topic_weights)
                             for item_id in range(self._num_items)}
         self._users = collections.OrderedDict((user_id, np.zeros(0))
                                               for user_id in range(self._num_users))

@@ -102,9 +102,9 @@ class Topics(environment.DictEnvironment):
         return rating
 
     def _reset_state(self):  # noqa: D102
-        self._user_preferences = np.random.uniform(low=0.5, high=5.5,
-                                                   size=(self._num_users, self._num_topics))
-        self._item_topics = np.random.choice(self._num_topics, size=self._num_items)
+        self._user_preferences = self._random.uniform(low=0.5, high=5.5,
+                                                      size=(self._num_users, self._num_topics))
+        self._item_topics = self._random.choice(self._num_topics, size=self._num_items)
         self._users = collections.OrderedDict((user_id, np.zeros(0))
                                               for user_id in range(self._num_users))
         self._items = collections.OrderedDict((item_id, np.zeros(0))

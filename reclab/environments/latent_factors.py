@@ -167,12 +167,12 @@ class LatentFactorBehavior(environment.DictEnvironment):
         # Initialization size determined such that ratings generally fall in 0-5 range
         factor_sd = np.sqrt(np.sqrt(0.5 / self._latent_dim))
         # User latent factors are normally distributed
-        user_bias = np.random.normal(loc=0., scale=0.5, size=self._num_users)
-        user_factors = np.random.normal(loc=0., scale=factor_sd,
+        user_bias = self._random.normal(loc=0., scale=0.5, size=self._num_users)
+        user_factors = self._random.normal(loc=0., scale=factor_sd,
                                         size=(self._num_users, self._latent_dim))
         # Item latent factors are normally distributed
-        item_bias = np.random.normal(loc=0., scale=0.5, size=self._num_items)
-        item_factors = np.random.normal(loc=0., scale=factor_sd,
+        item_bias = self._random.normal(loc=0., scale=0.5, size=self._num_items)
+        item_factors = self._random.normal(loc=0., scale=factor_sd,
                                         size=(self._num_items, self._latent_dim))
         # Shift up the mean
         offset = 3.0
@@ -311,10 +311,10 @@ def generate_latent_factors_from_data(dataset_name, datapath, params,
         num_users, num_items = reduced_num_users_items
         # TODO: may want to reduce the number in some other way
         # e.g. related to popularity
-        user_indices = np.random.choice(user_factors.shape[0], size=num_users,
-                                        replace=False)
-        item_indices = np.random.choice(item_factors.shape[0], size=num_items,
-                                        replace=False)
+        user_indices = self._random.choice(user_factors.shape[0], size=num_users,
+                                           replace=False)
+        item_indices = self._random.choice(item_factors.shape[0], size=num_items,
+                                           replace=False)
         user_factors = user_factors[user_indices]
         user_bias = user_bias[user_indices]
         item_factors = item_factors[item_indices]

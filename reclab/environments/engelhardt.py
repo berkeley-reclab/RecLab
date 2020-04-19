@@ -4,6 +4,7 @@ Contains the implementation for the Engelhardt environment from the algorithmic 
 In this environment users have a hidden preference for each topic and each item has a
 hidden topic assigned to it.
 """
+import collections
 
 import numpy as np
 import scipy
@@ -95,7 +96,7 @@ class Engelhardt(environment.DictEnvironment):
         for user_id in range(self._num_users):
             for item_id in range(self._num_items):
                 item_attr = self._item_attrs[item_id]
-                ratings[user_id, item_id] = self._users_full[user_id].rate(item_attr)
+                ratings[user_id, item_id] = self._users_full[user_id].rate(item_attr)[1]
         return ratings
 
     def _reset_state(self):  # noqa: D102

@@ -3,7 +3,7 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-import tqdm
+import tqdm.autonotebook
 
 
 def plot_ratings_mses(ratings,
@@ -143,7 +143,7 @@ def run_env_experiment(environments,
                 for i in range(n_trials):
                     print("Running trial:", i)
                     ratings, predictions, dense_ratings, dense_predictions = run_trial(
-                        environment, recommender, len_trial)
+                        environment, recommender, len_trial, i)
                     all_ratings[-1][-1].append(ratings)
                     all_predictions[-1][-1].append(predictions)
                     all_dense_ratings[-1][-1].append(dense_ratings)
@@ -166,7 +166,7 @@ def run_env_experiment(environments,
     return all_ratings, all_predictions, all_dense_ratings, all_dense_predictions
 
 
-def run_trial(env, recommender, len_trial):
+def run_trial(env, recommender, len_trial, seed):
     """Logic for running each trial.
 
     Parameters
@@ -178,7 +178,7 @@ def run_trial(env, recommender, len_trial):
     len_trial : int
         The number of recommendation steps to run the trial for.
     seed : int
-        The seed for the recommender and the environment.
+        The seed for the environment.
 
     Returns
     -------
@@ -194,7 +194,6 @@ def run_trial(env, recommender, len_trial):
     """
     # First generate the items and users to seed the dataset.
     env.seed(seed)
-    recommender.seed(seed)
     items, users, ratings = env.reset()
     recommender.reset(items, users, ratings)
 
@@ -208,7 +207,7 @@ def run_trial(env, recommender, len_trial):
             user_item.append((i, j, np.zeros(0)))
 
     # Now recommend items to users.
-    for _ in tqdm.tqdm(range(len_trial)):
+    for _ in tqdm.autonotebook.tqdm(range(len_trial)):
         online_users = env.online_users()
         recommendations, predictions = recommender.recommend(online_users, num_recommendations=1)
         recommendations = recommendations.flatten()

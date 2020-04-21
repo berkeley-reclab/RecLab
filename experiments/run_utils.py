@@ -117,6 +117,15 @@ def run_env_experiment(environments,
         k-th trial for the aforementioned recommender while running the i-th environment.
         Note that if the recommender does not make predictions to make recommendations
         then that element will be np.nan.
+    dense_ratings : np.ndarray
+        The array of all ratings throughout all trials. ratings[i, j, k, l]
+        corresponds to the dense ratings array across all user-item pairs during
+        the l-th step of the k-th trial for the j-th recommender on the i-th environment.
+    predictions : np.ndarray
+        The array of dense predictions made by recommenders throughout all trials.
+        corresponds to the dense predictions array across all user-item pairs during
+        the l-th step of the k-th trial for the j-th recommender on the i-th environment.
+        predictions[i, j, k, l] corresponds to the prediction that the j-th recommender
 
     """
     datadirname = os.path.join('data', exp_dirname)
@@ -190,6 +199,13 @@ def run_trial(env, recommender, len_trial, seed):
         prediction the user made on round i for the item recommended to the j-th
         user. If the recommender does not predict items then each element is set
         to np.nan.
+    dense_ratings : np.ndarray
+        The array of all dense ratings across each step. dense_ratings[i] is the
+        array of all ratings that would have been made on round i for each user-item pair
+        with all noise removed.
+    dense_predictions : np.ndarray
+        The array of all dense predictions across each step. dense_predictions[i] is the
+        array of all predictions on round i for each user-item pair.
 
     """
     # First generate the items and users to seed the dataset.

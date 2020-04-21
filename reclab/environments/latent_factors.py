@@ -82,7 +82,9 @@ class LatentFactorBehavior(environment.DictEnvironment):
         ratings = (self._user_factors @ self._item_factors.T + self._user_biases[:, np.newaxis] +
                    self._item_biases[np.newaxis, :] + self._offset)
         # Compute the boredom penalties.
-        penalties = self._item_factors @ self._item_factors.T
+        item_norms = np.linalg.norm(self._item_factors, axis=1)
+        penalties = (self._item_factors @ self._item_factors.T /
+                     item_norms[:, np.newaxis] / item_norms[np.newaxis, :])
         penalties = np.max(penalties - self._boredom_penalty, 0)
         for user_id in range(self._num_users):
             for item_id in self._user_histories[user_id]:

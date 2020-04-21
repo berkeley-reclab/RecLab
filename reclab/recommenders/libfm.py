@@ -94,6 +94,10 @@ class LibFM(recommender.PredictRecommender):
         # TODO: We need to add support for MCMC/ALS by adding has_xt here and for the test set.
         self._train_data = wpyfm.Data(rating_inputs, rating_outputs)
 
+    @property
+    def name(self):  # noqa: D102
+        return 'libfm'
+
     def reset(self, users=None, items=None, ratings=None):  # noqa: D102
         rating_inputs = scipy.sparse.csr_matrix((0, self._num_features))
         rating_outputs = np.empty((0,))

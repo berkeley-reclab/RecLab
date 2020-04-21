@@ -31,6 +31,11 @@ class FixedRating(environment.DictEnvironment):
     def name(self):  # noqa: D102
         return 'fixed'
 
+    def _get_dense_ratings(self):  # noqa: D102
+        ratings = np.ones([self._num_users, self._num_items])
+        ratings[:, self._num_items / 2:] = 5.0
+        return ratings
+
     def _reset_state(self):  # noqa: D102
         self._users = [np.zeros((0,))] * self._num_users
         self._items = [np.zeros((0,))] * self._num_items

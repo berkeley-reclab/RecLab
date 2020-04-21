@@ -94,6 +94,10 @@ class Cfnade(recommender.PredictRecommender):
             optimizer=optimizer)
         self._cf_nade_model.save_weights('model.h5')
 
+    @property
+    def name(self):  # noqa: D102
+        return 'cfnade'
+
     def update(self, users=None, items=None, ratings=None):  # noqa: D102
         super().update(users, items, ratings)
         self._cf_nade_model.load_weights('model.h5')

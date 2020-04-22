@@ -1,5 +1,7 @@
 """A utility module for running experiments."""
+import boto3
 import os
+import pickle
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -82,8 +84,9 @@ def run_env_experiment(environments,
                        recommenders,
                        n_trials,
                        len_trial,
-                       exp_dirname,
-                       data_filename,
+                       environment_names=None,
+                       recommender_names=None,
+                       bucket_name='recsys-eval',
                        overwrite=False):
     """Run repeated trials for a given list of recommenders on a list of environments.
 
@@ -97,12 +100,17 @@ def run_env_experiment(environments,
         The number of steps to run each trial for.
     n_trials : int
         The number of trials to run for each recommender.
-    exp_dirname : str
-        The directory in which to save or load the experiment results.
-    data_filename : str
-        The name of the file in which to save or load the experiment results.
+    environment_names : list of str
+        The name under which each environment will be saved. If this is None
+        each environment will be named according to the environment's property.
+    recommender_names : list of str
+        The name under which each recommender will be saved. If this is None
+        each recommender will be named according to the environment's property.
+    bucket_name : str
+        The name of the s3 bucket to store the experiment results in. If this is None
+        the results will not be saved.
     overwrite : bool
-        Whether to re-run the experiment even if a matching file is found.
+        Whether to re-run the experiment even if a matching s3 file is found.
 
     Returns
     -------
@@ -128,66 +136,77 @@ def run_env_experiment(environments,
         predictions[i, j, k, l] corresponds to the prediction that the j-th recommender
 
     """
-    datadirname = os.path.join('data', exp_dirname)
-    os.makedirs(datadirname, exist_ok=True)
+    bucket = None
+    if bucket_name is not None:
+        bucket = boto.resource('s3').Bucket('bucket_name')
 
-    filename = os.path.join(datadirname, data_filename)
-    if not os.path.exists(filename) or overwrite:
-        all_ratings = []
-        all_predictions = []
-        all_dense_ratings = []
-        all_dense_predictions = []
-        for environment in environments:
-            print('Started experiments on environment:', environment.name)
-            all_ratings.append([])
-            all_predictions.append([])
-            all_dense_ratings.append([])
-            all_dense_predictions.append([])
-            for recommender in recommenders:
-                print('Running trials for recommender:', recommender.name)
-                all_ratings[-1].append([])
-                all_predictions[-1].append([])
-                all_dense_ratings[-1].append([])
-                all_dense_predictions[-1].append([])
-                for i in range(n_trials):
-                    print('Running trial:', i)
-                    ratings, predictions, dense_ratings, dense_predictions = run_trial(
-                        environment, recommender, len_trial, i)
-                    all_ratings[-1][-1].append(ratings)
-                    all_predictions[-1][-1].append(predictions)
-                    all_dense_ratings[-1][-1].append(dense_ratings)
-                    all_dense_predictions[-1][-1].append(dense_predictions)
-        all_ratings = np.array(all_ratings)
-        all_predictions = np.array(all_predictions)
-        all_dense_ratings = np.array(all_dense_ratings)
-        all_dense_predictions = np.array(all_dense_predictions)
-        np.savez(filename, all_ratings=all_ratings, all_predictions=all_predictions,
-                 all_dense_ratings=all_dense_ratings, all_dense_predictions=all_dense_predictions)
-        print('Saving to', filename)
-    else:
-        print('Reading from', filename)
-        data = np.load(filename, allow_pickle=True)
-        all_ratings = data['all_ratings']
-        all_predictions = data['all_predictions']
-        all_dense_ratings = data['all_dense_ratings']
-        all_dense_predictions = data['all_dense_predictions']
+    if environment_names is None:
+        environment_names = rename_duplicates([env.name for env in environments])
+
+    if recommender_names is None:
+        recommender_names = rename_duplicates([rec.name for rec in recommenders])
+
+    all_ratings = []
+    all_predictions = []
+    all_dense_ratings = []
+    all_dense_predictions = []
+    for env_name, environment in zip(environment_names, environments)
+        print('Started experiments on environment:', env_name)
+        all_ratings.append([])
+        all_predictions.append([])
+        all_dense_ratings.append([])
+        all_dense_predictions.append([])
+        for rec_name, recommender in zip(rec_name, recommenders):
+            print('Running trials for recommender:', rec_name)
+            all_ratings[-1].append([])
+            all_predictions[-1].append([])
+            all_dense_ratings[-1].append([])
+            all_dense_predictions[-1].append([])
+            for i in range(n_trials):
+                print('Running trial:', i)
+                dir_name = s3_dir_name(env_name, rec_name, i)
+                ratings, predictions, dense_ratings, dense_predictions = run_trial(
+                    environment, recommender, len_trial, i, bucket, dir_name, overwrite)
+                all_ratings[-1][-1].append(ratings)
+                all_predictions[-1][-1].append(predictions)
+                all_dense_ratings[-1][-1].append(dense_ratings)
+                all_dense_predictions[-1][-1].append(dense_predictions)
+
+    # Convert all lists to arrays.
+    all_ratings = np.array(all_ratings)
+    all_predictions = np.array(all_predictions)
+    all_dense_ratings = np.array(all_dense_ratings)
+    all_dense_predictions = np.array(all_dense_predictions)
 
     return all_ratings, all_predictions, all_dense_ratings, all_dense_predictions
 
 
-def run_trial(env, recommender, len_trial, seed):
+def run_trial(env,
+              rec,
+              len_trial,
+              trial_number,
+              bucket=None,
+              dir_name=None,
+              overwrite=False)
     """Logic for running each trial.
 
     Parameters
     ----------
     env : Environment
         The environment to use for this trial.
-    recommender : Recommender
+    rec : Recommender
         The recommender to use for this trial.
     len_trial : int
         The number of recommendation steps to run the trial for.
-    seed : int
-        The seed for the environment.
+    trial_number : int
+        The index of the trial. Used to seed the environment.
+    bucket : s3.Bucket
+        The S3 bucket to store the experiment results into. If this is None the results
+        will not be saved in S3.
+    dir_name : str
+        The S3 directory to save the trial results into. Can be None if bucket is also None.
+    overwrite : bool
+        Whether to re-run the experiment and overwrite the trial's saved data in S3.
 
     Returns
     -------
@@ -208,15 +227,21 @@ def run_trial(env, recommender, len_trial, seed):
         array of all predictions on round i for each user-item pair.
 
     """
-    # First generate the items and users to seed the dataset.
-    env.seed(seed)
+    if not overwrite and s3_dir_exists(bucket, dir_name):
+        print("Loading past results from S3.")
+        results = s3_load_trial(bucket, dir_name)
+        return results[1:-1]
+
+    # First generate the items and users to bootstrap the dataset.
+    env.seed(trial_number)
     items, users, ratings = env.reset()
-    recommender.reset(items, users, ratings)
+    rec.reset(items, users, ratings)
 
     all_ratings = []
     all_predictions = []
     all_dense_ratings = []
     all_dense_predictions = []
+    all_env_snapshots = [pickle.dumps(env)]
     user_item = []
     for i in range(len(env.users)):
         for j in range(len(env.items)):
@@ -225,7 +250,7 @@ def run_trial(env, recommender, len_trial, seed):
     # Now recommend items to users.
     for _ in tqdm.autonotebook.tqdm(range(len_trial)):
         online_users = env.online_users()
-        recommendations, predictions = recommender.recommend(online_users, num_recommendations=1)
+        recommendations, predictions = rec.recommend(online_users, num_recommendations=1)
         recommendations = recommendations.flatten()
         dense_ratings = np.clip(env.dense_ratings.flatten(), 1, 5)
         items, users, ratings, _ = env.step(recommendations)
@@ -236,22 +261,36 @@ def run_trial(env, recommender, len_trial, seed):
             dense_predictions = np.ones_like(dense_ratings) * np.nan
         else:
             predictions = predictions.flatten()
-            dense_predictions = recommender.predict(user_item)
+            dense_predictions = rec.predict(user_item)
 
         # Save all relevant info.
         all_ratings.append([rating for rating, _ in ratings.values()])
         all_predictions.append(predictions)
         all_dense_ratings.append(dense_ratings)
         all_dense_predictions.append(dense_predictions)
+        all_env_snapshots.append(copy.deepcopy(env))
 
-        recommender.update(users, items, ratings)
+        rec.update(users, items, ratings)
 
-    # Convert everything to numpy arrays
+    # Convert lists to numpy arrays
     all_ratings = np.array(all_ratings)
     all_predictions = np.array(all_predictions)
     all_dense_ratings = np.array(all_dense_ratings)
     all_dense_predictions = np.array(all_dense_predictions)
 
+    # Save content to S3 if needed.
+    if bucket is not None:
+        print("Saving results to S3.")
+        s3_save_trial(bucket,
+                      dir_name,
+                      rec.hyperparameters,
+                      all_ratings,
+                      all_predictions,
+                      all_dense_ratings,
+                      all_dense_predictions,
+                      all_env_snapshots)
+
+    # TODO: We might want to return the env snapshots too.
     return all_ratings, all_predictions, all_dense_ratings, all_dense_predictions
 
 
@@ -342,3 +381,83 @@ class ModelTuner:
             mses = self.evaluate(params)
             res_dict[tag] = mses
         return res_dict
+
+
+def rename_duplicates(old_list):
+    """Append a number to each element in a list of strings based on the number of duplicates."""
+    count = collections.defaultdict(int)
+    new_list = []
+    for x in old_list:
+        new_list.append(x + count[x])
+        count[x]++
+    return new_list
+
+
+def s3_dir_name(env_name, rec_name, trial_number):
+    """Get the directory name that corresponds to a given trial."""
+    return os.path.join(env_name, rec_name, 'trial' + trial_number, '')
+
+
+def s3_dir_exists(bucket, dir_name):
+    """Check if a directory exists in S3."""
+    if bucket is None:
+        return False
+
+    # We can't use len here so do this instead.
+    exists = False
+    for obj in bucket.objects.filter(Prefix=dir_name):
+        exists = True
+        break
+
+    return exists
+
+
+def s3_save_trial(bucket,
+                  dir_name,
+                  rec_hyperparameters,
+                  ratings,
+                  predictions,
+                  dense_ratings,
+                  dense_predictions,
+                  env_snapshots)
+    """Save a trial in s3 within the given directory."""
+    def serialize_and_put(name, obj, json=False):
+        file_name = os.path.join(s3_dir, name)
+        if json:
+            serialized_obj = json.dumps(obj, sort_keys=True, index=4)
+        else:
+            serialized_obj = pickle.dumps(obj)
+        bucket.put_object(Key=os.path.join(file_name, serialized_obj))
+
+    serialize_and_put('rec_hyperparameters', rec_hyperparameters, json=True)
+    serialize_and_put('ratings', ratings)
+    serialize_and_put('predictions', predictions)
+    serialize_and_put('dense_ratings', dense_ratings)
+    serialize_and_put('dense_predictions', dense_predictions)
+    serialize_and_put('env_snapshots', env_snapshots)
+
+
+def s3_load_trial(bucket, dir_name):
+    """Load a trial saved in a given directory within s3."""
+    def get_and_unserialize(name, json=False):
+        file_name = os.path.join(dir_name, name)
+        if json:
+            with io.StringIO as stream:
+                bucket.download_fileobj(file_name, stream)
+                serialized_obj = stream.get_value()
+                return json.loads(serialized_obj)
+        else:
+            with io.BytesIO as stream:
+                bucket.download_fileobj(file_name, stream)
+                serialized_obj = stream.get_value()
+                return pickle.loads(serialized_obj)
+
+    rec_hyperparameters = get_and_unserialize('rec_hyperparameters', json=True)
+    ratings = get_and_unserialize('ratings')
+    predictions = get_and_unserialize('predictions')
+    dense_ratings = get_and_unserialize('dense_ratings')
+    dense_predictions = get_and_unserialize('dense_predictions')
+    env_snapshots = get_and_unserialize('env_snapshots')
+
+    return (rec_hyperparameters, ratings, predictions,
+            dense_ratings, dense_predictions, env_snapshots)

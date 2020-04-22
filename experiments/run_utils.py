@@ -1,6 +1,7 @@
 """A utility module for running experiments."""
 import collections
 import copy
+import io
 import json
 import os
 import pickle
@@ -444,16 +445,13 @@ def s3_load_trial(bucket, dir_name):
     """Load a trial saved in a given directory within s3."""
     def get_and_unserialize(name, use_json=False):
         file_name = os.path.join(dir_name, name)
+        with io.BytesIO() as stream:
+            bucket.download_fileobj(Key=file_name, Fileobj=stream)
+            serialized_obj = stream.getvalue()
         if use_json:
-            with io.StringIO as stream:
-                bucket.download_fileobj(file_name, stream)
-                serialized_obj = stream.get_value()
-                return json.loads(serialized_obj)
+            return json.loads(serialized_obj)
         else:
-            with io.BytesIO as stream:
-                bucket.download_fileobj(file_name, stream)
-                serialized_obj = stream.get_value()
-                return pickle.loads(serialized_obj)
+            return pickle.loads(serialized_obj)
 
     rec_hyperparameters = get_and_unserialize('rec_hyperparameters', use_json=True)
     ratings = get_and_unserialize('ratings')

@@ -4,6 +4,7 @@ In this environment users and items both have latent vectors, and
 the rating is determined by the inner product. Users and item both
 have bias terms, and there is an underlying bias as well.
 """
+import collections
 import json
 import os
 
@@ -77,8 +78,23 @@ class LatentFactorBehavior(environment.DictEnvironment):
         """Name of environment, used for saving."""
         return 'latent'
 
-    def _rate_item(self, user_id, item_id):
-        """Get a user to rate an item and update the internal rating state.
+    def _get_dense_ratings(self):  # noqa: D102
+        ratings = (self._user_factors @ self._item_factors.T + self._user_biases[:, np.newaxis] +
+                   self._item_biases[np.newaxis, :] + self._offset)
+        # Compute the boredom penalties.
+        item_norms = np.linalg.norm(self._item_factors, axis=1)
+        penalties = (self._item_factors @ self._item_factors.T /
+                     item_norms[:, np.newaxis] / item_norms[np.newaxis, :])
+        penalties = np.max(penalties - self._boredom_penalty, 0)
+        for user_id in range(self._num_users):
+            for item_id in self._user_histories[user_id]:
+                if item_id is not None:
+                    ratings[user_id] -= penalties[item_id]
+
+        return ratings
+
+    def _get_rating(self, user_id, item_id):
+        """Compute user's rating of item based on model.
 
         Parameters
         ----------
@@ -107,7 +123,27 @@ class LatentFactorBehavior(environment.DictEnvironment):
                 if similarity > self._boredom_threshold:
                     boredom_penalty += (similarity - self._boredom_threshold)
         boredom_penalty *= self._boredom_penalty
-        rating = np.clip(raw_rating - boredom_penalty + self._random.randn() * self._noise, 0, 5)
+        rating = np.clip(raw_rating - boredom_penalty + self._random.randn() * self._noise, 1, 5)
+
+        return rating
+
+    def _rate_item(self, user_id, item_id):
+        """Get a user to rate an item and update the internal rating state.
+
+        Parameters
+        ----------
+        user_id : int
+            The id of the user making the rating.
+        item_id : int
+            The id of the item being rated.
+
+        Returns
+        -------
+        rating : int
+            The rating the item was given by the user.
+
+        """
+        rating = self._get_rating(user_id, item_id)
 
         # Updating underlying affinity
         self._user_factors[user_id] = ((1.0 - self._affinity_change) * self._user_factors[user_id]
@@ -123,23 +159,25 @@ class LatentFactorBehavior(environment.DictEnvironment):
         self._item_biases = item_bias
         self._offset = offset
 
-        self._users = {user_id: np.zeros((0,)) for user_id in range(self._num_users)}
-        self._items = {item_id: np.zeros((0,)) for item_id in range(self._num_items)}
+        self._users = collections.OrderedDict((user_id, np.zeros(0))
+                                              for user_id in range(self._num_users))
+        self._items = collections.OrderedDict((item_id, np.zeros(0))
+                                              for item_id in range(self._num_items))
 
     def _generate_latent_factors(self):
         """Generate random latent factors."""
         # Initialization size determined such that ratings generally fall in 0-5 range
-        factor_sd = np.sqrt(np.sqrt(0.5 * self._latent_dim))
+        factor_sd = np.sqrt(np.sqrt(0.5 / self._latent_dim))
         # User latent factors are normally distributed
-        user_bias = np.random.normal(loc=0., scale=0.5, size=self._num_users)
-        user_factors = np.random.normal(loc=0., scale=factor_sd,
-                                        size=(self._num_users, self._latent_dim))
+        user_bias = self._random.normal(loc=0., scale=0.5, size=self._num_users)
+        user_factors = self._random.normal(loc=0., scale=factor_sd,
+                                           size=(self._num_users, self._latent_dim))
         # Item latent factors are normally distributed
-        item_bias = np.random.normal(loc=0., scale=0.5, size=self._num_items)
-        item_factors = np.random.normal(loc=0., scale=factor_sd,
-                                        size=(self._num_items, self._latent_dim))
+        item_bias = self._random.normal(loc=0., scale=0.5, size=self._num_items)
+        item_factors = self._random.normal(loc=0., scale=factor_sd,
+                                           size=(self._num_items, self._latent_dim))
         # Shift up the mean
-        offset = 2.5
+        offset = 3.0
         return user_factors, user_bias, item_factors, item_bias, offset
 
 
@@ -224,12 +262,12 @@ class DatasetLatentFactor(LatentFactorBehavior):
         else:
             reduced_num_users_items = None
         return generate_latent_factors_from_data(self.dataset_name, self.datapath,
-                                                 full_model_params,
+                                                 full_model_params, self._random,
                                                  force_retrain=self._force_retrain,
                                                  reduced_num_users_items=reduced_num_users_items)
 
 
-def generate_latent_factors_from_data(dataset_name, datapath, params,
+def generate_latent_factors_from_data(dataset_name, datapath, params, random,
                                       force_retrain=False, reduced_num_users_items=None):
     """Create latent factors based on a dataset."""
     model_file = os.path.join(datapath, 'fm_model.npz')
@@ -275,10 +313,10 @@ def generate_latent_factors_from_data(dataset_name, datapath, params,
         num_users, num_items = reduced_num_users_items
         # TODO: may want to reduce the number in some other way
         # e.g. related to popularity
-        user_indices = np.random.choice(user_factors.shape[0], size=num_users,
-                                        replace=False)
-        item_indices = np.random.choice(item_factors.shape[0], size=num_items,
-                                        replace=False)
+        user_indices = random.choice(user_factors.shape[0], size=num_users,
+                                     replace=False)
+        item_indices = random.choice(item_factors.shape[0], size=num_items,
+                                     replace=False)
         user_factors = user_factors[user_indices]
         user_bias = user_bias[user_indices]
         item_factors = item_factors[item_indices]

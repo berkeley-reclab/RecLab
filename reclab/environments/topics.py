@@ -3,6 +3,7 @@
 In this environment users have a hidden preference for each topic and each item has a
 hidden topic assigned to it.
 """
+import collections
 import numpy as np
 
 from . import environment
@@ -61,30 +62,50 @@ class Topics(environment.DictEnvironment):
         self._boredom_penalty = boredom_penalty
 
     @property
-    def name(self):
-        """Name of environment, used for saving."""
+    def name(self):  # noqa: D102
         return 'topics'
 
-    def _rate_item(self, user_id, item_id):
-        """Get a user to rate an item and update the internal rating state."""
+    def _get_dense_ratings(self):  # noqa: D102
+        ratings = np.zeros([self._num_users, self._num_items])
+        for item_id in range(self._num_items):
+            topic = self._item_topics[item_id]
+            ratings[:, item_id] = self._user_preferences[:, topic]
+
+        # Account for boredom.
+        for user_id in range(self._num_users):
+            recent_topics = [self._item_topics[item] for item in self._user_histories[user_id]]
+            recent_topics, counts = np.unique(recent_topics, return_counts=True)
+            recent_topics = recent_topics[counts > self._boredom_threshold]
+            for topic_id in recent_topics:
+                ratings[user_id, self._item_topics == topic_id] -= self._boredom_penalty
+
+        return ratings
+
+    def _get_rating(self, user_id, item_id):  # noqa: D102
         topic = self._item_topics[item_id]
-        preference = self._user_preferences[user_id, topic]
-        rating = np.clip(np.round(preference + self._random.randn() * self._noise), 1, 5)
+        rating = self._user_preferences[user_id, topic]
         recent_topics = [self._item_topics[item] for item in self._user_histories[user_id]]
         if recent_topics.count(topic) > self._boredom_threshold:
             rating -= self._boredom_penalty
-        rating = np.clip(rating, 1, 5)
+        rating = np.clip(rating + self._random.randn() * self._noise, 1, 5)
+        return rating
+
+    def _rate_item(self, user_id, item_id):  # noqa: D102
+        rating = self._get_rating(user_id, item_id)
         # Updating underlying preference
+        topic = self._item_topics[item_id]
+        preference = self._user_preferences[user_id, topic]
         if preference <= 5:
             self._user_preferences[user_id, topic] += self._topic_change
             self._user_preferences[user_id, np.arange(self._num_topics) != topic] -= (
                 self._topic_change / (self._num_topics - 1))
         return rating
 
-    def _reset_state(self):
-        """Reset the state of the environment."""
-        self._user_preferences = np.random.uniform(low=0.5, high=5.5,
-                                                   size=(self._num_users, self._num_topics))
-        self._item_topics = np.random.choice(self._num_topics, size=self._num_items)
-        self._users = {user_id: np.zeros((0,)) for user_id in range(self._num_users)}
-        self._items = {item_id: np.zeros((0,)) for item_id in range(self._num_items)}
+    def _reset_state(self):  # noqa: D102
+        self._user_preferences = self._random.uniform(low=0.5, high=5.5,
+                                                      size=(self._num_users, self._num_topics))
+        self._item_topics = self._random.choice(self._num_topics, size=self._num_items)
+        self._users = collections.OrderedDict((user_id, np.zeros(0))
+                                              for user_id in range(self._num_users))
+        self._items = collections.OrderedDict((item_id, np.zeros(0))
+                                              for item_id in range(self._num_items))

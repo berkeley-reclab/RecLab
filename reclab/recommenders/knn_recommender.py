@@ -5,8 +5,6 @@ import numpy as np
 import scipy.sparse
 import scipy.sparse.linalg
 
-import time
-
 from . import recommender
 
 
@@ -44,6 +42,11 @@ class KNNRecommender(recommender.PredictRecommender):
         self._feature_matrix = scipy.sparse.csr_matrix((0, 0))
         self._means = np.empty(0)
         self._similarity_matrix = np.empty((0, 0))
+        self._ratings_matrix = np.empty((0, 0))
+
+    @property
+    def name(self):  # noqa: D102
+        return 'knn'
 
     def reset(self, users=None, items=None, ratings=None):  # noqa: D102
         self._feature_matrix = scipy.sparse.csr_matrix((0, 0))

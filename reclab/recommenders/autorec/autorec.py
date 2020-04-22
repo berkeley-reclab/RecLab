@@ -75,6 +75,10 @@ class Autorec(recommender.PredictRecommender):
                                      seed,
                                      display_step)
 
+    @property
+    def name(self):  # noqa: D102
+        return 'autorec'
+
     def _predict(self, user_item):  # noqa: D102
         return self.model.predict(user_item)
 

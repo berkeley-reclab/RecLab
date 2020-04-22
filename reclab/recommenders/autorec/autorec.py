@@ -74,7 +74,7 @@ class Autorec(recommender.PredictRecommender):
                                      decay_epoch_step,
                                      seed,
                                      display_step)
-        self._hyperparameter.update(locals())
+        self._hyperparameters.update(locals())
 
         # We only want the function arguments so remove class related objects.
         del self._hyperparameters['self']

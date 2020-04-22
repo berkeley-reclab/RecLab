@@ -57,7 +57,7 @@ class Llorma(recommender.PredictRecommender):
                                      pre_learning_rate, pre_lambda_val, pre_train_steps,
                                      rank, learning_rate, lambda_val, train_steps,
                                      batch_size, use_cache, result_path)
-        self._hyperparameter.update(locals())
+        self._hyperparameters.update(locals())
 
         # We only want the function arguments so remove class related objects.
         del self._hyperparameters['self']

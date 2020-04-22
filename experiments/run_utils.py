@@ -1,8 +1,11 @@
 """A utility module for running experiments."""
-import boto3
+import collections
+import copy
+import json
 import os
 import pickle
 
+import boto3
 import matplotlib.pyplot as plt
 import numpy as np
 import tqdm.autonotebook
@@ -138,7 +141,7 @@ def run_env_experiment(environments,
     """
     bucket = None
     if bucket_name is not None:
-        bucket = boto.resource('s3').Bucket('bucket_name')
+        bucket = boto3.resource('s3').Bucket(bucket_name)
 
     if environment_names is None:
         environment_names = rename_duplicates([env.name for env in environments])
@@ -150,13 +153,13 @@ def run_env_experiment(environments,
     all_predictions = []
     all_dense_ratings = []
     all_dense_predictions = []
-    for env_name, environment in zip(environment_names, environments)
+    for env_name, environment in zip(environment_names, environments):
         print('Started experiments on environment:', env_name)
         all_ratings.append([])
         all_predictions.append([])
         all_dense_ratings.append([])
         all_dense_predictions.append([])
-        for rec_name, recommender in zip(rec_name, recommenders):
+        for rec_name, recommender in zip(recommender_names, recommenders):
             print('Running trials for recommender:', rec_name)
             all_ratings[-1].append([])
             all_predictions[-1].append([])
@@ -187,7 +190,7 @@ def run_trial(env,
               trial_number,
               bucket=None,
               dir_name=None,
-              overwrite=False)
+              overwrite=False):
     """Logic for running each trial.
 
     Parameters
@@ -388,14 +391,14 @@ def rename_duplicates(old_list):
     count = collections.defaultdict(int)
     new_list = []
     for x in old_list:
-        new_list.append(x + count[x])
-        count[x]++
+        new_list.append(x + '_' + str(count[x]))
+        count[x] += 1
     return new_list
 
 
 def s3_dir_name(env_name, rec_name, trial_number):
     """Get the directory name that corresponds to a given trial."""
-    return os.path.join(env_name, rec_name, 'trial' + trial_number, '')
+    return os.path.join(env_name, rec_name, 'trial_' + str(trial_number), '')
 
 
 def s3_dir_exists(bucket, dir_name):
@@ -419,17 +422,17 @@ def s3_save_trial(bucket,
                   predictions,
                   dense_ratings,
                   dense_predictions,
-                  env_snapshots)
+                  env_snapshots):
     """Save a trial in s3 within the given directory."""
-    def serialize_and_put(name, obj, json=False):
-        file_name = os.path.join(s3_dir, name)
-        if json:
-            serialized_obj = json.dumps(obj, sort_keys=True, index=4)
+    def serialize_and_put(name, obj, use_json=False):
+        file_name = os.path.join(dir_name, name)
+        if use_json:
+            serialized_obj = json.dumps(obj, sort_keys=True, indent=4)
         else:
             serialized_obj = pickle.dumps(obj)
-        bucket.put_object(Key=os.path.join(file_name, serialized_obj))
+        bucket.put_object(Key=file_name, Body=serialized_obj)
 
-    serialize_and_put('rec_hyperparameters', rec_hyperparameters, json=True)
+    serialize_and_put('rec_hyperparameters', rec_hyperparameters, use_json=True)
     serialize_and_put('ratings', ratings)
     serialize_and_put('predictions', predictions)
     serialize_and_put('dense_ratings', dense_ratings)
@@ -439,9 +442,9 @@ def s3_save_trial(bucket,
 
 def s3_load_trial(bucket, dir_name):
     """Load a trial saved in a given directory within s3."""
-    def get_and_unserialize(name, json=False):
+    def get_and_unserialize(name, use_json=False):
         file_name = os.path.join(dir_name, name)
-        if json:
+        if use_json:
             with io.StringIO as stream:
                 bucket.download_fileobj(file_name, stream)
                 serialized_obj = stream.get_value()
@@ -452,7 +455,7 @@ def s3_load_trial(bucket, dir_name):
                 serialized_obj = stream.get_value()
                 return pickle.loads(serialized_obj)
 
-    rec_hyperparameters = get_and_unserialize('rec_hyperparameters', json=True)
+    rec_hyperparameters = get_and_unserialize('rec_hyperparameters', use_json=True)
     ratings = get_and_unserialize('ratings')
     predictions = get_and_unserialize('predictions')
     dense_ratings = get_and_unserialize('dense_ratings')

@@ -79,7 +79,7 @@ class LibFM(recommender.PredictRecommender):
                                  init_stdev=init_stdev,
                                  num_iter=num_iter,
                                  seed=seed)
-        self._hyperparameter.update(locals())
+        self._hyperparameters.update(locals())
 
         # We only want the function arguments so remove class related objects.
         del self._hyperparameters['self']
@@ -207,14 +207,3 @@ class LibFM(recommender.PredictRecommender):
         """
         self._model.train(self._train_data)
         return self._model.parameters()
-
-    def hyperparameters(self):
-        """Get the hyperparameters associated with this libfm model.
-
-        Returns
-        -------
-        hyperparameters : dict
-            The dict of all hyperparameters.
-
-        """
-        return self._hyperparameters

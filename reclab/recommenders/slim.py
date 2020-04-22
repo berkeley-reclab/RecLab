@@ -47,7 +47,7 @@ class SLIM(recommender.PredictRecommender):
                                                       tol=tol,
                                                       random_state=seed)
         self._weights = None
-        self._hyperparameter.update(locals())
+        self._hyperparameters.update(locals())
 
         # We only want the function arguments so remove class related objects.
         del self._hyperparameters['self']

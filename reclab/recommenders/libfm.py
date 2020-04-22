@@ -79,7 +79,7 @@ class LibFM(recommender.PredictRecommender):
                                  init_stdev=init_stdev,
                                  num_iter=num_iter,
                                  seed=seed)
-        self._hyperparameters = locals()
+        self._hyperparameter.update(locals())
 
         # We only want the function arguments so remove class related objects.
         del self._hyperparameters['self']

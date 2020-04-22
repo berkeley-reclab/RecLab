@@ -22,6 +22,12 @@ class Recommender(abc.ABC):
         """Get the name of the recommender."""
         raise NotImplementedError
 
+    @property
+    @abc.abstractmethod
+    def hyperparameters(self):
+        """Get a dict of all the recommender's hyperparameters."""
+        raise NotImplementedError
+
     @abc.abstractmethod
     def reset(self, users=None, items=None, ratings=None):
         """Reset the recommender with optional starting user, item, and rating data.
@@ -118,8 +124,16 @@ class PredictRecommender(Recommender):
         self._inner_to_outer_iid = []
         # The sampling strategy to use.
         self._strategy = strategy
+        # A dict of all the recommender's hyperparameters.
+        self._hyperparameters = {'strategy': strategy}
         # Check that the strategy is of valid type.
         assert self._strategy in ['greedy', 'eps_greedy', 'thompson']
+
+    @property
+    def hyperparameters(self):
+        """Get a dict of all the recommender's hyperparameters."""
+        return self._hyperparameters
+
 
     def reset(self, users=None, items=None, ratings=None):
         """Reset the recommender with optional starting user, item, and rating data.

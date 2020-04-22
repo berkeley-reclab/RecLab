@@ -35,6 +35,7 @@ class SLIM(recommender.PredictRecommender):
                  tol=1e-4,
                  seed=0):
         """Create a SLIM recommender."""
+        super().__init__()
         self._model = sklearn.linear_model.ElasticNet(alpha=alpha,
                                                       l1_ratio=l1_ratio,
                                                       positive=positive,
@@ -46,7 +47,12 @@ class SLIM(recommender.PredictRecommender):
                                                       tol=tol,
                                                       random_state=seed)
         self._weights = None
-        super().__init__()
+        self._hyperparameter.update(locals())
+
+        # We only want the function arguments so remove class related objects.
+        del self._hyperparameters['self']
+        del self._hyperparameters['__class__']
+
 
     @property
     def name(self):  # noqa: D102

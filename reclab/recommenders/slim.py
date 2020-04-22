@@ -53,7 +53,6 @@ class SLIM(recommender.PredictRecommender):
         del self._hyperparameters['self']
         del self._hyperparameters['__class__']
 
-
     @property
     def name(self):  # noqa: D102
         return 'slim'

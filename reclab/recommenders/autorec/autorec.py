@@ -60,7 +60,7 @@ class Autorec(recommender.PredictRecommender):
         del self._hyperparameters['__class__']
 
         config = tf.ConfigProto()
-        config.gpu_options.allow_growth = True
+        config.gpu_options.allow_growth = True  # pylint: disable=no-member
         sess = tf.Session(config=config)
         seen_users = set()
         seen_items = set()

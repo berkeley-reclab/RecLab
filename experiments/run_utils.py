@@ -142,7 +142,7 @@ def run_env_experiment(environments,
     """
     bucket = None
     if bucket_name is not None:
-        bucket = boto3.resource('s3').Bucket(bucket_name)
+        bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
 
     if environment_names is None:
         environment_names = rename_duplicates([env.name for env in environments])
@@ -232,7 +232,7 @@ def run_trial(env,
 
     """
     if not overwrite and s3_dir_exists(bucket, dir_name):
-        print("Loading past results from S3.")
+        print('Loading past results from S3.')
         results = s3_load_trial(bucket, dir_name)
         return results[1:-1]
 
@@ -284,7 +284,7 @@ def run_trial(env,
 
     # Save content to S3 if needed.
     if bucket is not None:
-        print("Saving results to S3.")
+        print('Saving results to S3.')
         s3_save_trial(bucket,
                       dir_name,
                       rec.hyperparameters,
@@ -409,7 +409,7 @@ def s3_dir_exists(bucket, dir_name):
 
     # We can't use len here so do this instead.
     exists = False
-    for obj in bucket.objects.filter(Prefix=dir_name):
+    for _ in bucket.objects.filter(Prefix=dir_name):
         exists = True
         break
 
@@ -449,9 +449,10 @@ def s3_load_trial(bucket, dir_name):
             bucket.download_fileobj(Key=file_name, Fileobj=stream)
             serialized_obj = stream.getvalue()
         if use_json:
-            return json.loads(serialized_obj)
+            obj = json.loads(serialized_obj)
         else:
-            return pickle.loads(serialized_obj)
+            obj = pickle.loads(serialized_obj)
+        return obj
 
     rec_hyperparameters = get_and_unserialize('rec_hyperparameters', use_json=True)
     ratings = get_and_unserialize('ratings')

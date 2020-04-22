@@ -134,7 +134,6 @@ class PredictRecommender(Recommender):
         """Get a dict of all the recommender's hyperparameters."""
         return self._hyperparameters
 
-
     def reset(self, users=None, items=None, ratings=None):
         """Reset the recommender with optional starting user, item, and rating data.
 

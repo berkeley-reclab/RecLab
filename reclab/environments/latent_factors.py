@@ -293,7 +293,7 @@ def generate_latent_factors_from_data(dataset_name, datapath, params, random,
         item_factors = pairwise_interactions[item_indices]
         item_bias = weights[item_indices]
         offset = global_bias
-        params = json.dumps(recommender.hyperparameters())
+        params = json.dumps(recommender.hyperparameters)
 
         np.savez(model_file, user_factors=user_factors, user_bias=user_bias,
                  item_factors=item_factors, item_bias=item_bias, offset=offset,

@@ -42,6 +42,11 @@ class KNNRecommender(recommender.PredictRecommender):
         self._means = np.empty(0)
         self._similarity_matrix = np.empty((0, 0))
         self._ratings_matrix = np.empty((0, 0))
+        self._hyperparameters.update(locals())
+
+        # We only want the function arguments so remove class related objects.
+        del self._hyperparameters['self']
+        del self._hyperparameters['__class__']
 
     @property
     def name(self):  # noqa: D102

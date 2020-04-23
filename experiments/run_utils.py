@@ -98,8 +98,8 @@ def get_env_dataset(environment):
     available to each recommender when calling run_env_experiment.
 
     """
-    env.seed((INIT_SEED, 0))
-    return env.reset()
+    environment.seed((INIT_SEED, 0))
+    return environment.reset()
 
 
 def run_env_experiment(environments,

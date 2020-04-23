@@ -172,7 +172,7 @@ class LatentFactorBehavior(environment.DictEnvironment):
         # User latent factors are normally distributed
         user_bias = self._init_random.normal(loc=0., scale=0.5, size=self._num_users)
         user_factors = self._init_random.normal(loc=0., scale=factor_sd,
-                                           size=(self._num_users, self._latent_dim))
+                                                size=(self._num_users, self._latent_dim))
         # Item latent factors are normally distributed
         item_bias = self._init_random.normal(loc=0., scale=0.5, size=self._num_items)
         item_factors = self._init_random.normal(loc=0., scale=factor_sd,

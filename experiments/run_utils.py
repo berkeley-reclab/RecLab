@@ -192,7 +192,7 @@ def run_env_experiment(environments,
                 print('Running trial with seed:', seed)
                 dir_name = s3_dir_name(data_dir, env_name, rec_name, seed)
                 ratings, predictions, dense_ratings, dense_predictions = run_trial(
-                    environment, recommender, len_trial, i, bucket, dir_name, overwrite)
+                    environment, recommender, len_trial, seed, bucket, dir_name, overwrite)
                 all_ratings[-1][-1].append(ratings)
                 all_predictions[-1][-1].append(predictions)
                 all_dense_ratings[-1][-1].append(dense_ratings)

@@ -406,11 +406,12 @@ def rename_duplicates(old_list):
 
 
 def git_hash():
-    return subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip()
+    return subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
 
 
 def git_branch():
-    return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip()
+    return subprocess.check_output(['git', 'rev-parse',
+                                    '--abbrev-ref', 'HEAD']).decode('ascii').strip()
 
 
 def s3_dir_name(data_dir, env_name, rec_name, trial_number):
@@ -449,14 +450,16 @@ def s3_save_trial(bucket,
         file_name = os.path.join(dir_name, name)
         if use_json:
             serialized_obj = json.dumps(obj, sort_keys=True, indent=4)
+            file_name  = file_name + '.json'
         else:
             serialized_obj = pickle.dumps(obj)
+            file_name  = file_name + '.pickle'
         bucket.put_object(Key=file_name, Body=serialized_obj)
 
     info = {
-        'date': datetime.datetime.now.strftime('%Y-%m-%d %H:%M')
+        'date': datetime.datetime.now().strftime('%Y-%m-%d %H:%M'),
+        'environment': env_name,
         'recommender': rec_name,
-        'environment': env,
         'git hash': git_hash(),
         'git branch': git_branch(),
     }
@@ -473,6 +476,10 @@ def s3_load_trial(bucket, dir_name):
     """Load a trial saved in a given directory within s3."""
     def get_and_unserialize(name, use_json=False):
         file_name = os.path.join(dir_name, name)
+        if use_json:
+            file_name  = file_name + '.json'
+        else:
+            file_name  = file_name + '.pickle'
         with io.BytesIO() as stream:
             bucket.download_fileobj(Key=file_name, Fileobj=stream)
             serialized_obj = stream.getvalue()

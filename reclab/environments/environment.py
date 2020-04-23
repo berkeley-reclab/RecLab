@@ -147,7 +147,8 @@ class DictEnvironment(Environment):
     def __init__(self, rating_frequency=0.02, num_init_ratings=0, memory_length=0):
         """Create a Topics environment."""
         self._timestep = -1
-        self._random = np.random.RandomState()
+        self._init_random = np.random.RandomState()
+        self._dynamics_random = np.random.RandomState()
         self._rating_frequency = rating_frequency
         self._num_init_ratings = num_init_ratings
         self._users = None
@@ -186,8 +187,8 @@ class DictEnvironment(Environment):
         self._dense_ratings = None
 
         # Fill the rating dict with initial data.
-        idx_1d = self._random.choice(num_users * num_items, self._num_init_ratings,
-                                     replace=False)
+        idx_1d = self._init_random.choice(num_users * num_items, self._num_init_ratings,
+                                          replace=False)
         user_ids = idx_1d // num_items
         item_ids = idx_1d % num_items
         self._ratings = {}
@@ -330,8 +331,27 @@ class DictEnvironment(Environment):
         return self._dense_ratings
 
     def seed(self, seed=None):
-        """Set the seed for this environment's random number generator."""
-        self._random.seed(seed)
+        """Set the seed for this environment's random number generator.
+
+        Parameters
+        ----------
+        seed : int or tuple of int
+            The seed for the random number generators. If seed is an int or a tuple of length 1 all
+            random number generators will be initialized with that seed. If it is a tuple of length
+            2 the random number generator for the initial state of the environment will be
+            initialized with seed[0] and the random number generator for the environment dynamics
+            will be initialized with seed[1].
+
+        """
+        if seed is None or np.issubdtype(seed, np.integer):
+            self._init_random.seed(seed)
+            self._dynamics_random.seed(seed)
+        elif len(seed) == 1:
+            self._init_random.seed(seed[0])
+            self._dynamics_random.seed(seed[0])
+        else:
+            self._init_random.seed(seed[0])
+            self._dynamics_random.seed(seed[1])
 
     @abc.abstractmethod
     def _get_dense_ratings(self):
@@ -422,4 +442,4 @@ class DictEnvironment(Environment):
         """
         num_users = len(self._users)
         num_online = int(self._rating_frequency * num_users)
-        return self._random.choice(num_users, size=num_online, replace=False)
+        return self._dynamics_random.choice(num_users, size=num_online, replace=False)

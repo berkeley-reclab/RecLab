@@ -87,7 +87,7 @@ class Topics(environment.DictEnvironment):
         recent_topics = [self._item_topics[item] for item in self._user_histories[user_id]]
         if recent_topics.count(topic) > self._boredom_threshold:
             rating -= self._boredom_penalty
-        rating = np.clip(rating + self._random.randn() * self._noise, 1, 5)
+        rating = np.clip(rating + self._dynamics_random.randn() * self._noise, 1, 5)
         return rating
 
     def _rate_item(self, user_id, item_id):  # noqa: D102
@@ -102,9 +102,9 @@ class Topics(environment.DictEnvironment):
         return rating
 
     def _reset_state(self):  # noqa: D102
-        self._user_preferences = self._random.uniform(low=0.5, high=5.5,
+        self._user_preferences = self._init_random.uniform(low=0.5, high=5.5,
                                                       size=(self._num_users, self._num_topics))
-        self._item_topics = self._random.choice(self._num_topics, size=self._num_items)
+        self._item_topics = self._init_random.choice(self._num_topics, size=self._num_items)
         self._users = collections.OrderedDict((user_id, np.zeros(0))
                                               for user_id in range(self._num_users))
         self._items = collections.OrderedDict((item_id, np.zeros(0))

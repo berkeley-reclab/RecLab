@@ -123,7 +123,8 @@ class LatentFactorBehavior(environment.DictEnvironment):
                 if similarity > self._boredom_threshold:
                     boredom_penalty += (similarity - self._boredom_threshold)
         boredom_penalty *= self._boredom_penalty
-        rating = np.clip(raw_rating - boredom_penalty + self._random.randn() * self._noise, 1, 5)
+        rating = np.clip(raw_rating - boredom_penalty + self._dynamics_random.randn() *
+                         self._noise, 1, 5)
 
         return rating
 
@@ -169,13 +170,13 @@ class LatentFactorBehavior(environment.DictEnvironment):
         # Initialization size determined such that ratings generally fall in 0-5 range
         factor_sd = np.sqrt(np.sqrt(0.5 / self._latent_dim))
         # User latent factors are normally distributed
-        user_bias = self._random.normal(loc=0., scale=0.5, size=self._num_users)
-        user_factors = self._random.normal(loc=0., scale=factor_sd,
+        user_bias = self._init_random.normal(loc=0., scale=0.5, size=self._num_users)
+        user_factors = self._init_random.normal(loc=0., scale=factor_sd,
                                            size=(self._num_users, self._latent_dim))
         # Item latent factors are normally distributed
-        item_bias = self._random.normal(loc=0., scale=0.5, size=self._num_items)
-        item_factors = self._random.normal(loc=0., scale=factor_sd,
-                                           size=(self._num_items, self._latent_dim))
+        item_bias = self._init_random.normal(loc=0., scale=0.5, size=self._num_items)
+        item_factors = self._init_random.normal(loc=0., scale=factor_sd,
+                                                size=(self._num_items, self._latent_dim))
         # Shift up the mean
         offset = 3.0
         return user_factors, user_bias, item_factors, item_bias, offset
@@ -261,8 +262,11 @@ class DatasetLatentFactor(LatentFactorBehavior):
                                        min(self._num_items, self._full_num_items))
         else:
             reduced_num_users_items = None
+        # TODO: This is another source of randomness that isn't accounted for by our seeds.
+        # We probably want to make it more obvious that we need to snapshot the output when
+        # we want consistency across experiments.
         return generate_latent_factors_from_data(self.dataset_name, self.datapath,
-                                                 full_model_params, self._random,
+                                                 full_model_params, self._init_random,
                                                  force_retrain=self._force_retrain,
                                                  reduced_num_users_items=reduced_num_users_items)
 

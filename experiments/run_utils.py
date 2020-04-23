@@ -1,10 +1,12 @@
 """A utility module for running experiments."""
 import collections
 import copy
+import datetime
 import io
 import json
 import os
 import pickle
+import subprocess
 
 import boto3
 import matplotlib.pyplot as plt
@@ -91,6 +93,7 @@ def run_env_experiment(environments,
                        environment_names=None,
                        recommender_names=None,
                        bucket_name='recsys-eval',
+                       data_dir=None,
                        overwrite=False):
     """Run repeated trials for a given list of recommenders on a list of environments.
 
@@ -111,10 +114,13 @@ def run_env_experiment(environments,
         The name under which each recommender will be saved. If this is None
         each recommender will be named according to the environment's property.
     bucket_name : str
-        The name of the s3 bucket to store the experiment results in. If this is None
+        The name of the S3 bucket to store the experiment results in. If this is None
         the results will not be saved.
+    data_dir : str
+        The name of the S3 directory under which to store the experiments. Can be None
+        if bucket_name is also None.
     overwrite : bool
-        Whether to re-run the experiment even if a matching s3 file is found.
+        Whether to re-run the experiment even if a matching S3 file is found.
 
     Returns
     -------
@@ -168,7 +174,7 @@ def run_env_experiment(environments,
             all_dense_predictions[-1].append([])
             for i in range(n_trials):
                 print('Running trial:', i)
-                dir_name = s3_dir_name(env_name, rec_name, i)
+                dir_name = s3_dir_name(data_dir, env_name, rec_name, i)
                 ratings, predictions, dense_ratings, dense_predictions = run_trial(
                     environment, recommender, len_trial, i, bucket, dir_name, overwrite)
                 all_ratings[-1][-1].append(ratings)
@@ -287,6 +293,8 @@ def run_trial(env,
         print('Saving results to S3.')
         s3_save_trial(bucket,
                       dir_name,
+                      env.name,
+                      rec.name,
                       rec.hyperparameters,
                       all_ratings,
                       all_predictions,
@@ -397,9 +405,19 @@ def rename_duplicates(old_list):
     return new_list
 
 
-def s3_dir_name(env_name, rec_name, trial_number):
+def git_hash():
+    return subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip()
+
+
+def git_branch():
+    return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip()
+
+
+def s3_dir_name(data_dir, env_name, rec_name, trial_number):
     """Get the directory name that corresponds to a given trial."""
-    return os.path.join(env_name, rec_name, 'trial_' + str(trial_number), '')
+    if data_dir is None:
+        return None
+    return os.path.join(data_dir, env_name, rec_name, 'trial_' + str(trial_number), '')
 
 
 def s3_dir_exists(bucket, dir_name):
@@ -418,6 +436,8 @@ def s3_dir_exists(bucket, dir_name):
 
 def s3_save_trial(bucket,
                   dir_name,
+                  env_name,
+                  rec_name,
                   rec_hyperparameters,
                   ratings,
                   predictions,
@@ -433,6 +453,14 @@ def s3_save_trial(bucket,
             serialized_obj = pickle.dumps(obj)
         bucket.put_object(Key=file_name, Body=serialized_obj)
 
+    info = {
+        'date': datetime.datetime.now.strftime('%Y-%m-%d %H:%M')
+        'recommender': rec_name,
+        'environment': env,
+        'git hash': git_hash(),
+        'git branch': git_branch(),
+    }
+    serialize_and_put('info', info, use_json=True)
     serialize_and_put('rec_hyperparameters', rec_hyperparameters, use_json=True)
     serialize_and_put('ratings', ratings)
     serialize_and_put('predictions', predictions)

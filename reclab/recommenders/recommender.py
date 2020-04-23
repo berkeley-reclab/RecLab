@@ -239,6 +239,8 @@ class PredictRecommender(Recommender):
         # items that have not been rated for each user.
         ratings_to_predict = []
         all_item_ids = []
+        # TODO: We need to figure out what to do when the number of items left to recommend
+        # runs out.
         for user_id in user_contexts:
             inner_uid = self._outer_to_inner_uid[user_id]
             item_ids = self._ratings[inner_uid].nonzero()[1]
@@ -257,6 +259,8 @@ class PredictRecommender(Recommender):
         # Pick items according to the strategy, along with their predicted ratings.
         all_recs = []
         all_predicted_ratings = []
+        # TODO: Right now items with the same ratings will be sorted in a deterministic order.
+        # This probably shouldn't be the case.
         for item_ids, predictions in zip(all_item_ids, all_predictions):
             recs, predicted_ratings = self._select_item(item_ids, predictions,
                                                         num_recommendations)

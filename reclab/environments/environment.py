@@ -195,8 +195,15 @@ class DictEnvironment(Environment):
         item_ids = idx_1d % num_items
         self._ratings = {}
         for user_id, item_id in zip(user_ids, item_ids):
+            # TODO: This is a hack, but I don't think we should necessarily put the burden
+            # of having to implement a version of _rate_item that knows whether it's being called
+            # in reset or not on people deriving from this class. Need to think of a better way
+            # than doing this though.
+            temp_random = self._dynamics_random
+            self._dynamics_random = self._init_random
             self._ratings[user_id, item_id] = (self._rate_item(user_id, item_id),
                                                self._rating_context(user_id))
+            self._dynamics_random = temp_random
 
         # Finally, set the users that will be online for the first step.
         self._online_users = self._select_online_users()

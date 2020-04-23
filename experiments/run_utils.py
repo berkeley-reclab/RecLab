@@ -11,6 +11,7 @@ import subprocess
 import boto3
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import tqdm.autonotebook
 
 
@@ -377,7 +378,6 @@ class ModelTuner:
         if bucket_name is not None:
             self.bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
 
-
     def _generate_n_folds(self, n_fold):
         """Generate indices for n folds."""
         indices = np.random.permutation(len(self.ratings))
@@ -444,15 +444,17 @@ class ModelTuner:
             del new_grid_params[curr_param]
             results = []
             for value in curr_values:
-                results += recurse_grid({**fixed_params, curr_param=curr_values}, new_grid_params)
+                results += recurse_grid({**fixed_params, curr_param: value}, new_grid_params)
+            return results
 
         results = recurse_grid({}, params)
         results = pd.DataFrame(results)
         if self.bucket is not None:
-            self.s3_save(self.bucket, self.dir_name, results)
+            self.s3_save(results, params)
 
     def s3_save(self, results, params):
-        dir_name = os.path.join(self.dir_name, self.recommender_name,
+        """Save the current hyperparameter tuning results to S3."""
+        dir_name = os.path.join(self.data_dir, self.recommender_name,
                                 'evaluation_' + str(self.num_evaluations))
         info = {
             'date': datetime.datetime.now().strftime('%Y-%m-%d %H:%M'),
@@ -461,9 +463,9 @@ class ModelTuner:
             'git username': git_username(),
             'recommender': self.recommender_name,
         }
-        serialize_and_put(bucket, dir_name, 'info', info, use_json=True)
-        serialize_and_put(bucket, dir_name, 'params', params, use_json=True)
-        put_dataframe(bucket, dir_name, 'results', results)
+        serialize_and_put(self.bucket, dir_name, 'info', info, use_json=True)
+        serialize_and_put(self.bucket, dir_name, 'params', params, use_json=True)
+        put_dataframe(self.bucket, dir_name, 'results', results)
 
 
 def rename_duplicates(old_list):

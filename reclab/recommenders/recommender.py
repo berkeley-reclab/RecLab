@@ -16,6 +16,12 @@ import scipy
 class Recommender(abc.ABC):
     """The interface for recommenders."""
 
+    @property
+    @abc.abstractmethod
+    def name(self):
+        """Get the name of the recommender."""
+        raise NotImplementedError
+
     @abc.abstractmethod
     def reset(self, users=None, items=None, ratings=None):
         """Reset the recommender with optional starting user, item, and rating data.
@@ -222,8 +228,8 @@ class PredictRecommender(Recommender):
         all_item_ids = []
         for user_id in user_contexts:
             inner_uid = self._outer_to_inner_uid[user_id]
-            item_ids = np.array([j for j in range(len(self._items))
-                                 if self._ratings[inner_uid, j] == 0])
+            item_ids = self._ratings[inner_uid].nonzero()[1]
+            item_ids = np.setdiff1d(np.arange(len(self._items)), item_ids)
             user_ids = inner_uid * np.ones(len(item_ids), dtype=np.int)
             contexts = len(item_ids) * [user_contexts[user_id]]
             ratings_to_predict += list(zip(user_ids, item_ids, contexts))

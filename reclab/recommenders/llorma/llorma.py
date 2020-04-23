@@ -58,6 +58,10 @@ class Llorma(recommender.PredictRecommender):
                                      rank, learning_rate, lambda_val, train_steps,
                                      batch_size, use_cache, result_path)
 
+    @property
+    def name(self):  # noqa: D102
+        return 'llorma'
+
     def _predict(self, user_item):  # noqa: D102
         users, items, _ = list(zip(*user_item))
         users = np.array(users)

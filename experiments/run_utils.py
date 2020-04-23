@@ -3,12 +3,13 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+import tqdm.autonotebook
 
 
 def plot_ratings_mses(ratings,
                       predictions,
-                      num_init_ratings,
-                      labels):
+                      labels,
+                      num_init_ratings=None):
     """Plot the performance results for multiple recommenders.
 
     Parameters
@@ -24,10 +25,11 @@ def plot_ratings_mses(ratings,
         j-th trial for the aforementioned recommender. If a recommender does not make
         predictions then its associated elements can be np.nan. It will not be displayed
         during RMSE plotting.
-    num_init_ratings : int
-        The number of ratings initially available to recommenders.
     labels : list of str
         The name of each recommender.
+    num_init_ratings : int
+        The number of ratings initially available to recommenders. If set to None
+        the function will plot with an x-axis based on round number.
 
     """
     def get_stats(arr):
@@ -44,8 +46,12 @@ def plot_ratings_mses(ratings,
         lower_bounds = np.maximum(means - 2 * stds, 0)
         return means, lower_bounds, upper_bounds
 
+    if num_init_ratings is not None:
+        x_vals = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])
+    else:
+        x_vals = np.arange(ratings.shape[2])
+
     plt.figure(figsize=[9, 4])
-    x_vals = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])
     plt.subplot(1, 2, 1)
     for recommender_ratings, label in zip(ratings, labels):
         means, lower_bounds, upper_bounds = get_stats(recommender_ratings)
@@ -111,6 +117,15 @@ def run_env_experiment(environments,
         k-th trial for the aforementioned recommender while running the i-th environment.
         Note that if the recommender does not make predictions to make recommendations
         then that element will be np.nan.
+    dense_ratings : np.ndarray
+        The array of all ratings throughout all trials. ratings[i, j, k, l]
+        corresponds to the dense ratings array across all user-item pairs during
+        the l-th step of the k-th trial for the j-th recommender on the i-th environment.
+    predictions : np.ndarray
+        The array of dense predictions made by recommenders throughout all trials.
+        corresponds to the dense predictions array across all user-item pairs during
+        the l-th step of the k-th trial for the j-th recommender on the i-th environment.
+        predictions[i, j, k, l] corresponds to the prediction that the j-th recommender
 
     """
     datadirname = os.path.join('data', exp_dirname)
@@ -120,30 +135,47 @@ def run_env_experiment(environments,
     if not os.path.exists(filename) or overwrite:
         all_ratings = []
         all_predictions = []
+        all_dense_ratings = []
+        all_dense_predictions = []
         for environment in environments:
+            print('Started experiments on environment:', environment.name)
             all_ratings.append([])
             all_predictions.append([])
+            all_dense_ratings.append([])
+            all_dense_predictions.append([])
             for recommender in recommenders:
+                print('Running trials for recommender:', recommender.name)
                 all_ratings[-1].append([])
                 all_predictions[-1].append([])
-                for _ in range(n_trials):
-                    ratings, predictions = run_trial(environment, recommender, len_trial)
+                all_dense_ratings[-1].append([])
+                all_dense_predictions[-1].append([])
+                for i in range(n_trials):
+                    print('Running trial:', i)
+                    ratings, predictions, dense_ratings, dense_predictions = run_trial(
+                        environment, recommender, len_trial, i)
                     all_ratings[-1][-1].append(ratings)
                     all_predictions[-1][-1].append(predictions)
+                    all_dense_ratings[-1][-1].append(dense_ratings)
+                    all_dense_predictions[-1][-1].append(dense_predictions)
         all_ratings = np.array(all_ratings)
         all_predictions = np.array(all_predictions)
-        np.savez(filename, all_ratings=all_ratings, all_predictions=all_predictions)
+        all_dense_ratings = np.array(all_dense_ratings)
+        all_dense_predictions = np.array(all_dense_predictions)
+        np.savez(filename, all_ratings=all_ratings, all_predictions=all_predictions,
+                 all_dense_ratings=all_dense_ratings, all_dense_predictions=all_dense_predictions)
         print('Saving to', filename)
     else:
         print('Reading from', filename)
         data = np.load(filename, allow_pickle=True)
         all_ratings = data['all_ratings']
         all_predictions = data['all_predictions']
+        all_dense_ratings = data['all_dense_ratings']
+        all_dense_predictions = data['all_dense_predictions']
 
-    return all_ratings, all_predictions
+    return all_ratings, all_predictions, all_dense_ratings, all_dense_predictions
 
 
-def run_trial(env, recommender, len_trial):
+def run_trial(env, recommender, len_trial, seed):
     """Logic for running each trial.
 
     Parameters
@@ -154,6 +186,8 @@ def run_trial(env, recommender, len_trial):
         The recommender to use for this trial.
     len_trial : int
         The number of recommendation steps to run the trial for.
+    seed : int
+        The seed for the environment.
 
     Returns
     -------
@@ -165,31 +199,60 @@ def run_trial(env, recommender, len_trial):
         prediction the user made on round i for the item recommended to the j-th
         user. If the recommender does not predict items then each element is set
         to np.nan.
+    dense_ratings : np.ndarray
+        The array of all dense ratings across each step. dense_ratings[i] is the
+        array of all ratings that would have been made on round i for each user-item pair
+        with all noise removed.
+    dense_predictions : np.ndarray
+        The array of all dense predictions across each step. dense_predictions[i] is the
+        array of all predictions on round i for each user-item pair.
 
     """
     # First generate the items and users to seed the dataset.
+    env.seed(seed)
     items, users, ratings = env.reset()
     recommender.reset(items, users, ratings)
 
     all_ratings = []
     all_predictions = []
+    all_dense_ratings = []
+    all_dense_predictions = []
+    user_item = []
+    for i in range(len(env.users)):
+        for j in range(len(env.items)):
+            user_item.append((i, j, np.zeros(0)))
+
     # Now recommend items to users.
-    for _ in range(len_trial):
+    for _ in tqdm.autonotebook.tqdm(range(len_trial)):
         online_users = env.online_users()
         recommendations, predictions = recommender.recommend(online_users, num_recommendations=1)
         recommendations = recommendations.flatten()
+        dense_ratings = np.clip(env.dense_ratings.flatten(), 1, 5)
         items, users, ratings, _ = env.step(recommendations)
-        recommender.update(users, items, ratings)
-        ratings = [rating for rating, _ in ratings.values()]
-        # TODO: We probably also want to the recommender's ratings on all items this round.
-        all_ratings.append(ratings)
+
+        # Account for the case where the recommender doesn't predict ratings.
         if predictions is None:
             predictions = np.ones_like(ratings) * np.nan
+            dense_predictions = np.ones_like(dense_ratings) * np.nan
         else:
             predictions = predictions.flatten()
-        all_predictions.append(predictions)
+            dense_predictions = recommender.predict(user_item)
 
-    return all_ratings, all_predictions
+        # Save all relevant info.
+        all_ratings.append([rating for rating, _ in ratings.values()])
+        all_predictions.append(predictions)
+        all_dense_ratings.append(dense_ratings)
+        all_dense_predictions.append(dense_predictions)
+
+        recommender.update(users, items, ratings)
+
+    # Convert everything to numpy arrays
+    all_ratings = np.array(all_ratings)
+    all_predictions = np.array(all_predictions)
+    all_dense_ratings = np.array(all_dense_ratings)
+    all_dense_predictions = np.array(all_dense_predictions)
+
+    return all_ratings, all_predictions, all_dense_ratings, all_dense_predictions
 
 
 class ModelTuner:

@@ -1,5 +1,4 @@
-"""An implementation of baseline perfect and random recommenders.
-"""
+"""An implementation of baseline perfect and random recommenders."""
 import numpy as np
 
 from . import recommender
@@ -9,6 +8,7 @@ class RandomRec(recommender.PredictRecommender):
     """A random recommendation model.
 
     Parameters
+    ----------
     range : tuple
         Upper and lower bounds for the uniformly random predictions.
     seed : int
@@ -22,6 +22,10 @@ class RandomRec(recommender.PredictRecommender):
         np.random.seed(seed)
         super().__init__()
 
+    @property
+    def name(self):  # noqa: D102
+        return 'random'
+
     def _predict(self, user_item):  # noqa: D102
         # Random predictions for all pairs.
         predictions = np.random.uniform(low=self._range[0],
@@ -34,6 +38,7 @@ class PerfectRec(recommender.PredictRecommender):
     """A perfect recommendation model.
 
     Parameters
+    ----------
     rating_function : function
         The function which generates true user ratings.
 
@@ -44,12 +49,13 @@ class PerfectRec(recommender.PredictRecommender):
         self._rating_function = rating_function
         super().__init__()
 
+    @property
+    def name(self):  # noqa: D102
+        return 'perfect'
+
     def _predict(self, user_item):  # noqa: D102
         # Use provided functions to predict for all pairs
         predictions = []
         for user_id, item_id, _ in user_item:
-            outer_uid = self._inner_to_outer_uid[user_id]
-            outer_iid = self._inner_to_outer_iid[item_id]
-            predictions.append(self._rating_function(outer_uid,
-                                                     outer_iid))
+            predictions.append(self._rating_function(user_id, item_id))
         return np.array(predictions)

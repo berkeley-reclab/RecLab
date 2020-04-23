@@ -86,6 +86,18 @@ def plot_ratings_mses(ratings,
     plt.show()
 
 
+def get_env_dataset(environment):
+    """Get the initial ratings of an environment.
+
+    The intent of this function is to create an original dataset from which a recommender's
+    hyperparameters can be tuned. The returned dataset will be identical to the original data
+    available to each recommender when calling run_env_experiment.
+
+    """
+    env.seed((0, 0))
+    return env.reset()
+
+
 def run_env_experiment(environments,
                        recommenders,
                        n_trials,

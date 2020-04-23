@@ -425,7 +425,6 @@ class ModelTuner:
                 print('mse={}'.format(mse))
             mses.append(mse)
 
-        self.num_evaluations += 1
         if self.verbose:
             print('Average MSE:', np.mean(mses))
         return np.array(mses)
@@ -439,7 +438,7 @@ class ModelTuner:
                 result['average_mse'] = np.mean(result['mse'])
                 return [result]
 
-            curr_param, curr_values = next(grid_params.items())
+            curr_param, curr_values = list(grid_params.items())[0]
             new_grid_params = dict(grid_params)
             del new_grid_params[curr_param]
             results = []
@@ -451,9 +450,13 @@ class ModelTuner:
         results = pd.DataFrame(results)
         if self.bucket is not None:
             self.s3_save(results, params)
+        self.num_evaluations += 1
+        return results
 
     def s3_save(self, results, params):
         """Save the current hyperparameter tuning results to S3."""
+        if self.verbose:
+            print('Saving to S3.')
         dir_name = os.path.join(self.data_dir, self.recommender_name,
                                 'evaluation_' + str(self.num_evaluations))
         info = {
@@ -585,7 +588,7 @@ def serialize_and_put(bucket, dir_name, name, obj, use_json=False):
 
 def put_dataframe(bucket, dir_name, name, dataframe):
     """Upload a dataframe to S3 as a csv file."""
-    with io.BytesIO() as stream:
+    with io.StringIO() as stream:
         dataframe.to_csv(stream)
-        file_name = os.path.join(dir_name, name)
-        bucket.put_object(Key=file_name, Body=stream)
+        file_name = os.path.join(dir_name, name + '.csv')
+        bucket.put_object(Key=file_name, Body=stream.getvalue())

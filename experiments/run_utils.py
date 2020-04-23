@@ -104,7 +104,7 @@ def get_env_dataset(environment):
 
 def run_env_experiment(environments,
                        recommenders,
-                       n_trials,
+                       trial_seeds,
                        len_trial,
                        environment_names=None,
                        recommender_names=None,
@@ -121,8 +121,8 @@ def run_env_experiment(environments,
         The recommenders to run the experiments with.
     len_trial : int
         The number of steps to run each trial for.
-    n_trials : int
-        The number of trials to run for each recommender.
+    trial_seeds : list of int
+        The seeds to run each trial with.
     environment_names : list of str
         The name under which each environment will be saved. If this is None
         each environment will be named according to the environment's property.
@@ -188,9 +188,9 @@ def run_env_experiment(environments,
             all_predictions[-1].append([])
             all_dense_ratings[-1].append([])
             all_dense_predictions[-1].append([])
-            for i in range(n_trials):
-                print('Running trial:', i)
-                dir_name = s3_dir_name(data_dir, env_name, rec_name, i)
+            for seed in trial_seeds:
+                print('Running trial with seed:', seed)
+                dir_name = s3_dir_name(data_dir, env_name, rec_name, seed)
                 ratings, predictions, dense_ratings, dense_predictions = run_trial(
                     environment, recommender, len_trial, i, bucket, dir_name, overwrite)
                 all_ratings[-1][-1].append(ratings)
@@ -210,7 +210,7 @@ def run_env_experiment(environments,
 def run_trial(env,
               rec,
               len_trial,
-              trial_number,
+              trial_seed,
               bucket=None,
               dir_name=None,
               overwrite=False):
@@ -224,8 +224,8 @@ def run_trial(env,
         The recommender to use for this trial.
     len_trial : int
         The number of recommendation steps to run the trial for.
-    trial_number : int
-        The index of the trial. Used to seed the dynamics of the environment.
+    trial_seed : int
+        Used to seed the dynamics of the environment.
     bucket : s3.Bucket
         The S3 bucket to store the experiment results into. If this is None the results
         will not be saved in S3.
@@ -259,7 +259,7 @@ def run_trial(env,
         return results[1:-1]
 
     # First generate the items and users to bootstrap the dataset.
-    env.seed((INIT_SEED, trial_number))
+    env.seed((INIT_SEED, trial_seed))
     items, users, ratings = env.reset()
     rec.reset(items, users, ratings)
 
@@ -432,11 +432,11 @@ def git_branch():
                                     '--abbrev-ref', 'HEAD']).decode('ascii').strip()
 
 
-def s3_dir_name(data_dir, env_name, rec_name, trial_number):
+def s3_dir_name(data_dir, env_name, rec_name, trial_seed):
     """Get the directory name that corresponds to a given trial."""
     if data_dir is None:
         return None
-    return os.path.join(data_dir, env_name, rec_name, 'trial_' + str(trial_number), '')
+    return os.path.join(data_dir, env_name, rec_name, 'trials', 'seed_' + str(trial_seed), '')
 
 
 def s3_dir_exists(bucket, dir_name):

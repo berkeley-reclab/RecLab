@@ -209,7 +209,7 @@ def run_trial(env,
     len_trial : int
         The number of recommendation steps to run the trial for.
     trial_number : int
-        The index of the trial. Used to seed the environment.
+        The index of the trial. Used to seed the dynamics of the environment.
     bucket : s3.Bucket
         The S3 bucket to store the experiment results into. If this is None the results
         will not be saved in S3.
@@ -243,7 +243,7 @@ def run_trial(env,
         return results[1:-1]
 
     # First generate the items and users to bootstrap the dataset.
-    env.seed(trial_number)
+    env.seed((0, trial_number))
     items, users, ratings = env.reset()
     rec.reset(items, users, ratings)
 

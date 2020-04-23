@@ -343,7 +343,7 @@ class DictEnvironment(Environment):
             will be initialized with seed[1].
 
         """
-        if seed is None or np.issubdtype(seed, np.integer):
+        if seed is None or np.issubdtype(type(seed), np.integer):
             self._init_random.seed(seed)
             self._dynamics_random.seed(seed)
         elif len(seed) == 1:

@@ -14,6 +14,10 @@ import numpy as np
 import tqdm.autonotebook
 
 
+# The random seed that defines the initial state of each environment.
+INIT_SEED = 0
+
+
 def plot_ratings_mses(ratings,
                       predictions,
                       labels,
@@ -94,7 +98,7 @@ def get_env_dataset(environment):
     available to each recommender when calling run_env_experiment.
 
     """
-    env.seed((0, 0))
+    env.seed((INIT_SEED, 0))
     return env.reset()
 
 
@@ -255,7 +259,7 @@ def run_trial(env,
         return results[1:-1]
 
     # First generate the items and users to bootstrap the dataset.
-    env.seed((0, trial_number))
+    env.seed((INIT_SEED, trial_number))
     items, users, ratings = env.reset()
     rec.reset(items, users, ratings)
 

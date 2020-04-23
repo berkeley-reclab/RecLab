@@ -82,11 +82,8 @@ class Schmit(environment.DictEnvironment):
             Item id.
 
         """
-        ratings = float(self.true_score(user, item)
-                        + self.X[user] @ self.Y[item].T
-                        + self._dynamics_random.normal(loc=0, scale=self.sigma)
-                        + 3
-                       )
+        ratings = float(self.true_score(user, item) + self.X[user] @ self.Y[item].T +
+                        self._dynamics_random.normal(loc=0, scale=self.sigma) + 3)
         return np.clip(ratings, 1, 5)
 
     def _reset_state(self):

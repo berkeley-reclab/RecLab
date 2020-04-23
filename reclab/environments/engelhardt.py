@@ -97,7 +97,7 @@ class Engelhardt(environment.DictEnvironment):
         for user_id in range(self._num_users):
             for item_id in range(self._num_items):
                 item_attr = self._item_attrs[item_id]
-                ratings[user_id, item_id] = self._users_full[user_id].rate(item_attr)[1]
+                ratings[user_id, item_id] = self._users_full[user_id].rate(item_attr)
         return ratings
 
     def _reset_state(self):  # noqa: D102

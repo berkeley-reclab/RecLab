@@ -91,9 +91,9 @@ def plot_ratings_mses(ratings,
     plt.show()
 
 
-def plot_regret(perfect_predictions,
-                predictions,
+def plot_regret(predictions,
                 labels,
+                perfect_predictions=None,
                 num_init_ratings=None):
     """Plot the regrets for multiple recommenders comparing to the perfect recommender.
 
@@ -117,6 +117,14 @@ def plot_regret(perfect_predictions,
         the function will plot with an x-axis based on round number.
 
     """
+    if perfect_predictions == None:
+        if 'perfert' in labels:
+            idx = labels.index('perfert')
+            perfect_predictions = predictions[idx]
+        else 
+            print('no predictions from the perfect recommeder')
+        return
+
     def get_regret_stats(arr):
         # Swap the trial and step axes (trial, step, user --> step, trial, user)
         arr = np.swapaxes(arr, 0, 1)
@@ -134,9 +142,9 @@ def plot_regret(perfect_predictions,
         return means, lower_bounds, upper_bounds
 
     if num_init_ratings is not None:
-        x_vals = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])
+        x_vals = num_init_ratings + predictions.shape[3] * np.arange(predictions.shape[2])
     else:
-        x_vals = np.arange(ratings.shape[2])
+        x_vals = np.arange(predictions.shape[2])
 
     plt.figure(figsize=[5, 4])
     for recommender_predictions, label in zip(predictions, labels):

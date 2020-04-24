@@ -347,9 +347,14 @@ class ModelTuner:
     data_dir : str
         The name of the S3 directory under which to store the tuning logs. Can be None
         if bucket_name is also None.
-    data_dir : str
+    environment_name : str
+        The name of the environment snapshot on which we are tuning the recommender. Can be None
+        if bucket_name is also None.
+    recommender_name : str
         The name of the recommender for which we are storing the tuning logs. Can be None
         if bucket_name is also None.
+    overwrite : bool
+        Whether to overwrite tuning logs in S3 if they already exist.
 
     """
 
@@ -361,7 +366,9 @@ class ModelTuner:
                  verbose=True,
                  bucket_name=None,
                  data_dir=None,
-                 recommender_name=None):
+                 environment_name=None,
+                 recommender_name=None,
+                 overwrite=False):
         """Create a model tuner."""
         self.users, self.items, self.ratings = data
         self.default_params = default_params
@@ -371,12 +378,21 @@ class ModelTuner:
         self.recommender_class = recommender_class
         self.bucket = None
         self.data_dir = data_dir
+        self.environment_name = environment_name
         self.recommender_name = recommender_name
+        self.overwrite = overwrite
         self.num_evaluations = 0
 
-        self._generate_n_folds(n_fold)
         if bucket_name is not None:
+            if self.data_dir is None:
+                raise ValueError("data_dir can not be None when bucket_name is not None.")
+            if self.environment_name is None:
+                raise ValueError("environment_name can not be None when bucket_name is not None.")
+            if self.recommender_name is None:
+                raise ValueError("recommender_name can not be None when bucket_name is not None.")
             self.bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
+
+        self._generate_n_folds(n_fold)
 
     def _generate_n_folds(self, n_fold):
         """Generate indices for n folds."""
@@ -455,10 +471,15 @@ class ModelTuner:
 
     def s3_save(self, results, params):
         """Save the current hyperparameter tuning results to S3."""
+        dir_name = os.path.join(self.data_dir, self.environment_name, self.recommender_name,
+                                'tuning', 'evaluation_' + str(self.num_evaluations), '')
+        if s3_dir_exists(self.bucket, dir_name) and not self.overwrite:
+            if self.verbose:
+                print('Directory:', dir_name, 'already exists. Results will not be saved to S3.')
+            return
+
         if self.verbose:
-            print('Saving to S3.')
-        dir_name = os.path.join(self.data_dir, self.recommender_name,
-                                'evaluation_' + str(self.num_evaluations))
+            print('Saving to S3 directory:', dir_name)
         info = {
             'date': datetime.datetime.now().strftime('%Y-%m-%d %H:%M'),
             'git branch': git_branch(),

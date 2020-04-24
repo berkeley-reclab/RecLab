@@ -91,6 +91,70 @@ def plot_ratings_mses(ratings,
     plt.show()
 
 
+def plot_regret(perfect_predictions,
+                predictions,
+                labels,
+                num_init_ratings=None):
+    """Plot the regrets for multiple recommenders comparing to the perfect recommender.
+
+    Parameters
+    ----------
+    perfect_predictions : np.ndarray
+        The array of all predictions made by the perfect recommenders all trials. ratings[j, k, l]
+        corresponds to the rating made by the l-th online user during the k-th step of the
+        j-th trial for the perfect recommender.
+    predictions : np.ndarray
+        The array of all predictions made by recommenders throughout all trials.
+        predictions[i, j, k, l] corresponds to the prediction that the i-th recommender
+        made on the rating of the l-th online user during the k-th step of the
+        j-th trial for the aforementioned recommender. If a recommender does not make
+        predictions then its associated elements can be np.nan. It will not be displayed
+        during the regret plotting.
+    labels : list of str
+        The name of each recommender. Default label for the perfect recommender is 'perfect'.
+    num_init_ratings : int
+        The number of ratings initially available to recommenders. If set to None
+        the function will plot with an x-axis based on round number.
+
+    """
+    def get_regret_stats(arr):
+        # Swap the trial and step axes (trial, step, user --> step, trial, user)
+        arr = np.swapaxes(arr, 0, 1)
+        # Flatten the trial and user axes together.
+        arr = arr.reshape(arr.shape[0], -1)
+        #compute the commulative regret
+        arr = arr.cumsum(axis=1)
+        # Compute the means and standard deviations of the means for each step.
+        means = arr.mean(axis=1)
+        # Use Bessel's correction here.
+        stds = arr.std(axis=1) / np.sqrt(arr.shape[1] - 1)
+        # Compute the 95% confidence intervals using the CLT.
+        upper_bounds = means + 2 * stds
+        lower_bounds = np.maximum(means - 2 * stds, 0)
+        return means, lower_bounds, upper_bounds
+
+    if num_init_ratings is not None:
+        x_vals = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])
+    else:
+        x_vals = np.arange(ratings.shape[2])
+
+    plt.figure(figsize=[5, 4])
+    for recommender_predictions, label in zip(predictions, labels):
+        #plot the regret for the recommenders that are not perfect
+        if label != 'perfect':
+            regrets = perfect_predictions - recommender_predictions
+            mean_regrets, lower_bounds, upper_bounds = get_regret_stats(regrets)
+            # Transform the MSE into the RMSE and correct the associated intervals.
+            
+            plt.plot(x_vals, mean_regrets, label=label)
+            plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
+    plt.xlabel('# ratings')
+    plt.ylabel('Regret')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+
 def get_env_dataset(environment):
     """Get the initial ratings of an environment.
 

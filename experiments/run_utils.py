@@ -385,11 +385,11 @@ class ModelTuner:
 
         if bucket_name is not None:
             if self.data_dir is None:
-                raise ValueError("data_dir can not be None when bucket_name is not None.")
+                raise ValueError('data_dir can not be None when bucket_name is not None.')
             if self.environment_name is None:
-                raise ValueError("environment_name can not be None when bucket_name is not None.")
+                raise ValueError('environment_name can not be None when bucket_name is not None.')
             if self.recommender_name is None:
-                raise ValueError("recommender_name can not be None when bucket_name is not None.")
+                raise ValueError('recommender_name can not be None when bucket_name is not None.')
             self.bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
 
         self._generate_n_folds(n_fold)

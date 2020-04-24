@@ -144,8 +144,7 @@ def plot_regret(perfect_predictions,
         if label != 'perfect':
             regrets = perfect_predictions - recommender_predictions
             mean_regrets, lower_bounds, upper_bounds = get_regret_stats(regrets)
-            # Transform the MSE into the RMSE and correct the associated intervals.
-            
+            #plotting the regret over steps and correct the associated intervals.
             plt.plot(x_vals, mean_regrets, label=label)
             plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
     plt.xlabel('# ratings')

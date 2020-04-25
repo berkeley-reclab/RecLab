@@ -79,16 +79,21 @@ class KNNRecommender(recommender.PredictRecommender):
 
     def _predict(self, user_item):  # noqa: D102
         preds = []
+        relevant_idxs_cache = {}
         for user_id, item_id, _ in user_item:
             if self._user_based:
-                relevant_idxs = nlargest_indices(self._neighborhood_size,
-                                                 self._similarity_matrix[user_id])
+                if user_id not in relevant_idxs_cache:
+                    relevant_idxs_cache[user_id] = nlargest_indices(
+                            self._neighborhood_size, self._similarity_matrix[user_id])
+                relevant_idxs = relevant_idxs_cache[user_id]
                 similarities = self._similarity_matrix[relevant_idxs, user_id]
                 ratings = self._ratings_matrix[relevant_idxs, item_id].ravel()
                 mean = self._means[user_id]
             else:
-                relevant_idxs = nlargest_indices(self._neighborhood_size,
-                                                 self._similarity_matrix[item_id])
+                if item_id not in relevant_idxs_cache:
+                    relevant_idxs_cache[item_id] = nlargest_indices(
+                            self._neighborhood_size, self._similarity_matrix[item_id])
+                relevant_idxs = relevant_idxs_cache[item_id]
                 similarities = self._similarity_matrix[relevant_idxs, item_id]
                 ratings = self._ratings_matrix.T[relevant_idxs, user_id].ravel()
                 mean = self._means[item_id]

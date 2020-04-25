@@ -11,6 +11,7 @@ import subprocess
 import boto3
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import tqdm.autonotebook
 
 
@@ -190,7 +191,7 @@ def run_env_experiment(environments,
             all_dense_predictions[-1].append([])
             for seed in trial_seeds:
                 print('Running trial with seed:', seed)
-                dir_name = s3_dir_name(data_dir, env_name, rec_name, seed)
+                dir_name = s3_experiment_dir_name(data_dir, env_name, rec_name, seed)
                 ratings, predictions, dense_ratings, dense_predictions = run_trial(
                     environment, recommender, len_trial, seed, bucket, dir_name, overwrite)
                 all_ratings[-1][-1].append(ratings)
@@ -334,22 +335,64 @@ class ModelTuner:
         The (user, items, ratings) data.
     default_params : dict
         Default model parameters.
+    recommender_class : class Recommender
+        The class of the recommender on which we wish to tune parameters.
     n_fold : int, optional
         The number of folds for cross validation.
     verbose : bool, optional
         Mode for printing results, defaults to True.
+    bucket_name : str
+        The name of the S3 bucket to store the tuning logs in. If this is None
+        the results will not be saved.
+    data_dir : str
+        The name of the S3 directory under which to store the tuning logs. Can be None
+        if bucket_name is also None.
+    environment_name : str
+        The name of the environment snapshot on which we are tuning the recommender. Can be None
+        if bucket_name is also None.
+    recommender_name : str
+        The name of the recommender for which we are storing the tuning logs. Can be None
+        if bucket_name is also None.
+    overwrite : bool
+        Whether to overwrite tuning logs in S3 if they already exist.
 
     """
 
-    def __init__(self, data, default_params, recommender_object, n_fold=5, verbose=True):
+    def __init__(self,
+                 data,
+                 default_params,
+                 recommender_class,
+                 n_fold=5,
+                 verbose=True,
+                 bucket_name=None,
+                 data_dir=None,
+                 environment_name=None,
+                 recommender_name=None,
+                 overwrite=False):
         """Create a model tuner."""
         self.users, self.items, self.ratings = data
         self.default_params = default_params
         self.num_users = len(self.users)
         self.num_items = len(self.items)
         self.verbose = verbose
+        self.recommender_class = recommender_class
+        self.bucket = None
+        self.data_dir = data_dir
+        self.environment_name = environment_name
+        self.recommender_name = recommender_name
+        self.overwrite = overwrite
+        self.num_evaluations = 0
+
+        if bucket_name is not None:
+            if self.data_dir is None:
+                raise ValueError('data_dir can not be None when bucket_name is not None.')
+            if self.environment_name is None:
+                raise ValueError('environment_name can not be None when bucket_name is not None.')
+            if self.recommender_name is None:
+                raise ValueError('recommender_name can not be None when bucket_name is not None.')
+            self.bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
+
         self._generate_n_folds(n_fold)
-        self.recommender_object = recommender_object
 
     def _generate_n_folds(self, n_fold):
         """Generate indices for n folds."""
@@ -366,7 +409,7 @@ class ModelTuner:
         # constructing model with given parameters
         defaults = {key: self.default_params[key] for key in self.default_params.keys()
                     if key not in params.keys()}
-        recommender = self.recommender_object(**defaults, **params)
+        recommender = self.recommender_class(**defaults, **params)
         mses = []
         if self.verbose:
             print('Evaluating:', params)
@@ -400,15 +443,53 @@ class ModelTuner:
 
         if self.verbose:
             print('Average MSE:', np.mean(mses))
-        return mses
+        return np.array(mses)
 
-    def evaluate_list(self, param_tag_list):
-        """Train over list of parameters."""
-        res_dict = {}
-        for tag, params in param_tag_list:
-            mses = self.evaluate(params)
-            res_dict[tag] = mses
-        return res_dict
+    def evaluate_grid(self, **params):
+        """Train over a grid of parameters."""
+        def recurse_grid(fixed_params, grid_params):
+            if len(grid_params) == 0:
+                result = fixed_params
+                result['mse'] = self.evaluate(fixed_params)
+                result['average_mse'] = np.mean(result['mse'])
+                return [result]
+
+            curr_param, curr_values = list(grid_params.items())[0]
+            new_grid_params = dict(grid_params)
+            del new_grid_params[curr_param]
+            results = []
+            for value in curr_values:
+                results += recurse_grid({**fixed_params, curr_param: value}, new_grid_params)
+            return results
+
+        results = recurse_grid({}, params)
+        results = pd.DataFrame(results)
+        if self.bucket is not None:
+            self.s3_save(results, params)
+        self.num_evaluations += 1
+        return results
+
+    def s3_save(self, results, params):
+        """Save the current hyperparameter tuning results to S3."""
+        dir_name = os.path.join(self.data_dir, self.environment_name, self.recommender_name,
+                                'tuning', 'evaluation_' + str(self.num_evaluations), '')
+        if s3_dir_exists(self.bucket, dir_name) and not self.overwrite:
+            if self.verbose:
+                print('Directory:', dir_name, 'already exists. Results will not be saved to S3.')
+            return
+
+        if self.verbose:
+            print('Saving to S3 directory:', dir_name)
+        info = {
+            'date': datetime.datetime.now().strftime('%Y-%m-%d %H:%M'),
+            'git branch': git_branch(),
+            'git hash': git_hash(),
+            'git username': git_username(),
+            'recommender': self.recommender_name,
+        }
+        serialize_and_put(self.bucket, dir_name, 'info', info, use_json=True)
+        serialize_and_put(self.bucket, dir_name, 'params', params, use_json=True)
+        put_dataframe(self.bucket, dir_name, 'results', results)
 
 
 def rename_duplicates(old_list):
@@ -419,6 +500,11 @@ def rename_duplicates(old_list):
         new_list.append(x + '_' + str(count[x]))
         count[x] += 1
     return new_list
+
+
+def git_username():
+    """Get the git username of the person running the code."""
+    return subprocess.check_output(['git', 'config', 'user.name']).decode('ascii').strip()
 
 
 def git_hash():
@@ -432,7 +518,7 @@ def git_branch():
                                     '--abbrev-ref', 'HEAD']).decode('ascii').strip()
 
 
-def s3_dir_name(data_dir, env_name, rec_name, trial_seed):
+def s3_experiment_dir_name(data_dir, env_name, rec_name, trial_seed):
     """Get the directory name that corresponds to a given trial."""
     if data_dir is None:
         return None
@@ -464,34 +550,25 @@ def s3_save_trial(bucket,
                   dense_predictions,
                   env_snapshots):
     """Save a trial in s3 within the given directory."""
-    def serialize_and_put(name, obj, use_json=False):
-        file_name = os.path.join(dir_name, name)
-        if use_json:
-            serialized_obj = json.dumps(obj, sort_keys=True, indent=4)
-            file_name = file_name + '.json'
-        else:
-            serialized_obj = pickle.dumps(obj)
-            file_name = file_name + '.pickle'
-        bucket.put_object(Key=file_name, Body=serialized_obj)
-
     info = {
         'date': datetime.datetime.now().strftime('%Y-%m-%d %H:%M'),
         'environment': env_name,
-        'recommender': rec_name,
-        'git hash': git_hash(),
         'git branch': git_branch(),
+        'git hash': git_hash(),
+        'git username': git_username(),
+        'recommender': rec_name,
     }
-    serialize_and_put('info', info, use_json=True)
-    serialize_and_put('rec_hyperparameters', rec_hyperparameters, use_json=True)
-    serialize_and_put('ratings', ratings)
-    serialize_and_put('predictions', predictions)
-    serialize_and_put('dense_ratings', dense_ratings)
-    serialize_and_put('dense_predictions', dense_predictions)
-    serialize_and_put('env_snapshots', env_snapshots)
+    serialize_and_put(bucket, dir_name, 'info', info, use_json=True)
+    serialize_and_put(bucket, dir_name, 'rec_hyperparameters', rec_hyperparameters, use_json=True)
+    serialize_and_put(bucket, dir_name, 'ratings', ratings)
+    serialize_and_put(bucket, dir_name, 'predictions', predictions)
+    serialize_and_put(bucket, dir_name, 'dense_ratings', dense_ratings)
+    serialize_and_put(bucket, dir_name, 'dense_predictions', dense_predictions)
+    serialize_and_put(bucket, dir_name, 'env_snapshots', env_snapshots)
 
 
 def s3_load_trial(bucket, dir_name):
-    """Load a trial saved in a given directory within s3."""
+    """Load a trial saved in a given directory within S3."""
     def get_and_unserialize(name, use_json=False):
         file_name = os.path.join(dir_name, name)
         if use_json:
@@ -516,3 +593,23 @@ def s3_load_trial(bucket, dir_name):
 
     return (rec_hyperparameters, ratings, predictions,
             dense_ratings, dense_predictions, env_snapshots)
+
+
+def serialize_and_put(bucket, dir_name, name, obj, use_json=False):
+    """Serialize an object and upload it to S3."""
+    file_name = os.path.join(dir_name, name)
+    if use_json:
+        serialized_obj = json.dumps(obj, sort_keys=True, indent=4)
+        file_name = file_name + '.json'
+    else:
+        serialized_obj = pickle.dumps(obj)
+        file_name = file_name + '.pickle'
+    bucket.put_object(Key=file_name, Body=serialized_obj)
+
+
+def put_dataframe(bucket, dir_name, name, dataframe):
+    """Upload a dataframe to S3 as a csv file."""
+    with io.StringIO() as stream:
+        dataframe.to_csv(stream)
+        file_name = os.path.join(dir_name, name + '.csv')
+        bucket.put_object(Key=file_name, Body=stream.getvalue())

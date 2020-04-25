@@ -268,7 +268,7 @@ def run_trial(env,
     all_predictions = []
     all_dense_ratings = []
     all_dense_predictions = []
-    all_env_snapshots = [pickle.dumps(env)]
+    all_env_snapshots = [copy.deepcopy(env)]
     user_item = []
     for i in range(len(env.users)):
         for j in range(len(env.items)):
@@ -602,7 +602,7 @@ def serialize_and_put(bucket, dir_name, name, obj, use_json=False):
         serialized_obj = json.dumps(obj, sort_keys=True, indent=4)
         file_name = file_name + '.json'
     else:
-        serialized_obj = pickle.dumps(obj)
+        serialized_obj = pickle.dumps(obj, protocol=4)
         file_name = file_name + '.pickle'
     bucket.put_object(Key=file_name, Body=serialized_obj)
 

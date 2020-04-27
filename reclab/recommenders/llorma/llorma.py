@@ -63,6 +63,15 @@ class Llorma(recommender.PredictRecommender):
                                      pre_learning_rate, pre_lambda_val, pre_train_steps,
                                      rank, learning_rate, lambda_val, train_steps,
                                      batch_size, use_cache, result_path)
+        self._hyperparameters.update(locals())
+
+        # We only want the function arguments so remove class related objects.
+        del self._hyperparameters['self']
+        del self._hyperparameters['__class__']
+
+    @property
+    def name(self):  # noqa: D102
+        return 'llorma'
 
     def _predict(self, user_item):  # noqa: D102
         users, items, _ = list(zip(*user_item))

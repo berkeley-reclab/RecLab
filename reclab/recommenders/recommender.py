@@ -16,6 +16,18 @@ import scipy
 class Recommender(abc.ABC):
     """The interface for recommenders."""
 
+    @property
+    @abc.abstractmethod
+    def name(self):
+        """Get the name of the recommender."""
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def hyperparameters(self):
+        """Get a dict of all the recommender's hyperparameters."""
+        raise NotImplementedError
+
     @abc.abstractmethod
     def reset(self, users=None, items=None, ratings=None):
         """Reset the recommender with optional starting user, item, and rating data.
@@ -112,8 +124,15 @@ class PredictRecommender(Recommender):
         self._inner_to_outer_iid = []
         # The sampling strategy to use.
         self._strategy = strategy
+        # A dict of all the recommender's hyperparameters.
+        self._hyperparameters = {'strategy': strategy}
         # Check that the strategy is of valid type.
         assert self._strategy in ['greedy', 'eps_greedy', 'thompson']
+
+    @property
+    def hyperparameters(self):
+        """Get a dict of all the recommender's hyperparameters."""
+        return self._hyperparameters
 
     def reset(self, users=None, items=None, ratings=None):
         """Reset the recommender with optional starting user, item, and rating data.
@@ -220,10 +239,12 @@ class PredictRecommender(Recommender):
         # items that have not been rated for each user.
         ratings_to_predict = []
         all_item_ids = []
+        # TODO: We need to figure out what to do when the number of items left to recommend
+        # runs out.
         for user_id in user_contexts:
             inner_uid = self._outer_to_inner_uid[user_id]
-            item_ids = np.array([j for j in range(len(self._items))
-                                 if self._ratings[inner_uid, j] == 0])
+            item_ids = self._ratings[inner_uid].nonzero()[1]
+            item_ids = np.setdiff1d(np.arange(len(self._items)), item_ids)
             user_ids = inner_uid * np.ones(len(item_ids), dtype=np.int)
             contexts = len(item_ids) * [user_contexts[user_id]]
             ratings_to_predict += list(zip(user_ids, item_ids, contexts))
@@ -238,6 +259,8 @@ class PredictRecommender(Recommender):
         # Pick items according to the strategy, along with their predicted ratings.
         all_recs = []
         all_predicted_ratings = []
+        # TODO: Right now items with the same ratings will be sorted in a deterministic order.
+        # This probably shouldn't be the case.
         for item_ids, predictions in zip(all_item_ids, all_predictions):
             recs, predicted_ratings = self._select_item(item_ids, predictions,
                                                         num_recommendations)

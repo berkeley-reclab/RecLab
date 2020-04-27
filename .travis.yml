@@ -38,7 +38,7 @@ install:
 # Command to run tests
 script:
     - bash lint.sh
-    - pytest tests
+    - pytest --durations=0 tests
 
 notifications:
       email: false

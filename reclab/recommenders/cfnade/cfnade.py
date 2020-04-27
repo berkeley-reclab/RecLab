@@ -55,6 +55,12 @@ class Cfnade(recommender.PredictRecommender):
         self._hidden_dim = hidden_dim
         self._learning_rate = learning_rate
         self._train_epoch = train_epoch
+        self._hyperparameters.update(locals())
+
+        # We only want the function arguments so remove class related objects.
+        del self._hyperparameters['self']
+        del self._hyperparameters['__class__']
+
         # Prepare model
         input_layer = Input(shape=(self._input_dim0, self._rating_bucket), name='input_ratings')
         output_ratings = Input(shape=(self._input_dim0, self._rating_bucket), name='output_ratings')
@@ -93,6 +99,10 @@ class Cfnade(recommender.PredictRecommender):
             loss={'nade_loss': lambda y_true, y_pred: y_pred},
             optimizer=optimizer)
         self._cf_nade_model.save_weights('model.h5')
+
+    @property
+    def name(self):  # noqa: D102
+        return 'cfnade'
 
     def update(self, users=None, items=None, ratings=None):  # noqa: D102
         super().update(users, items, ratings)

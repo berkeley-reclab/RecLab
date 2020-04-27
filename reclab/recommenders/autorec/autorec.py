@@ -53,8 +53,14 @@ class Autorec(recommender.PredictRecommender):
                  display_step=None):
         """Create new Autorec recommender."""
         super().__init__()
+        self._hyperparameters.update(locals())
+
+        # We only want the function arguments so remove class related objects.
+        del self._hyperparameters['self']
+        del self._hyperparameters['__class__']
+
         config = tf.ConfigProto()
-        config.gpu_options.allow_growth = True
+        config.gpu_options.allow_growth = True  # pylint: disable=no-member
         sess = tf.Session(config=config)
         seen_users = set()
         seen_items = set()
@@ -74,6 +80,10 @@ class Autorec(recommender.PredictRecommender):
                                      decay_epoch_step,
                                      seed,
                                      display_step)
+
+    @property
+    def name(self):  # noqa: D102
+        return 'autorec'
 
     def _predict(self, user_item):  # noqa: D102
         return self.model.predict(user_item)

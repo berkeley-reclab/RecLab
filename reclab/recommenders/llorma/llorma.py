@@ -79,6 +79,15 @@ class Llorma(recommender.PredictRecommender):
         unseen_estimate = np.mean(seen_estimate)
         estimate = np.ones(len(users))*unseen_estimate
         estimate[is_seen_id] = seen_estimate
+        print("Low: {:.3f}, Mean: {:.3f}, High: {:.3f}".format(np.quantile(seen_estimate, 0.25),
+                                                               np.quantile(seen_estimate, 0.5),
+                                                               np.quantile(seen_estimate, 0.75)))
+        #users = np.repeat(range(100), 170)
+        #items = np.tile(range(170), 100)
+        #user_item = np.column_stack((users, items))
+        #rating = self.model.predict(user_item)
+        #rating=rating.reshape(100, 170)
+        #np.savetxt("fixed_env_predictions.csv", rating, delimiter=',')
         return estimate
 
     def update(self, users=None, items=None, ratings=None):  # noqa: D102

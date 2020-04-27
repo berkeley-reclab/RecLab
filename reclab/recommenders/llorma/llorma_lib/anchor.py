@@ -4,6 +4,7 @@ import random
 
 import numpy as np
 from sklearn.preprocessing import normalize
+from scipy.spatial import distance_matrix
 
 
 def _init_anchor_points(data, n_anchor, row_k, col_k):
@@ -75,9 +76,7 @@ def _get_distance_matrix(latent):
     _normalized_latent = normalize(latent, axis=1)
     # print(_normalized_latent.shape)
 
-    cos = np.matmul(_normalized_latent, _normalized_latent.T)
-    cos = np.clip(cos, -1, 1)
-    d_mat = np.arccos(cos)
+    d_mat = distance_matrix(latent, _normalized_latent)
     assert np.count_nonzero(np.isnan(d_mat)) == 0
     return d_mat
 
@@ -95,11 +94,11 @@ def _get_k_from_distance(d_mat):
     -------
     np.ndarray, shape [N, N]
         Kernel matrix corresponding to the distance matrix
-        TODO: figure out why it keeps returning zeros
     """
     m_mat = np.zeros(d_mat.shape)
-    m_mat[d_mat < 0.8] = 1
-    return np.multiply(np.subtract(np.ones(d_mat.shape), np.square(d_mat)), m_mat)
+    m_mat[d_mat < 0.9] = 1
+    k_mat = np.multiply(np.subtract(np.ones(d_mat.shape), np.square(d_mat)), m_mat)
+    return k_mat
 
 
 def _get_ks_from_latents(row_latent, col_latent):
@@ -107,15 +106,17 @@ def _get_ks_from_latents(row_latent, col_latent):
 
     Parameters
     ----------
-    row_latent : array-like, shape
-        TODO: fix
-    col_latent : array-like, shape
-        TODO: fix
+    row_latent : array-like, shape (N_users, rank)
+        Matrix of latent factors corresponding to users
+    col_latent : array-like, shape (N_items, rank)
+        Matrix of latent factors corresponding to items
 
     Returns
     -------
-    array-like
-        TODO: fix
+    (row_k, col_k): array-like, (N_users, N_users), (N_items, N_items)
+        Returns two square matrices corresponding to similarity kernels
+        row_k: entry (i,j) is the similarity between user_i and user_j
+        col_k: entry (i,j) is the similarity between item_i and item_j
     """
     row_d = _get_distance_matrix(row_latent)
     col_d = _get_distance_matrix(col_latent)

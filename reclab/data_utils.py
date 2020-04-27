@@ -116,29 +116,19 @@ def find_npz(dir_name, data_name, data_url, np_params):
     data['rating'] = 1
     return data
 
-
-def read_dataset(name, shuffle=True):
-    """Read a dataset as specified by name.
+def get_data(name):
+    """Read a dataset specified by name into pandas dataframe.
 
     Parameters
     ----------
     name : str
-        The name of the dataset. Must be one of: 'ml-100k', 'ml-10m', 'citeulike-a',
-        'pinterest', or 'lastfm'.
-    shuffle : bool, optional
-        A flag to indicate whether the dataset should be shuffled after loading,
-        true by default.
+        The name of the dataset. Must be one of: 'ml-100k', 'ml-10m', 'ml-1m',
+        'citeulike-a', 'pinterest', or 'lastfm'.
 
     Returns
     -------
-    users : dict
-        The dict of all users where the key is the user-id and the value is the user's features.
-    items : dict
-        The dict of all items where the key is the item-id and the value is the item's features.
-    ratings : dict
-        The dict of all ratings where the key is a tuple whose first element is the user-id
-        and whose second element is the item id. The value is a tuple whose first element is the
-        rating value and whose second element is the rating context (in this case an empty array).
+    data : DataFrame
+        Dataset of interest.
 
     """
     if name == 'ml-100k':
@@ -194,6 +184,33 @@ def read_dataset(name, shuffle=True):
             raise error
     else:
         raise ValueError('dataset name not recognized')
+    return data
+
+def read_dataset(name, shuffle=True):
+    """Read a dataset as specified by name.
+
+    Parameters
+    ----------
+    name : str
+        The name of the dataset. Must be one of: 'ml-100k', 'ml-10m', 'citeulike-a',
+        'pinterest', or 'lastfm'.
+    shuffle : bool, optional
+        A flag to indicate whether the dataset should be shuffled after loading,
+        true by default.
+
+    Returns
+    -------
+    users : dict
+        The dict of all users where the key is the user-id and the value is the user's features.
+    items : dict
+        The dict of all items where the key is the item-id and the value is the item's features.
+    ratings : dict
+        The dict of all ratings where the key is a tuple whose first element is the user-id
+        and whose second element is the item id. The value is a tuple whose first element is the
+        rating value and whose second element is the rating context (in this case an empty array).
+
+    """
+    data = get_data(name)
 
     if shuffle:
         data = data.sample(frac=1).reset_index(drop=True)
@@ -208,3 +225,24 @@ def read_dataset(name, shuffle=True):
         ratings[user_id, item_id] = (rating, np.zeros(0))
 
     return users, items, ratings
+
+def get_time_split(name, shuffle=True):
+    data = get_data(name)
+
+    users = {user_id: np.zeros(0) for user_id in np.unique(data['user_id'])}
+    items = {item_id: np.zeros(0) for item_id in np.unique(data['item_id'])}
+
+    # Add final rating to test set
+    test_ratings = {}
+    for user_id in users.keys():
+        pass
+
+    # Shuffle remaining data
+
+    # Fill the rating array with initial data.
+    train_ratings = {}
+    for user_id, item_id, rating in zip(data['user_id'], data['item_id'], data['rating']):
+        # TODO: may want to eventually a rating context depending on dataset (e.g. time)
+        train_ratings[user_id, item_id] = (rating, np.zeros(0))
+
+    return users, items, train_ratings, test_ratings

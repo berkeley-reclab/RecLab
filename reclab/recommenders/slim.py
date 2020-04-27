@@ -5,6 +5,7 @@ See http://glaros.dtc.umn.edu/gkhome/node/774 for details.
 import numpy as np
 import scipy.sparse
 import sklearn.linear_model
+import time
 
 from . import recommender
 
@@ -36,6 +37,7 @@ class SLIM(recommender.PredictRecommender):
                  seed=0):
         """Create a SLIM recommender."""
         super().__init__()
+        print("h")
         self._model = sklearn.linear_model.ElasticNet(alpha=alpha,
                                                       l1_ratio=l1_ratio,
                                                       positive=positive,
@@ -58,27 +60,45 @@ class SLIM(recommender.PredictRecommender):
         return 'slim'
 
     def update(self, users=None, items=None, ratings=None):  # noqa: D102
+        start = time.time()
+        start0 = start
         super().update(users, items, ratings)
+        super_time = time.time() - start
         num_items = len(self._items)
         self._weights = scipy.sparse.dok_matrix((num_items, num_items))
+        start = time.time()
         ratings = self._ratings.tolil()
+        tolil_time = time.time() - start 
         for item_id in range(num_items):
+            start = time.time()
             target = ratings[:, item_id].toarray()
+            toarr_time = time.time() - start
             # Zero out the column of the current item to prevent a trivial solution.
             ratings[:, item_id] = 0
             # Fit the mode and save the weights.
+            start = time.time()
             self._model.fit(ratings, target)
+            fit_time = time.time() - start
             self._weights[:, item_id] = self._model.sparse_coef_.T
             self._weights[item_id, item_id] = 0
             # Restore the rating column.
             ratings[:, item_id] = target
+        start = time.time()
         self._weights = scipy.sparse.csr_matrix(self._weights)
+        csr_time = time.time() - start
+        print("total: {}, super: {}, tolil: {}, ".format(time.time()-start0,
+                                                         super_time, tolil_time) + 
+              "toarray(x{}): {}, fit(x{}):{}, csr:{}".format(num_items, toarr_time,
+                                                             num_items, fit_time, csr_time))
 
     def _predict(self, user_item):  # noqa: D102
         # Predict on all user-item pairs.
-        all_predictions = self._ratings @ self._weights
+        start = time.time()
+        all_predictions = (self._ratings @ self._weights).todense()
+        print("all predictions: {}".format(time.time() - start), end=' ')
         predictions = []
         for user_id, item_id, _ in user_item:
             predictions.append(all_predictions[user_id, item_id])
+        print("total: {}".format(time.time() - start))
 
         return np.array(predictions)

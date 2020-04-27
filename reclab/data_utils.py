@@ -155,6 +155,13 @@ def read_dataset(name, shuffle=True):
         csv_params = dict(sep='::', header=None, usecols=[0, 1, 2, 3],
                           names=['user_id', 'item_id', 'rating', 'timestamp'], engine='python')
         data = find_zipped(zipped_dir_name, data_name, data_url, csv_params)
+    elif name == 'ml-1m':
+        zipped_dir_name = 'ml-1m'
+        data_name = 'ratings.dat'
+        data_url = 'http://files.grouplens.org/datasets/movielens/ml-1m.zip'
+        csv_params = dict(sep='::', header=None, usecols=[0, 1, 2, 3],
+                          names=['user_id', 'item_id', 'rating', 'timestamp'], engine='python')
+        data = find_zipped(zipped_dir_name, data_name, data_url, csv_params)
     elif name == 'citeulike-a':
         dir_name = 'citeulike-a'
         data_name = 'data.npz'

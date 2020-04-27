@@ -1,6 +1,8 @@
-"""An implementation of the SLIM recommender.
+"""An implementation of SLIM and EASE sparse linear recommenders.
 
-See http://glaros.dtc.umn.edu/gkhome/node/774 for details.
+For details, see:
+  - http://glaros.dtc.umn.edu/gkhome/node/774
+  - https://arxiv.org/pdf/1905.03375.pdf
 """
 import numpy as np
 import scipy.sparse
@@ -58,6 +60,7 @@ class SLIM(recommender.PredictRecommender):
         del self._hyperparameters['self']
         del self._hyperparameters['__class__']
 
+
     @property
     def name(self):  # noqa: D102
         return 'slim'
@@ -70,6 +73,7 @@ class SLIM(recommender.PredictRecommender):
         num_items = len(self._items)
         self._weights = scipy.sparse.dok_matrix((num_items, num_items))
         start = time.time()
+        # TODO: should add optional parameter to filter ratings to be 0 or 1
         ratings = self._ratings.tolil()
         tolil_time = time.time() - start 
         start1 = time.time()
@@ -104,3 +108,59 @@ class SLIM(recommender.PredictRecommender):
             predictions.append(all_predictions[user_id, item_id])
 
         return np.array(predictions)
+
+class EASE(recommender.PredictRecommender):
+    """The EASE recommendation model which is a simple linear method.
+
+    Parameters
+    ----------
+    lam : float
+        Constant that multiplies the regularization terms.
+    seed : int
+        The random seed to use when training the model.
+
+    """
+
+    def __init__(self,
+                 lam=1.0,
+                 seed=0):
+        """Create an EASE recommender."""
+        super().__init__()
+
+        self._lam = lam
+        
+        self._weights = None
+        self._hyperparameters.update(locals())
+
+        # We only want the function arguments so remove class related objects.
+        del self._hyperparameters['self']
+        del self._hyperparameters['__class__']
+
+
+    @property
+    def name(self):  # noqa: D102
+        return 'ease'
+
+    def update(self, users=None, items=None, ratings=None):  # noqa: D102
+        super().update(users, items, ratings)
+        num_items = len(self._items)
+        # TODO: should add optional parameter to filter ratings to be 0 or 1
+        ratings = self._ratings.tolil()
+
+        G = self._ratings.T @ self._ratings
+
+        diag_ind= np.diag_indices(G.shape[0])
+        G[diag_ind] += self._lam
+        P = np.linalg.inv(G.todense())
+        self._weights = P / (-np.diag(P))
+        self._weights[diag_ind]= 0
+
+    def _predict(self, user_item):  # noqa: D102
+        # Predict on all user-item pairs.
+        all_predictions = (self._ratings @ self._weights)
+        predictions = []
+        for user_id, item_id, _ in user_item:
+            predictions.append(all_predictions[user_id, item_id])
+
+        return np.array(predictions)
+

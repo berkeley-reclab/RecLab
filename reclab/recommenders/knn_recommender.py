@@ -52,6 +52,56 @@ class KNNRecommender(recommender.PredictRecommender):
     def name(self):  # noqa: D102
         return 'knn'
 
+    @property
+    def dense_predictions(self):  # noqa: D102
+        if self._dense_predictions is not None:
+            return self._dense_predictions
+
+        # Set up whether we will loop over users or items.
+        if self._user_based:
+            loop_range = range(len(self._users))
+            ratings_matrix = self._ratings_matrix
+        else:
+            loop_range = range(len(self._items))
+            ratings_matrix = self._ratings_matrix.T
+
+        preds = []
+        for idx in loop_range: 
+            relevant_idxs = nlargest_indices(
+                self._neighborhood_size, self._similarity_matrix[idx])
+            ratings = ratings_matrix[relevant_idxs]
+            # We only care about means and similarities with corresponding nonzero ratings.
+            zero = ratings == 0
+
+            # Create a matrix of means that can easily be subtracted by the ratings.
+            relevant_means = self._means[relevant_idxs]
+            relevant_means = np.tile(relevant_means, (ratings_matrix.shape[1], 1)).T
+            relevant_means[zero] = 0.0
+
+            # Create a matrix of relevant similarities that can easily be multiplied with ratings.
+            similarities = self._similarity_matrix[relevant_idxs, idx]
+            similarities = np.tile(similarities, (ratings_matrix.shape[1], 1)).T
+            similarities[zero] = 0.0
+
+            # Ensure that we aren't weighting by all 0.
+            zero = np.all(np.isclose(similarities, 0), axis=0)
+            similarities[:, zero] = 1.0
+
+            # Compute the predictions.
+            if self._use_means:
+                ratings_sum = self._means[idx] + (ratings - relevant_means)
+            else:
+                ratings_sum = ratings
+            preds.append((ratings_sum * similarities).sum(axis=0) / similarities.sum(axis=0))
+
+        preds = np.array(preds)
+        if not self._user_based:
+            preds = preds.T
+
+        self._dense_predictions = preds
+        return preds
+
+
     def reset(self, users=None, items=None, ratings=None):  # noqa: D102
         self._feature_matrix = scipy.sparse.csr_matrix((0, 0))
         self._similarity_matrix = np.empty((0, 0))

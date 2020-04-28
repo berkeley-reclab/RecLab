@@ -226,23 +226,36 @@ def read_dataset(name, shuffle=True):
 
     return users, items, ratings
 
-def get_time_split(name, shuffle=True):
+def get_time_split_dataset(name, shuffle=True, binarize=False):
     data = get_data(name)
+    if binarize:
+        data["rating"] = 1
 
     users = {user_id: np.zeros(0) for user_id in np.unique(data['user_id'])}
     items = {item_id: np.zeros(0) for item_id in np.unique(data['item_id'])}
 
     # Add final rating to test set
-    test_ratings = {}
-    for user_id in users.keys():
-        pass
+    test_idx = []
+    for uid in np.unique(data['user_id']):
+        last_rating_idx = data[data['user_id']==uid]['timestamp'].idxmax()
+        test_idx.append(last_rating_idx)
+    data_test = data.loc[test_idx]
+    data_train = data.drop(test_idx)
 
     # Shuffle remaining data
+    if shuffle:
+        data_train = data_train.sample(frac=1).reset_index(drop=True)
 
     # Fill the rating array with initial data.
     train_ratings = {}
-    for user_id, item_id, rating in zip(data['user_id'], data['item_id'], data['rating']):
+    for user_id, item_id, rating in zip(data_train['user_id'], data_train['item_id'], data_train['rating']):
         # TODO: may want to eventually a rating context depending on dataset (e.g. time)
         train_ratings[user_id, item_id] = (rating, np.zeros(0))
+
+    # Fill the rating array with initial data.
+    test_ratings = {}
+    for user_id, item_id, rating in zip(data_test['user_id'], data_test['item_id'], data_test['rating']):
+        # TODO: may want to eventually a rating context depending on dataset (e.g. time)
+        test_ratings[user_id, item_id] = (rating, np.zeros(0))
 
     return users, items, train_ratings, test_ratings

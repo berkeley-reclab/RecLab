@@ -21,6 +21,8 @@ class SLIM(recommender.PredictRecommender):
 
     Parameters
     ----------
+    binarize : boolean
+        Determines whether to binarize ratings before fitting a model.
     alpha : float
         Constant that multiplies the regularization terms.
     l1_ratio : float
@@ -35,6 +37,7 @@ class SLIM(recommender.PredictRecommender):
     """
 
     def __init__(self,
+                 binarize=False,
                  alpha=1.0,
                  l1_ratio=0.1,
                  positive=True,
@@ -43,6 +46,7 @@ class SLIM(recommender.PredictRecommender):
                  seed=0):
         """Create a SLIM recommender."""
         super().__init__()
+        self._binarize = binarize
         self._model = sklearn.linear_model.ElasticNet(alpha=alpha,
                                                       l1_ratio=l1_ratio,
                                                       positive=positive,
@@ -66,39 +70,27 @@ class SLIM(recommender.PredictRecommender):
         return 'slim'
 
     def update(self, users=None, items=None, ratings=None):  # noqa: D102
-        start = time.time()
-        start0 = start
         super().update(users, items, ratings)
-        super_time = time.time() - start
         num_items = len(self._items)
         self._weights = scipy.sparse.dok_matrix((num_items, num_items))
-        start = time.time()
-        # TODO: should add optional parameter to filter ratings to be 0 or 1
-        ratings = self._ratings.tolil()
-        tolil_time = time.time() - start 
-        start1 = time.time()
+        if self._binarize:
+            row, col = self._ratings.nonzero()
+            data = np.ones(len(row))
+            ratings = scipy.sparse.csr_matrix((data, (row, col)), shape=self._ratings.shape).tolil()
+        else:
+            ratings = self._ratings.tolil()
         for item_id in range(num_items):
-            start = time.time()
             target = ratings[:, item_id].toarray()
-            toarr_time = time.time() - start
             # Zero out the column of the current item to prevent a trivial solution.
             ratings[:, item_id] = 0
-            # Fit the mode and save the weights.
-            start = time.time()
+            # Fit the mode and save the weights
+            # This currently takes 0.02s/item on ML100k
             self._model.fit(ratings, target)
-            fit_time = time.time() - start
             self._weights[:, item_id] = self._model.sparse_coef_.T
             self._weights[item_id, item_id] = 0
             # Restore the rating column.
             ratings[:, item_id] = target
-        loop_time = time.time() - start1
-        start = time.time()
         self._weights = scipy.sparse.csr_matrix(self._weights)
-        csr_time = time.time() - start
-        print("total: {}, super: {}, tolil: {}, ".format(time.time()-start0,
-                                                         super_time, tolil_time) + 
-              "toarray(x{}): {}, fit(x{}):{}, loop time:{}, csr:{}".format(num_items, toarr_time,
-                                                             num_items, fit_time, loop_time, csr_time))
 
     def _predict(self, user_item):  # noqa: D102
         # Predict on all user-item pairs.
@@ -114,6 +106,8 @@ class EASE(recommender.PredictRecommender):
 
     Parameters
     ----------
+    binarize : boolean
+        Determines whether to binarize ratings before fitting a model.
     lam : float
         Constant that multiplies the regularization terms.
     seed : int
@@ -122,11 +116,13 @@ class EASE(recommender.PredictRecommender):
     """
 
     def __init__(self,
+                 binarize=False,
                  lam=1.0,
                  seed=0):
         """Create an EASE recommender."""
         super().__init__()
 
+        self._binarize = binarize
         self._lam = lam
         
         self._weights = None
@@ -144,10 +140,15 @@ class EASE(recommender.PredictRecommender):
     def update(self, users=None, items=None, ratings=None):  # noqa: D102
         super().update(users, items, ratings)
         num_items = len(self._items)
-        # TODO: should add optional parameter to filter ratings to be 0 or 1
-        ratings = self._ratings.tolil()
 
-        G = self._ratings.T @ self._ratings
+        if self._binarize:
+            row, col = self._ratings.nonzero()
+            data = np.ones(len(row))
+            ratings = scipy.sparse.csr_matrix((data, (row, col)), shape=self._ratings.shape)
+        else:
+            ratings = self._ratings
+
+        G = ratings.T @ ratings
 
         diag_ind= np.diag_indices(G.shape[0])
         G[diag_ind] += self._lam

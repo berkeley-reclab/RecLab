@@ -44,9 +44,7 @@ def test_binary_recommend_ml100k(recommender, hit_rate_threshold, seed=None):
     train_ratings_1, train_ratings_2 = data_utils.split_ratings(train_ratings, 0.5)
     all_contexts = collections.OrderedDict([(user_id, np.zeros(0)) for user_id in users])
 
-    print("1")
     recommender.reset(users, items, train_ratings_1)
-    print("2")
     recs, _ = recommender.recommend(all_contexts, 1)
     num_hits = sum((user_id, rec) in test_ratings for user_id, rec in zip(users, recs[:, 0]))
     hit_rate1 = num_hits / NUM_USERS_ML100K
@@ -54,11 +52,8 @@ def test_binary_recommend_ml100k(recommender, hit_rate_threshold, seed=None):
     # We should get a relatively low hit rate here.
     assert hit_rate1 > hit_rate_threshold
 
-    print("3")
     recommender.reset(users, items, train_ratings_1)
-    print("4")
     recommender.update(ratings=train_ratings_2)
-    print("5")
     recs, _ = recommender.recommend(all_contexts, 1)
     num_hits = sum((user_id, rec) in test_ratings for user_id, rec in zip(users, recs[:, 0]))
     hit_rate2 = num_hits / NUM_USERS_ML100K

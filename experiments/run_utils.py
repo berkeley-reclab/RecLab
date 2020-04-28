@@ -323,7 +323,7 @@ def run_trial(env,
 
     """
     if not overwrite and s3_dir_exists(bucket, dir_name):
-        print('Loading past results from S3.')
+        print('Loading past results from S3 at directory:', dir_name)
         results = s3_load_trial(bucket, dir_name)
         return results[1:-1]
 
@@ -343,6 +343,7 @@ def run_trial(env,
             user_item.append((i, j, np.zeros(0)))
 
     # Now recommend items to users.
+    """
     for _ in tqdm.autonotebook.tqdm(range(len_trial)):
         online_users = env.online_users()
         recommendations, predictions = rec.recommend(online_users, num_recommendations=1)
@@ -366,6 +367,8 @@ def run_trial(env,
         all_env_snapshots.append(copy.deepcopy(env))
 
         rec.update(users, items, ratings)
+    """
+    all_ratings = [np.zeros((32000, 32000))]
 
     # Convert lists to numpy arrays
     all_ratings = np.array(all_ratings)
@@ -643,13 +646,16 @@ def s3_load_trial(bucket, dir_name):
             file_name = file_name + '.json'
         else:
             file_name = file_name + '.pickle'
+
         with io.BytesIO() as stream:
             bucket.download_fileobj(Key=file_name, Fileobj=stream)
             serialized_obj = stream.getvalue()
+
         if use_json:
             obj = json.loads(serialized_obj)
         else:
             obj = pickle.loads(serialized_obj)
+
         return obj
 
     rec_hyperparameters = get_and_unserialize('rec_hyperparameters', use_json=True)
@@ -667,7 +673,7 @@ def serialize_and_put(bucket, dir_name, name, obj, use_json=False):
     """Serialize an object and upload it to S3."""
     file_name = os.path.join(dir_name, name)
     if use_json:
-        serialized_obj = json.dumps(obj, sort_keys=True, indent=4)
+        serialized_obj = json.dumps(obj, sort_keys=True, indent=4).encode('utf-8')
         file_name = file_name + '.json'
     else:
         serialized_obj = pickle.dumps(obj, protocol=4)
@@ -675,6 +681,7 @@ def serialize_and_put(bucket, dir_name, name, obj, use_json=False):
 
     with io.BytesIO() as stream:
         stream.write(serialized_obj)
+        stream.seek(0)
         bucket.upload_fileobj(Key=file_name, Fileobj=stream)
 
 
@@ -682,9 +689,9 @@ def put_dataframe(bucket, dir_name, name, dataframe):
     """Upload a dataframe to S3 as a csv file."""
     with io.StringIO() as stream:
         dataframe.to_csv(stream)
-        file_name = os.path.join(dir_name, name + '.csv')
-        bucket.put_object(Key=file_name, Body=stream.getvalue())
+        csv_str = stream.getvalue()
 
     with io.BytesIO() as stream:
-        stream.write(serialized_obj)
+        stream.write(csv_str.encode('utf-8'))
+        file_name = os.path.join(dir_name, name + '.csv')
         bucket.upload_fileobj(Key=file_name, Fileobj=stream)

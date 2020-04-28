@@ -11,7 +11,7 @@ NUM_USERS_SIMPLE = 2
 NUM_ITEMS_SIMPLE = 3
 
 
-def test_predict_ml100k(recommender, rmse_threshold=1.1, seed=None):
+def test_predict_ml100k(recommender, rmse_threshold=1.1, seed=None, test_dense=False):
     """Test that recommender predicts well and that it gets better with more data."""
     users, items, ratings = data_utils.read_dataset('ml-100k')
     assert NUM_USERS_ML100K == len(users)
@@ -33,6 +33,14 @@ def test_predict_ml100k(recommender, rmse_threshold=1.1, seed=None):
 
     # The RMSE should have reduced.
     assert rmse1 > rmse2
+
+    if test_dense:
+        # Test that the dense predictions work as well.
+        dense = recommender.dense_predictions
+        preds = np.array([dense[key[0] - 1, key[1] - 1] for key in test_ratings])
+        rmse3 = rmse(preds, targets)
+        # The RMSE should have reduced.
+        assert rmse1 > rmse3
 
 
 def test_binary_recommend_ml100k(recommender, hit_rate_threshold, seed=None):

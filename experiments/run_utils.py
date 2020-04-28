@@ -270,34 +270,29 @@ def run_trial(env,
     all_dense_predictions = []
     all_env_snapshots = [copy.deepcopy(env)]
     user_item = []
-    for i in range(len(env.users)):
-        for j in range(len(env.items)):
-            user_item.append((i, j, np.zeros(0)))
 
     # Now recommend items to users.
     for _ in tqdm.autonotebook.tqdm(range(len_trial)):
         online_users = env.online_users()
+        dense_predictions = rec.dense_predictions.flatten()
         recommendations, predictions = rec.recommend(online_users, num_recommendations=1)
+
         recommendations = recommendations.flatten()
         dense_ratings = np.clip(env.dense_ratings.flatten(), 1, 5)
         items, users, ratings, _ = env.step(recommendations)
+        rec.update(users, items, ratings)
 
         # Account for the case where the recommender doesn't predict ratings.
         if predictions is None:
             predictions = np.ones_like(ratings) * np.nan
             dense_predictions = np.ones_like(dense_ratings) * np.nan
-        else:
-            predictions = predictions.flatten()
-            dense_predictions = rec.predict(user_item)
 
         # Save all relevant info.
         all_ratings.append([rating for rating, _ in ratings.values()])
-        all_predictions.append(predictions)
+        all_predictions.append(predictions.flatten())
         all_dense_ratings.append(dense_ratings)
         all_dense_predictions.append(dense_predictions)
         all_env_snapshots.append(copy.deepcopy(env))
-
-        rec.update(users, items, ratings)
 
     # Convert lists to numpy arrays
     all_ratings = np.array(all_ratings)

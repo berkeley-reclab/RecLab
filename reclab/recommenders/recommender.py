@@ -160,6 +160,7 @@ class PredictRecommender(Recommender):
         self._inner_to_outer_uid = []
         self._outer_to_inner_iid = {}
         self._inner_to_outer_iid = []
+        self._dense_predictions = None
         self.update(users, items, ratings)
 
     def update(self, users=None, items=None, ratings=None):
@@ -180,6 +181,8 @@ class PredictRecommender(Recommender):
             index is a numpy array that represents the context in which the rating was made.
 
         """
+        self._dense_predictions = None
+
         # Update the user info.
         if users is not None:
             for user_id, features in users.items():
@@ -251,7 +254,13 @@ class PredictRecommender(Recommender):
             all_item_ids.append(item_ids)
 
         # Predict the ratings and convert predictions into a list of arrays indexed by user.
-        all_predictions = self._predict(ratings_to_predict)
+        if self._dense_predictions is None:
+            all_predictions = self._predict(ratings_to_predict)
+        else:
+            all_predictions = []
+            for user_id, item_id, _ in ratings_to_predict:
+                all_predictions.append(self._dense_predictions[user_id, item_id])
+
         item_lens = map(len, all_item_ids)
         all_predictions = np.split(all_predictions,
                                    list(itertools.accumulate(item_lens)))
@@ -268,6 +277,19 @@ class PredictRecommender(Recommender):
             all_recs.append([self._inner_to_outer_iid[rec] for rec in recs])
             all_predicted_ratings.append(predicted_ratings)
         return np.array(all_recs), np.array(all_predicted_ratings)
+
+    @property
+    def dense_predictions(self):
+        if self._dense_predictions is None:
+            user_item = []
+            for i in range(len(self._users)):
+                for j in range(len(self._items)):
+                    user_item.append((i, j, np.zeros(0)))
+
+            self._dense_predictions = self._predict(user_item)
+            self._dense_predictions = self._dense_predictions.reshape((len(self._users),
+                                                                       len(self._items)))
+        return self._dense_predictions
 
     def predict(self, user_item):
         """Predict the ratings of user-item pairs.

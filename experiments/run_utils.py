@@ -672,7 +672,10 @@ def serialize_and_put(bucket, dir_name, name, obj, use_json=False):
     else:
         serialized_obj = pickle.dumps(obj, protocol=4)
         file_name = file_name + '.pickle'
-    bucket.put_object(Key=file_name, Body=serialized_obj)
+
+    with io.BytesIO() as stream:
+        stream.write(serialized_obj)
+        bucket.upload_fileobj(Key=file_name, Fileobj=stream)
 
 
 def put_dataframe(bucket, dir_name, name, dataframe):
@@ -681,3 +684,7 @@ def put_dataframe(bucket, dir_name, name, dataframe):
         dataframe.to_csv(stream)
         file_name = os.path.join(dir_name, name + '.csv')
         bucket.put_object(Key=file_name, Body=stream.getvalue())
+
+    with io.BytesIO() as stream:
+        stream.write(serialized_obj)
+        bucket.upload_fileobj(Key=file_name, Fileobj=stream)

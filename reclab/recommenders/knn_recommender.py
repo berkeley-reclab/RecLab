@@ -66,7 +66,7 @@ class KNNRecommender(recommender.PredictRecommender):
             ratings_matrix = self._ratings_matrix.T
 
         preds = []
-        for idx in loop_range: 
+        for idx in loop_range:
             relevant_idxs = nlargest_indices(
                 self._neighborhood_size, self._similarity_matrix[idx])
             ratings = ratings_matrix[relevant_idxs]
@@ -101,7 +101,6 @@ class KNNRecommender(recommender.PredictRecommender):
         self._dense_predictions = preds
         return preds
 
-
     def reset(self, users=None, items=None, ratings=None):  # noqa: D102
         self._feature_matrix = scipy.sparse.csr_matrix((0, 0))
         self._similarity_matrix = np.empty((0, 0))
@@ -134,7 +133,7 @@ class KNNRecommender(recommender.PredictRecommender):
             if self._user_based:
                 if user_id not in relevant_idxs_cache:
                     relevant_idxs_cache[user_id] = nlargest_indices(
-                            self._neighborhood_size, self._similarity_matrix[user_id])
+                        self._neighborhood_size, self._similarity_matrix[user_id])
                 relevant_idxs = relevant_idxs_cache[user_id]
                 similarities = self._similarity_matrix[relevant_idxs, user_id]
                 ratings = self._ratings_matrix[relevant_idxs, item_id].ravel()
@@ -142,7 +141,7 @@ class KNNRecommender(recommender.PredictRecommender):
             else:
                 if item_id not in relevant_idxs_cache:
                     relevant_idxs_cache[item_id] = nlargest_indices(
-                            self._neighborhood_size, self._similarity_matrix[item_id])
+                        self._neighborhood_size, self._similarity_matrix[item_id])
                 relevant_idxs = relevant_idxs_cache[item_id]
                 similarities = self._similarity_matrix[relevant_idxs, item_id]
                 ratings = self._ratings_matrix.T[relevant_idxs, user_id].ravel()

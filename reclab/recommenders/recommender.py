@@ -126,6 +126,8 @@ class PredictRecommender(Recommender):
         self._strategy = strategy
         # A dict of all the recommender's hyperparameters.
         self._hyperparameters = {'strategy': strategy}
+        # The cached dense predictions, reset to None each time update is called.
+        self._dense_predictions = None
         # Check that the strategy is of valid type.
         assert self._strategy in ['greedy', 'eps_greedy', 'thompson']
 

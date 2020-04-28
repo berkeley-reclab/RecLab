@@ -269,7 +269,6 @@ def run_trial(env,
     all_dense_ratings = []
     all_dense_predictions = []
     all_env_snapshots = [copy.deepcopy(env)]
-    user_item = []
 
     # Now recommend items to users.
     for _ in tqdm.autonotebook.tqdm(range(len_trial)):

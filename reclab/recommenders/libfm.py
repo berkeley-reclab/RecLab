@@ -190,7 +190,10 @@ class LibFM(recommender.PredictRecommender):
                                               shape=(len(user_item), self._num_features))
         test_data = wpyfm.Data(test_inputs, np.zeros(test_inputs.shape[0]), has_xt=self._has_xt)
 
-        self._model.train(self._train_data)
+        if self._has_xt:
+            self._model.train(self._train_data, test=test_data)
+        else:
+            self._model.train(self._train_data)
         predictions = self._model.predict(test_data)
 
         return predictions

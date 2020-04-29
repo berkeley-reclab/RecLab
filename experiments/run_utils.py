@@ -343,7 +343,6 @@ def run_trial(env,
             user_item.append((i, j, np.zeros(0)))
 
     # Now recommend items to users.
-    """
     for _ in tqdm.autonotebook.tqdm(range(len_trial)):
         online_users = env.online_users()
         recommendations, predictions = rec.recommend(online_users, num_recommendations=1)
@@ -367,8 +366,6 @@ def run_trial(env,
         all_env_snapshots.append(copy.deepcopy(env))
 
         rec.update(users, items, ratings)
-    """
-    all_ratings = [np.zeros((32000, 32000))]
 
     # Convert lists to numpy arrays
     all_ratings = np.array(all_ratings)

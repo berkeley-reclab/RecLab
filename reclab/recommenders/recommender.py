@@ -282,7 +282,11 @@ class PredictRecommender(Recommender):
 
     @property
     def dense_predictions(self):
-        """Get the predictions on all user-item pairs."""
+        """Get the predictions on all user-item pairs.
+
+        This method should be overwritten if there is a more efficient way to compute dense
+        predictions than calling _predict on all user-item pairs.
+        """
         if self._dense_predictions is None:
             user_item = []
             for i in range(len(self._users)):

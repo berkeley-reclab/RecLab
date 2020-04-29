@@ -91,6 +91,74 @@ def plot_ratings_mses(ratings,
     plt.show()
 
 
+def plot_regret(ratings,
+                labels,
+                perfect_ratings=None,
+                num_init_ratings=None):
+    """Plot the regrets for multiple recommenders comparing to the perfect recommender.
+
+    Parameters
+    ----------
+    ratings : np.ndarray
+        The array of all ratings made by users throughout all trials. ratings[i, j, k, l]
+        corresponds to the rating made by the l-th online user during the k-th step of the
+        j-th trial for the i-th recommender.
+    labels : list of str
+        The name of each recommender. Default label for the perfect recommender is 'perfect'.
+    perfect_ratings : np.ndarray, can be none if labels contains 'perfect'
+        The array of all ratings made for the perfect recommenders thoughout all trials. ratings[j, k, l]
+        corresponds to the rating made by the l-th online user during the k-th step of the
+        j-th trial for the perfect recommender.
+    num_init_ratings : int
+        The number of ratings initially available to recommenders. If set to None
+        the function will plot with an x-axis based on round number.
+
+    """
+    if perfect_ratings == None:
+        if 'perfect' in labels:
+            idx = labels.index('perfert')
+            perfect_ratings = ratings[idx]
+        else:
+            print('no ratings from the perfect recommeder')
+            return
+
+    def get_regret_stats(arr):
+        # Swap the trial and step axes (trial, step, user --> step, trial, user)
+        arr = np.swapaxes(arr, 0, 1)
+        # Flatten the trial and user axes together.
+        arr = arr.reshape(arr.shape[0], -1)
+        #compute the commulative regret
+        arr = arr.cumsum(axis=1)
+        # Compute the means and standard deviations of the means for each step.
+        means = arr.mean(axis=1)
+        # Use Bessel's correction here.
+        stds = arr.std(axis=1) / np.sqrt(arr.shape[1] - 1)
+        # Compute the 95% confidence intervals using the CLT.
+        upper_bounds = means + 2 * stds
+        lower_bounds = means - 2 * stds
+        return means, lower_bounds, upper_bounds
+
+    if num_init_ratings is not None:
+        x_vals = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])
+    else:
+        x_vals = np.arange(ratings.shape[2])
+
+    plt.figure(figsize=[5, 4])
+    for recommender_ratings, label in zip(ratings, labels):
+        #plot the regret for the recommenders that are not perfect
+        if label != 'perfect':
+            regrets = perfect_ratings  - recommender_ratings
+            mean_regrets, lower_bounds, upper_bounds = get_regret_stats(regrets)
+            #plotting the regret over steps and correct the associated intervals.
+            plt.plot(x_vals, mean_regrets, label=label)
+            plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
+    plt.xlabel('# ratings')
+    plt.ylabel('Regret')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+
 def get_env_dataset(environment):
     """Get the initial ratings of an environment.
 
@@ -255,7 +323,7 @@ def run_trial(env,
 
     """
     if not overwrite and s3_dir_exists(bucket, dir_name):
-        print('Loading past results from S3.')
+        print('Loading past results from S3 at directory:', dir_name)
         results = s3_load_trial(bucket, dir_name)
         return results[1:-1]
 
@@ -268,36 +336,30 @@ def run_trial(env,
     all_predictions = []
     all_dense_ratings = []
     all_dense_predictions = []
-    all_env_snapshots = [pickle.dumps(env)]
-    user_item = []
-    for i in range(len(env.users)):
-        for j in range(len(env.items)):
-            user_item.append((i, j, np.zeros(0)))
+    all_env_snapshots = [copy.deepcopy(env)]
 
     # Now recommend items to users.
     for _ in tqdm.autonotebook.tqdm(range(len_trial)):
         online_users = env.online_users()
+        dense_predictions = rec.dense_predictions.flatten()
         recommendations, predictions = rec.recommend(online_users, num_recommendations=1)
+
         recommendations = recommendations.flatten()
         dense_ratings = np.clip(env.dense_ratings.flatten(), 1, 5)
         items, users, ratings, _ = env.step(recommendations)
+        rec.update(users, items, ratings)
 
         # Account for the case where the recommender doesn't predict ratings.
         if predictions is None:
             predictions = np.ones_like(ratings) * np.nan
             dense_predictions = np.ones_like(dense_ratings) * np.nan
-        else:
-            predictions = predictions.flatten()
-            dense_predictions = rec.predict(user_item)
 
         # Save all relevant info.
         all_ratings.append([rating for rating, _ in ratings.values()])
-        all_predictions.append(predictions)
+        all_predictions.append(predictions.flatten())
         all_dense_ratings.append(dense_ratings)
         all_dense_predictions.append(dense_predictions)
         all_env_snapshots.append(copy.deepcopy(env))
-
-        rec.update(users, items, ratings)
 
     # Convert lists to numpy arrays
     all_ratings = np.array(all_ratings)
@@ -575,13 +637,16 @@ def s3_load_trial(bucket, dir_name):
             file_name = file_name + '.json'
         else:
             file_name = file_name + '.pickle'
+
         with io.BytesIO() as stream:
             bucket.download_fileobj(Key=file_name, Fileobj=stream)
             serialized_obj = stream.getvalue()
+
         if use_json:
             obj = json.loads(serialized_obj)
         else:
             obj = pickle.loads(serialized_obj)
+
         return obj
 
     rec_hyperparameters = get_and_unserialize('rec_hyperparameters', use_json=True)
@@ -599,17 +664,25 @@ def serialize_and_put(bucket, dir_name, name, obj, use_json=False):
     """Serialize an object and upload it to S3."""
     file_name = os.path.join(dir_name, name)
     if use_json:
-        serialized_obj = json.dumps(obj, sort_keys=True, indent=4)
+        serialized_obj = json.dumps(obj, sort_keys=True, indent=4).encode('utf-8')
         file_name = file_name + '.json'
     else:
-        serialized_obj = pickle.dumps(obj)
+        serialized_obj = pickle.dumps(obj, protocol=4)
         file_name = file_name + '.pickle'
-    bucket.put_object(Key=file_name, Body=serialized_obj)
+
+    with io.BytesIO() as stream:
+        stream.write(serialized_obj)
+        stream.seek(0)
+        bucket.upload_fileobj(Key=file_name, Fileobj=stream)
 
 
 def put_dataframe(bucket, dir_name, name, dataframe):
     """Upload a dataframe to S3 as a csv file."""
     with io.StringIO() as stream:
         dataframe.to_csv(stream)
+        csv_str = stream.getvalue()
+
+    with io.BytesIO() as stream:
+        stream.write(csv_str.encode('utf-8'))
         file_name = os.path.join(dir_name, name + '.csv')
-        bucket.put_object(Key=file_name, Body=stream.getvalue())
+        bucket.upload_fileobj(Key=file_name, Fileobj=stream)

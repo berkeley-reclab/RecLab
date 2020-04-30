@@ -340,6 +340,8 @@ def run_trial(env,
     all_dense_ratings = []
     all_dense_predictions = []
     all_env_snapshots = [copy.deepcopy(env)]
+    # We have a seperate variable for ratings.
+    all_env_snapshots[-1]._ratings = None
 
     # Now recommend items to users.
     for _ in tqdm.autonotebook.tqdm(range(len_trial)):
@@ -363,6 +365,7 @@ def run_trial(env,
         all_dense_ratings.append(dense_ratings)
         all_dense_predictions.append(dense_predictions)
         all_env_snapshots.append(copy.deepcopy(env))
+        all_env_snapshots[-1]._ratings = None
 
     # Convert lists to numpy arrays
     all_ratings = np.array(all_ratings)
@@ -669,11 +672,11 @@ def serialize_and_put(bucket, dir_name, name, obj, use_json=False):
     file_name = os.path.join(dir_name, name)
     with open(TEMP_FILE_NAME, 'wb') as temp_file:
         if use_json:
-            serialized_obj = json.dump(obj, codecs.getwriter('utf-8')(temp_file),
-                                       sort_keys=True, indent=4)
+            json.dump(obj, codecs.getwriter('utf-8')(temp_file),
+                      sort_keys=True, indent=4)
             file_name = file_name + '.json'
         else:
-            serialized_obj = pickle.dump(obj, temp_file, protocol=4)
+            pickle.dump(obj, temp_file, protocol=4)
             file_name = file_name + '.pickle'
 
     with open(TEMP_FILE_NAME, 'rb') as temp_file:

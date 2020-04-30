@@ -117,28 +117,19 @@ def find_npz(dir_name, data_name, data_url, np_params):
     return data
 
 
-def read_dataset(name, shuffle=True):
-    """Read a dataset as specified by name.
+def get_data(name):
+    """Read a dataset specified by name into pandas dataframe.
 
     Parameters
     ----------
     name : str
-        The name of the dataset. Must be one of: 'ml-100k', 'ml-10m', 'citeulike-a',
-        'pinterest', or 'lastfm'.
-    shuffle : bool, optional
-        A flag to indicate whether the dataset should be shuffled after loading,
-        true by default.
+        The name of the dataset. Must be one of: 'ml-100k', 'ml-10m', 'ml-1m',
+        'citeulike-a', 'pinterest', or 'lastfm'.
 
     Returns
     -------
-    users : dict
-        The dict of all users where the key is the user-id and the value is the user's features.
-    items : dict
-        The dict of all items where the key is the item-id and the value is the item's features.
-    ratings : dict
-        The dict of all ratings where the key is a tuple whose first element is the user-id
-        and whose second element is the item id. The value is a tuple whose first element is the
-        rating value and whose second element is the rating context (in this case an empty array).
+    data : DataFrame
+        Dataset of interest.
 
     """
     if name == 'ml-100k':
@@ -152,6 +143,13 @@ def read_dataset(name, shuffle=True):
         zipped_dir_name = 'ml-10M100K'
         data_name = 'ratings.dat'
         data_url = 'http://files.grouplens.org/datasets/movielens/ml-10m.zip'
+        csv_params = dict(sep='::', header=None, usecols=[0, 1, 2, 3],
+                          names=['user_id', 'item_id', 'rating', 'timestamp'], engine='python')
+        data = find_zipped(zipped_dir_name, data_name, data_url, csv_params)
+    elif name == 'ml-1m':
+        zipped_dir_name = 'ml-1m'
+        data_name = 'ratings.dat'
+        data_url = 'http://files.grouplens.org/datasets/movielens/ml-1m.zip'
         csv_params = dict(sep='::', header=None, usecols=[0, 1, 2, 3],
                           names=['user_id', 'item_id', 'rating', 'timestamp'], engine='python')
         data = find_zipped(zipped_dir_name, data_name, data_url, csv_params)
@@ -187,6 +185,34 @@ def read_dataset(name, shuffle=True):
             raise error
     else:
         raise ValueError('dataset name not recognized')
+    return data
+
+
+def read_dataset(name, shuffle=True):
+    """Read a dataset as specified by name.
+
+    Parameters
+    ----------
+    name : str
+        The name of the dataset. Must be one of: 'ml-100k', 'ml-10m', 'citeulike-a',
+        'pinterest', or 'lastfm'.
+    shuffle : bool, optional
+        A flag to indicate whether the dataset should be shuffled after loading,
+        true by default.
+
+    Returns
+    -------
+    users : dict
+        The dict of all users where the key is the user-id and the value is the user's features.
+    items : dict
+        The dict of all items where the key is the item-id and the value is the item's features.
+    ratings : dict
+        The dict of all ratings where the key is a tuple whose first element is the user-id
+        and whose second element is the item id. The value is a tuple whose first element is the
+        rating value and whose second element is the rating context (in this case an empty array).
+
+    """
+    data = get_data(name)
 
     if shuffle:
         data = data.sample(frac=1).reset_index(drop=True)
@@ -201,3 +227,66 @@ def read_dataset(name, shuffle=True):
         ratings[user_id, item_id] = (rating, np.zeros(0))
 
     return users, items, ratings
+
+
+def get_time_split_dataset(name, shuffle=True, binarize=False):
+    """Get a time-based test/train split of a dataset as specified by name.
+
+    Parameters
+    ----------
+    name : str
+        The name of the dataset. Must be one of: 'ml-100k', 'ml-10m', 'citeulike-a',
+        'pinterest', or 'lastfm'.
+    shuffle : bool, optional
+        A flag to indicate whether the dataset should be shuffled after loading,
+        true by default.
+    binarize : bool, optional
+        A flag to indicate whether to binarize the ratings to be 0 or 1,
+        true by default.
+
+    Returns
+    -------
+    users : dict
+        The dict of all users where the key is the user-id and the value is the user's features.
+    items : dict
+        The dict of all items where the key is the item-id and the value is the item's features.
+    train_ratings : dict
+        The dict of all training ratings.
+    test_ratings : dict
+        The dict of all testing ratings.
+
+    """
+    data = get_data(name)
+    if binarize:
+        data['rating'] = 1
+
+    users = {user_id: np.zeros(0) for user_id in np.unique(data['user_id'])}
+    items = {item_id: np.zeros(0) for item_id in np.unique(data['item_id'])}
+
+    # Add final rating to test set
+    test_idx = []
+    for uid in np.unique(data['user_id']):
+        last_rating_idx = data[data['user_id'] == uid]['timestamp'].idxmax()
+        test_idx.append(last_rating_idx)
+    data_test = data.loc[test_idx]
+    data_train = data.drop(test_idx)
+
+    # Shuffle remaining data
+    if shuffle:
+        data_train = data_train.sample(frac=1).reset_index(drop=True)
+
+    # Fill the rating array with initial data.
+    train_ratings = {}
+    for user_id, item_id, rating in zip(data_train['user_id'], data_train['item_id'],
+                                        data_train['rating']):
+        # TODO: may want to eventually a rating context depending on dataset (e.g. time)
+        train_ratings[user_id, item_id] = (rating, np.zeros(0))
+
+    # Fill the rating array with initial data.
+    test_ratings = {}
+    for user_id, item_id, rating in zip(data_test['user_id'], data_test['item_id'],
+                                        data_test['rating']):
+        # TODO: may want to eventually a rating context depending on dataset (e.g. time)
+        test_ratings[user_id, item_id] = (rating, np.zeros(0))
+
+    return users, items, train_ratings, test_ratings

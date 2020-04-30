@@ -33,6 +33,9 @@ class LibFM(recommender.PredictRecommender):
         The number of factors to use for the two way interactions.
     learning_rate : float
         The learning rate for sgd or sgda.
+    reg : float
+        The regularization across all parameters. Will be overwritten for their respective
+        parameters if bias_reg, one_way_reg, or two_way_reg is not None.
     bias_reg : float
         The regularization for the global bias.
     one_way_reg : float
@@ -59,15 +62,22 @@ class LibFM(recommender.PredictRecommender):
                  use_one_way=True,
                  num_two_way_factors=8,
                  learning_rate=0.1,
-                 bias_reg=0.0,
-                 one_way_reg=0.0,
-                 two_way_reg=0.0,
+                 reg=0.0,
+                 bias_reg=None,
+                 one_way_reg=None,
+                 two_way_reg=None,
                  init_stdev=0.1,
                  num_iter=100,
                  seed=0,
                  **kwargs):
         """Create a LibFM recommender."""
         super().__init__(**kwargs)
+        if bias_reg is None:
+            bias_reg = reg
+        if one_way_reg is None:
+            one_way_reg = reg
+        if two_way_reg is None:
+            two_way_reg = reg
         self._max_num_users = max_num_users
         self._max_num_items = max_num_items
         self._train_data = None
@@ -80,7 +90,7 @@ class LibFM(recommender.PredictRecommender):
                                  init_stdev=init_stdev,
                                  num_iter=num_iter,
                                  seed=seed)
-        self._hyperparameters = locals()
+        self._hyperparameters.update(locals())
 
         # We only want the function arguments so remove class related objects.
         del self._hyperparameters['self']
@@ -208,14 +218,3 @@ class LibFM(recommender.PredictRecommender):
         """
         self._model.train(self._train_data)
         return self._model.parameters()
-
-    def hyperparameters(self):
-        """Get the hyperparameters associated with this libfm model.
-
-        Returns
-        -------
-        hyperparameters : dict
-            The dict of all hyperparameters.
-
-        """
-        return self._hyperparameters

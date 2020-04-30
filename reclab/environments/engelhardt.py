@@ -59,7 +59,7 @@ class User:
 
         """
         true_util = np.dot(self.preferences, item_attributes) * 5
-        return true_util, true_util * self.known_weight
+        return true_util
 
 
 class Engelhardt(environment.DictEnvironment):
@@ -77,8 +77,10 @@ class Engelhardt(environment.DictEnvironment):
         super().__init__(rating_frequency, num_init_ratings)
         self.known_weight = known_weight
         self.beta_var = beta_var
-        self.user_topic_weights = 10*self._random.dirichlet([1] * num_topics) # scipy.special.softmax(self._random.rand(num_topics))
-        self.item_topic_weights = 0.1*self._random.dirichlet([100] * num_topics) # scipy.special.softmax(self._random.rand(num_topics))
+        self.user_topic_weights = 10*self._random.dirichlet([1] * num_topics)
+        self.item_topic_weights = 0.1*self._random.dirichlet([100] * num_topics)
+        # self.user_topic_weights = scipy.special.softmax(self._init_random.rand(num_topics))
+        # self.item_topic_weights = scipy.special.softmax(self._init_random.rand(num_topics))
         self._num_topics = num_topics
         self._num_users = num_users
         self._num_items = num_items
@@ -97,15 +99,15 @@ class Engelhardt(environment.DictEnvironment):
         for user_id in range(self._num_users):
             for item_id in range(self._num_items):
                 item_attr = self._item_attrs[item_id]
-                ratings[user_id, item_id] = self._users_full[user_id].rate(item_attr)[1]
+                ratings[user_id, item_id] = self._users_full[user_id].rate(item_attr)
         return ratings
 
     def _reset_state(self):  # noqa: D102
         self._users_full = {user_id: User(self._num_topics, self.known_weight,
                                           self.user_topic_weights, self.beta_var,
-                                          self._random)
+                                          self._init_random)
                             for user_id in range(self._num_users)}
-        self._item_attrs = {item_id: self._random.dirichlet(self.item_topic_weights)
+        self._item_attrs = {item_id: self._init_random.dirichlet(self.item_topic_weights)
                             for item_id in range(self._num_items)}
         self._users = collections.OrderedDict((user_id, np.zeros(0))
                                               for user_id in range(self._num_users))
@@ -114,5 +116,5 @@ class Engelhardt(environment.DictEnvironment):
 
     def _rate_item(self, user_id, item_id):  # noqa: D102
         item_attr = self._item_attrs[item_id]
-        _, rating = self._users_full[user_id].rate(item_attr)
+        rating = self._users_full[user_id].rate(item_attr)
         return rating

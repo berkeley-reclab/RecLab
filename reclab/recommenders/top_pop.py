@@ -19,6 +19,10 @@ class TopPop(recommender.Recommender):
     def name(self):  # noqa: D102
         return 'top-pop'
 
+    @property
+    def hyperparameters(self):  # noqa: D102
+        return {}
+
     def reset(self, users=None, items=None, ratings=None):
         """Reset the recommender with optional starting user, item, and rating data.
 

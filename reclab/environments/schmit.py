@@ -44,16 +44,16 @@ class Schmit(environment.DictEnvironment):
         self.sigma = sigma
 
         # constants
-        self.item_bias = np.random.randn(num_items, 1) / 1.5
-        self.user_bias = np.random.randn(num_users, 1) / 3
+        self.item_bias = self._init_random.randn(num_items, 1) / 1.5
+        self.user_bias = self._init_random.randn(num_users, 1) / 3
 
         # unobserved by agents
-        self.U = np.random.randn(num_users, rank) / np.sqrt(self.rank)
-        self.V = np.random.randn(num_items, rank) / np.sqrt(self.rank)
+        self.U = self._init_random.randn(num_users, rank) / np.sqrt(self.rank)
+        self.V = self._init_random.randn(num_items, rank) / np.sqrt(self.rank)
 
         # observed by agents
-        self.X = np.random.randn(num_users, rank) / np.sqrt(self.rank)
-        self.Y = np.random.randn(num_items, rank) / np.sqrt(self.rank)
+        self.X = self._init_random.randn(num_users, rank) / np.sqrt(self.rank)
+        self.Y = self._init_random.randn(num_items, rank) / np.sqrt(self.rank)
 
     @property
     def name(self):
@@ -82,11 +82,8 @@ class Schmit(environment.DictEnvironment):
             Item id.
 
         """
-        ratings = float(self.true_score(user, item)
-                        + self.X[user] @ self.Y[item].T
-                        + self._random.normal(loc=0, scale=self.sigma)
-                        + 3
-                       )
+        ratings = float(self.true_score(user, item) + self.X[user] @ self.Y[item].T +
+                        self._dynamics_random.normal(loc=0, scale=self.sigma) + 3)
         return np.clip(ratings, 1, 5)
 
     def _reset_state(self):
@@ -95,13 +92,13 @@ class Schmit(environment.DictEnvironment):
         self._items = {item_id: np.zeros((0,))
                        for item_id in range(self._num_items)}
 
-        self.item_bias = np.random.randn(self._num_items, 1) / 1.5
-        self.user_bias = np.random.randn(self._num_users, 1) / 3
+        self.item_bias = self._init_random.randn(self._num_items, 1) / 1.5
+        self.user_bias = self._init_random.randn(self._num_users, 1) / 3
 
-        self.U = np.random.randn(self._num_users, self.rank) / np.sqrt(self.rank)
-        self.V = np.random.randn(self._num_items, self.rank) / np.sqrt(self.rank)
-        self.X = np.random.randn(self._num_users, self.rank) / np.sqrt(self.rank)
-        self.Y = np.random.randn(self._num_items, self.rank) / np.sqrt(self.rank)
+        self.U = self._init_random.randn(self._num_users, self.rank) / np.sqrt(self.rank)
+        self.V = self._init_random.randn(self._num_items, self.rank) / np.sqrt(self.rank)
+        self.X = self._init_random.randn(self._num_users, self.rank) / np.sqrt(self.rank)
+        self.Y = self._init_random.randn(self._num_items, self.rank) / np.sqrt(self.rank)
 
     def _rate_item(self, user_id, item_id):
         return self.value(user_id, item_id)

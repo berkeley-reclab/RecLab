@@ -1,3 +1,6 @@
+boto3
+keras
+matplotlib
 numpy
 pandas
 pycodestyle
@@ -6,8 +9,6 @@ pylint
 pylint_quotes
 pytest
 scipy
+sklearn
 tensorflow<=1.14
 wpyfm
-sklearn
-keras
-matplotlib

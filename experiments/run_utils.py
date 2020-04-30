@@ -1,4 +1,5 @@
 """A utility module for running experiments."""
+import codecs
 import collections
 import copy
 import datetime
@@ -17,6 +18,8 @@ import tqdm.autonotebook
 
 # The random seed that defines the initial state of each environment.
 INIT_SEED = 0
+# The name of the file temporarily created for uploads to S3.
+TEMP_FILE_NAME = 'temp.out'
 
 
 def plot_ratings_mses(ratings,
@@ -323,7 +326,7 @@ def run_trial(env,
 
     """
     if not overwrite and s3_dir_exists(bucket, dir_name):
-        print('Loading past results from S3.')
+        print('Loading past results from S3 at directory:', dir_name)
         results = s3_load_trial(bucket, dir_name)
         return results[1:-1]
 
@@ -337,6 +340,8 @@ def run_trial(env,
     all_dense_ratings = []
     all_dense_predictions = []
     all_env_snapshots = [copy.deepcopy(env)]
+    # We have a seperate variable for ratings.
+    all_env_snapshots[-1]._ratings = None
 
     # Now recommend items to users.
     for _ in tqdm.autonotebook.tqdm(range(len_trial)):
@@ -360,6 +365,7 @@ def run_trial(env,
         all_dense_ratings.append(dense_ratings)
         all_dense_predictions.append(dense_predictions)
         all_env_snapshots.append(copy.deepcopy(env))
+        all_env_snapshots[-1]._ratings = None
 
     # Convert lists to numpy arrays
     all_ratings = np.array(all_ratings)
@@ -637,13 +643,17 @@ def s3_load_trial(bucket, dir_name):
             file_name = file_name + '.json'
         else:
             file_name = file_name + '.pickle'
-        with io.BytesIO() as stream:
-            bucket.download_fileobj(Key=file_name, Fileobj=stream)
-            serialized_obj = stream.getvalue()
-        if use_json:
-            obj = json.loads(serialized_obj)
-        else:
-            obj = pickle.loads(serialized_obj)
+
+        with open(TEMP_FILE_NAME, 'wb') as temp_file:
+            bucket.download_fileobj(Key=file_name, Fileobj=temp_file)
+
+        with open(TEMP_FILE_NAME, 'rb') as temp_file:
+            if use_json:
+                obj = json.load(temp_file)
+            else:
+                obj = pickle.load(temp_file)
+        os.remove(TEMP_FILE_NAME)
+
         return obj
 
     rec_hyperparameters = get_and_unserialize('rec_hyperparameters', use_json=True)
@@ -660,18 +670,28 @@ def s3_load_trial(bucket, dir_name):
 def serialize_and_put(bucket, dir_name, name, obj, use_json=False):
     """Serialize an object and upload it to S3."""
     file_name = os.path.join(dir_name, name)
-    if use_json:
-        serialized_obj = json.dumps(obj, sort_keys=True, indent=4)
-        file_name = file_name + '.json'
-    else:
-        serialized_obj = pickle.dumps(obj, protocol=4)
-        file_name = file_name + '.pickle'
-    bucket.put_object(Key=file_name, Body=serialized_obj)
+    with open(TEMP_FILE_NAME, 'wb') as temp_file:
+        if use_json:
+            json.dump(obj, codecs.getwriter('utf-8')(temp_file),
+                      sort_keys=True, indent=4)
+            file_name = file_name + '.json'
+        else:
+            pickle.dump(obj, temp_file, protocol=4)
+            file_name = file_name + '.pickle'
+
+    with open(TEMP_FILE_NAME, 'rb') as temp_file:
+        bucket.upload_fileobj(Key=file_name, Fileobj=temp_file)
+
+    os.remove(TEMP_FILE_NAME)
 
 
 def put_dataframe(bucket, dir_name, name, dataframe):
     """Upload a dataframe to S3 as a csv file."""
     with io.StringIO() as stream:
         dataframe.to_csv(stream)
+        csv_str = stream.getvalue()
+
+    with io.BytesIO() as stream:
+        stream.write(csv_str.encode('utf-8'))
         file_name = os.path.join(dir_name, name + '.csv')
-        bucket.put_object(Key=file_name, Body=stream.getvalue())
+        bucket.upload_fileobj(Key=file_name, Fileobj=stream)

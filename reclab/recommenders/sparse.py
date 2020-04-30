@@ -4,16 +4,15 @@ For details, see:
   - http://glaros.dtc.umn.edu/gkhome/node/774
   - https://arxiv.org/pdf/1905.03375.pdf
 """
+import warnings
 import numpy as np
 import scipy.sparse
 import sklearn.linear_model
 from sklearn.exceptions import ConvergenceWarning
-import time
-import warnings
 
 from . import recommender
 
-warnings.simplefilter("ignore", category=ConvergenceWarning)
+warnings.simplefilter('ignore', category=ConvergenceWarning)
 
 
 class SLIM(recommender.PredictRecommender):
@@ -64,7 +63,6 @@ class SLIM(recommender.PredictRecommender):
         del self._hyperparameters['self']
         del self._hyperparameters['__class__']
 
-
     @property
     def name(self):  # noqa: D102
         return 'slim'
@@ -108,6 +106,7 @@ class SLIM(recommender.PredictRecommender):
 
         return np.array(predictions)
 
+
 class EASE(recommender.PredictRecommender):
     """The EASE recommendation model which is a simple linear method.
 
@@ -124,14 +123,13 @@ class EASE(recommender.PredictRecommender):
 
     def __init__(self,
                  binarize=False,
-                 lam=1.0,
-                 seed=0):
+                 lam=1.0):
         """Create an EASE recommender."""
         super().__init__()
 
         self._binarize = binarize
         self._lam = lam
-        
+
         self._weights = None
         self._hyperparameters.update(locals())
 
@@ -139,14 +137,12 @@ class EASE(recommender.PredictRecommender):
         del self._hyperparameters['self']
         del self._hyperparameters['__class__']
 
-
     @property
     def name(self):  # noqa: D102
         return 'ease'
 
     def update(self, users=None, items=None, ratings=None):  # noqa: D102
         super().update(users, items, ratings)
-        num_items = len(self._items)
 
         if self._binarize:
             row, col = self._ratings.nonzero()
@@ -155,13 +151,13 @@ class EASE(recommender.PredictRecommender):
         else:
             ratings = self._ratings
 
-        G = ratings.T @ ratings
+        item_products = ratings.T @ ratings
 
-        diag_ind= np.diag_indices(G.shape[0])
-        G[diag_ind] += self._lam
-        P = np.linalg.inv(G.todense())
-        self._weights = P / (-np.diag(P))
-        self._weights[diag_ind]= 0
+        diag_ind = np.diag_indices(item_products.shape[0])
+        item_products[diag_ind] += self._lam
+        inverse_mat = np.linalg.inv(item_products.todense())
+        self._weights = inverse_mat / (-np.diag(inverse_mat))
+        self._weights[diag_ind] = 0
 
     @property
     def dense_predictions(self):  # noqa: D102
@@ -178,4 +174,3 @@ class EASE(recommender.PredictRecommender):
             predictions.append(all_predictions[user_id, item_id])
 
         return np.array(predictions)
-

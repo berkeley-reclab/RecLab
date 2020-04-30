@@ -92,9 +92,16 @@ class SLIM(recommender.PredictRecommender):
             ratings[:, item_id] = target
         self._weights = scipy.sparse.csr_matrix(self._weights)
 
+    @property
+    def dense_predictions(self):  # noqa: D102
+        if self._dense_predictions is not None:
+            return self._dense_predictions
+        preds = (self._ratings @ self._weights).todense()
+        return preds
+
     def _predict(self, user_item):  # noqa: D102
         # Predict on all user-item pairs.
-        all_predictions = (self._ratings @ self._weights).todense()
+        all_predictions = self.dense_predictions
         predictions = []
         for user_id, item_id, _ in user_item:
             predictions.append(all_predictions[user_id, item_id])
@@ -156,9 +163,16 @@ class EASE(recommender.PredictRecommender):
         self._weights = P / (-np.diag(P))
         self._weights[diag_ind]= 0
 
+    @property
+    def dense_predictions(self):  # noqa: D102
+        if self._dense_predictions is not None:
+            return self._dense_predictions
+        preds = (self._ratings @ self._weights)
+        return preds
+
     def _predict(self, user_item):  # noqa: D102
         # Predict on all user-item pairs.
-        all_predictions = (self._ratings @ self._weights)
+        all_predictions = self.dense_predictions
         predictions = []
         for user_id, item_id, _ in user_item:
             predictions.append(all_predictions[user_id, item_id])

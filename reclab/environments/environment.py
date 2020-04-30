@@ -7,7 +7,7 @@ import abc
 import collections
 
 import numpy as np
-
+from scipy.stats import norm, lognorm
 
 class Environment(abc.ABC):
     """The interface all environments must implement."""
@@ -144,7 +144,8 @@ class DictEnvironment(Environment):
 
     """
 
-    def __init__(self, rating_frequency=0.02, num_init_ratings=0, memory_length=0):
+    def __init__(self, rating_frequency=0.02, num_init_ratings=0, memory_length=0,
+                 user_dist_choice='uniform'):
         """Create a Topics environment."""
         self._timestep = -1
         # The RandomState to use while initializing the environment.
@@ -153,6 +154,7 @@ class DictEnvironment(Environment):
         self._dynamics_random = np.random.RandomState()
         self._rating_frequency = rating_frequency
         self._num_init_ratings = num_init_ratings
+        self._user_dist_choice = user_dist_choice
         self._users = None
         self._items = None
         self._ratings = None
@@ -204,6 +206,9 @@ class DictEnvironment(Environment):
             self._ratings[user_id, item_id] = (self._rate_item(user_id, item_id),
                                                self._rating_context(user_id))
             self._dynamics_random = temp_random
+
+        # Construct a probability distribution over users for frequency of online ratings
+        self.set_user_prob()
 
         # Finally, set the users that will be online for the first step.
         self._online_users = self._select_online_users()
@@ -440,6 +445,32 @@ class DictEnvironment(Environment):
         """
         return np.zeros(0)
 
+    def set_user_prob(self):
+        """Set the probability distribution for choosing online users at each timestep.
+
+        The default assumes that users are drawn at uniform. To modify, change the parameters
+        _user_dist when initializing the environment.
+
+        """
+        dist_choice = self._user_dist_choice
+        num_users = len(self._users)
+
+        if dist_choice == 'uniform':
+            self._user_prob = np.ones(num_users) / num_users
+        elif dist_choice == 'norm':
+            idx = np.random.permutation(num_users)
+            user_dist = np.array([norm.pdf(idx[i], scale=int(num_users /7),
+                          loc=int(num_users / 2)) for i in range(num_users)])
+            self._user_prob = user_dist / sum(user_dist)
+        elif dist_choice == 'lognorm':
+            idx = np.random.permutation(num_users)
+            s = np.array([lognorm.pdf(idx[i], 1, scale=int(num_users / 7))
+                          for i in range(num_users)])
+            self._user_prob = user_dist / sum(user_dist)
+        else:
+            raise ValueError('user distribution name not recognized')
+
+
     def _select_online_users(self):
         """Select the online users at this timestep.
 
@@ -451,4 +482,6 @@ class DictEnvironment(Environment):
         """
         num_users = len(self._users)
         num_online = int(self._rating_frequency * num_users)
-        return self._dynamics_random.choice(num_users, size=num_online, replace=False)
+        return self._dynamics_random.choice(num_users, size=num_online,
+                                            replace=False, p=self._user_prob)
+

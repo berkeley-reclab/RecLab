@@ -1,4 +1,5 @@
 """A utility module for running experiments."""
+import codecs
 import collections
 import copy
 import datetime
@@ -17,6 +18,8 @@ import tqdm.autonotebook
 
 # The random seed that defines the initial state of each environment.
 INIT_SEED = 0
+# The name of the file temporarily created for uploads to S3.
+TEMP_FILE_NAME = 'temp.out'
 
 
 def plot_ratings_mses(ratings,
@@ -638,14 +641,15 @@ def s3_load_trial(bucket, dir_name):
         else:
             file_name = file_name + '.pickle'
 
-        with io.BytesIO() as stream:
-            bucket.download_fileobj(Key=file_name, Fileobj=stream)
-            serialized_obj = stream.getvalue()
+        with open(TEMP_FILE_NAME, 'wb') as temp_file:
+            bucket.download_fileobj(Key=file_name, Fileobj=temp_file)
 
-        if use_json:
-            obj = json.loads(serialized_obj)
-        else:
-            obj = pickle.loads(serialized_obj)
+        with open(TEMP_FILE_NAME, 'rb') as temp_file:
+            if use_json:
+                obj = json.load(temp_file)
+            else:
+                obj = pickle.load(temp_file)
+        os.remove(TEMP_FILE_NAME)
 
         return obj
 
@@ -663,17 +667,19 @@ def s3_load_trial(bucket, dir_name):
 def serialize_and_put(bucket, dir_name, name, obj, use_json=False):
     """Serialize an object and upload it to S3."""
     file_name = os.path.join(dir_name, name)
-    if use_json:
-        serialized_obj = json.dumps(obj, sort_keys=True, indent=4).encode('utf-8')
-        file_name = file_name + '.json'
-    else:
-        serialized_obj = pickle.dumps(obj, protocol=4)
-        file_name = file_name + '.pickle'
+    with open(TEMP_FILE_NAME, 'wb') as temp_file:
+        if use_json:
+            serialized_obj = json.dump(obj, codecs.getwriter('utf-8')(temp_file),
+                                       sort_keys=True, indent=4)
+            file_name = file_name + '.json'
+        else:
+            serialized_obj = pickle.dump(obj, temp_file, protocol=4)
+            file_name = file_name + '.pickle'
 
-    with io.BytesIO() as stream:
-        stream.write(serialized_obj)
-        stream.seek(0)
-        bucket.upload_fileobj(Key=file_name, Fileobj=stream)
+    with open(TEMP_FILE_NAME, 'rb') as temp_file:
+        bucket.upload_fileobj(Key=file_name, Fileobj=temp_file)
+
+    os.remove(TEMP_FILE_NAME)
 
 
 def put_dataframe(bucket, dir_name, name, dataframe):

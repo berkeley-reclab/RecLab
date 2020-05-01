@@ -464,7 +464,7 @@ class DictEnvironment(Environment):
             self._user_prob = user_dist / sum(user_dist)
         elif dist_choice == 'lognorm':
             idx = np.random.permutation(num_users)
-            s = np.array([lognorm.pdf(idx[i], 1, scale=int(num_users / 7))
+            user_dist = np.array([lognorm.pdf(idx[i], 1, scale=int(num_users / 7))
                           for i in range(num_users)])
             self._user_prob = user_dist / sum(user_dist)
         else:

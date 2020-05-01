@@ -69,6 +69,11 @@ def plot_ratings_mses(ratings,
     for recommender_ratings, label in zip(ratings, labels):
         means, lower_bounds, upper_bounds = get_stats(recommender_ratings)
         plt.plot(x_vals, means, label=label)
+        xticks = [x_vals[i] for i in range(len(x_vals)) if i % 100 == 0]
+        xticks.append(500)
+        labels = [100000 + (x * 200) for x in xticks]
+        labels.append(200000)
+        plt.xticks(xticks, labels=labels)
         plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
     plt.xlabel('# ratings')
     plt.ylabel('Mean Rating')
@@ -83,6 +88,11 @@ def plot_ratings_mses(ratings,
         lower_bounds = np.sqrt(lower_bounds)
         upper_bounds = np.sqrt(upper_bounds)
         plt.plot(x_vals, rmse, label=label)
+        xticks = [x_vals[i] for i in range(len(x_vals)) if i % 100 == 0]
+        xticks.append(500)
+        labels = [100000 + (x * 200) for x in xticks]
+        labels.append(200000)
+        plt.xticks(xticks, labels=labels)
         plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
     plt.xlabel('# ratings')
     plt.ylabel('RMSE')
@@ -361,6 +371,7 @@ def run_trial(env,
         all_dense_predictions.append(dense_predictions)
         all_env_snapshots.append(copy.deepcopy(env))
 
+        rec.update(users, items, ratings)
     # Convert lists to numpy arrays
     all_ratings = np.array(all_ratings)
     all_predictions = np.array(all_predictions)

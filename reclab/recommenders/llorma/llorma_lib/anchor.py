@@ -74,15 +74,14 @@ def _get_distance_matrix(latent):
         pair of users (items)
     """
     _normalized_latent = normalize(latent, axis=1)
-    # print(_normalized_latent.shape)
 
-    d_mat = distance_matrix(latent, _normalized_latent)
+    d_mat = distance_matrix(_normalized_latent, _normalized_latent)
     assert np.count_nonzero(np.isnan(d_mat)) == 0
     return d_mat
 
 
 def _get_k_from_distance(d_mat):
-    """Helper function to
+    """Helper function to compute kernel matrix from distance matrix
 
     Parameters
     ----------
@@ -99,6 +98,45 @@ def _get_k_from_distance(d_mat):
     m_mat[d_mat < 0.9] = 1
     k_mat = np.multiply(np.subtract(np.ones(d_mat.shape), np.square(d_mat)), m_mat)
     return k_mat
+
+def _get_rbf_k(latent, gamma=None, scaled=True):
+    """Helper function to compute scaled
+    Gaussian Kernel matrix for latent factors
+
+    Parameters
+    ----------
+    latent : array-like, shape (N, latent_dim)
+        Matrix of latent factors
+        Number of rows is the number of users or items
+        Number of columns is the latent dimension
+    gamma : float, optional
+        parameter for the , by default None
+    scaled : bool, optional
+        if true, the kernel is scaled by the norms of the factors
+        by default True
+    """
+
+    if gamma is None:
+        gamma = 1
+    d_mat = _get_distance_matrix(latent)
+
+    rbf_mat = np.exp(-1*gamma*d_mat)
+    row_norms = np.linalg.norm(latent, axis=1)
+    if scaled:
+        norms_mat = np.outer(row_norms, row_norms)
+        k_mat = np.multiply(rbf_mat, norms_mat)
+    else: k_mat = rbf_mat
+
+    # normalize such that diagonals have value 1
+    row_avg = np.mean(k_mat, axis=1, keepdims=True).reshape(-1, 1)
+    col_avg = np.mean(k_mat, axis=0, keepdims=True).reshape(1, -1)
+    avg = np.mean(k_mat)
+    k_mat = k_mat-col_avg-row_avg+2*avg
+    k_diag = np.sqrt(np.diagonal(k_mat))
+    k_diag_outer = np.outer(k_diag, k_diag)
+    k_mat = np.divide(k_mat, k_diag_outer)
+    return (k_mat - 1)*2
+
 
 
 def _get_ks_from_latents(row_latent, col_latent):
@@ -118,11 +156,14 @@ def _get_ks_from_latents(row_latent, col_latent):
         row_k: entry (i,j) is the similarity between user_i and user_j
         col_k: entry (i,j) is the similarity between item_i and item_j
     """
-    row_d = _get_distance_matrix(row_latent)
-    col_d = _get_distance_matrix(col_latent)
+    # row_d = _get_distance_matrix(row_latent)
+    # col_d = _get_distance_matrix(col_latent)
 
-    row_k = _get_k_from_distance(row_d)
-    col_k = _get_k_from_distance(col_d)
+    # row_k = _get_k_from_distance(row_d)
+    # col_k = _get_k_from_distance(col_d)
+
+    row_k = _get_rbf_k(row_latent)
+    col_k = _get_rbf_k(col_latent)
 
     return row_k, col_k
 
@@ -177,7 +218,9 @@ class AnchorManager:
         self.col_k = col_k
 
     def get_k(self, anchor_idx, user_item_data):
-        """Returns the Kernel matrix corespondind
+        """Returns the Kernel similarity between the
+        anchor user_item pair and the user_item pairs
+        in the user_item data
 
         Parameters
         ----------

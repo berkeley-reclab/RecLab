@@ -77,10 +77,8 @@ class Engelhardt(environment.DictEnvironment):
         super().__init__(rating_frequency, num_init_ratings)
         self.known_weight = known_weight
         self.beta_var = beta_var
-        self.user_topic_weights = 10*self._random.dirichlet([1] * num_topics)
-        self.item_topic_weights = 0.1*self._random.dirichlet([100] * num_topics)
-        # self.user_topic_weights = scipy.special.softmax(self._init_random.rand(num_topics))
-        # self.item_topic_weights = scipy.special.softmax(self._init_random.rand(num_topics))
+        self.user_topic_weights = scipy.special.softmax(self._init_random.rand(num_topics))
+        self.item_topic_weights = scipy.special.softmax(self._init_random.rand(num_topics))
         self._num_topics = num_topics
         self._num_users = num_users
         self._num_items = num_items

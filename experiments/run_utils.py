@@ -66,6 +66,9 @@ def plot_ratings_mses(ratings,
         x_vals = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])
     else:
         x_vals = np.arange(ratings.shape[2])
+ 
+    #setting the predictions for a user/item that has no ratings in the training data to 0
+    predictions[predictions > 10] = 0
 
     plt.figure(figsize=[9, 4])
     plt.subplot(1, 2, 1)

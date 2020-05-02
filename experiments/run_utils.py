@@ -250,6 +250,11 @@ def run_env_experiment(environments,
     all_dense_predictions = []
     for env_name, environment in zip(environment_names, environments):
         print('Started experiments on environment:', env_name)
+
+        initial_density, final_density, good_item_density = evaluate_experiment_density(len_trial, environment)
+        print('Initial density: {}, Final density: {}, ' +
+              'Good item density: {}'.format(initial_density, final_density,good_item_density))
+
         all_ratings.append([])
         all_predictions.append([])
         all_dense_ratings.append([])
@@ -390,6 +395,18 @@ def run_trial(env,
     # TODO: We might want to return the env snapshots too.
     return all_ratings, all_predictions, all_dense_ratings, all_dense_predictions
 
+
+def evaluate_experiment_density(len_trial, environment, threshold=4):
+    num_ratings_per_it = len(environment._users) * environment._rating_frequency
+    final_num_ratings = environment._num_init_ratings + len_trial * num_ratings_per_it
+    total_num_ratings = len(environment._users) * len(environment._items)
+    initial_density = environment._num_init_ratings / total_num_ratings
+    final_density = final_num_ratings / total_num_ratings
+    # TODO: need to call env.reset first!!
+    num_good_ratings = sum(environment._dense_ratings > threshold)
+    good_item_density = num_good_ratings / total_num_ratings
+    return initial_density, final_density, good_item_density
+        
 
 class ModelTuner:
     """The tuner allows for easy tuning.

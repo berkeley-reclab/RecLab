@@ -25,7 +25,7 @@ TEMP_FILE_NAME = 'temp.out'
 def plot_ratings_mses(ratings,
                       predictions,
                       labels,
-                      num_init_ratings=None):
+                      num_init_ratings=None, threshold=10):
     """Plot the performance results for multiple recommenders.
 
     Parameters
@@ -47,6 +47,9 @@ def plot_ratings_mses(ratings,
         The number of ratings initially available to recommenders. If set to None
         the function will plot with an x-axis based on round number.
 
+    threshold: float
+        the threshold filtering on the predictions, predictions larger than it will be set ot 0. 
+        default is 10
     """
     def get_stats(arr):
         # Swap the trial and step axes.
@@ -68,7 +71,7 @@ def plot_ratings_mses(ratings,
         x_vals = np.arange(ratings.shape[2])
  
     #setting the predictions for a user/item that has no ratings in the training data to 0
-    predictions[predictions > 10] = 0
+    predictions[predictions > threshold] = 0
 
     plt.figure(figsize=[9, 4])
     plt.subplot(1, 2, 1)

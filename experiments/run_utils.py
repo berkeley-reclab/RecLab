@@ -346,6 +346,7 @@ def run_trial(env,
     all_dense_ratings = []
     all_dense_predictions = []
     all_recs = []
+    all_online_users = []
     all_env_snapshots = [copy.deepcopy(env)]
     # We have a seperate variable for ratings.
     all_env_snapshots[-1]._ratings = None
@@ -372,6 +373,7 @@ def run_trial(env,
         all_dense_ratings.append(dense_ratings)
         all_dense_predictions.append(dense_predictions)
         all_recs.append(recommendations)
+        all_online_users.append(online_users)
         all_env_snapshots.append(copy.deepcopy(env))
         all_env_snapshots[-1]._ratings = None
 
@@ -381,6 +383,7 @@ def run_trial(env,
     all_dense_ratings = np.array(all_dense_ratings)
     all_dense_predictions = np.array(all_dense_predictions)
     all_recs = np.array(all_recs)
+    all_online_users = np.array(all_online_users)
 
     # Save content to S3 if needed.
     if bucket is not None:
@@ -395,6 +398,7 @@ def run_trial(env,
                       all_dense_ratings,
                       all_dense_predictions,
                       all_recs,
+                      all_online_users,
                       all_env_snapshots)
 
     # TODO: We might want to return the env snapshots too.
@@ -627,6 +631,7 @@ def s3_save_trial(bucket,
                   dense_ratings,
                   dense_predictions,
                   recommendations,
+                  online_users,
                   env_snapshots):
     """Save a trial in s3 within the given directory."""
     info = {
@@ -644,6 +649,7 @@ def s3_save_trial(bucket,
     serialize_and_put(bucket, dir_name, 'dense_ratings', dense_ratings)
     serialize_and_put(bucket, dir_name, 'dense_predictions', dense_predictions)
     serialize_and_put(bucket, dir_name, 'recommendations', recommendations)
+    serialize_and_put(bucket, dir_name, 'online_users', online_users)
     serialize_and_put(bucket, dir_name, 'env_snapshots', env_snapshots)
 
 

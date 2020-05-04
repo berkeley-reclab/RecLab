@@ -58,7 +58,7 @@ def test_binary_recommend_ml100k(recommender, hit_rate_threshold, seed=None):
     hit_rate1 = num_hits / NUM_USERS_ML100K
 
     # We should get a relatively low hit rate here.
-    assert hit_rate1 > hit_rate_threshold
+    assert hit_rate1 > hit_rate_threshold, hit_rate1
 
     recommender.reset(users, items, train_ratings_1)
     recommender.update(ratings=train_ratings_2)
@@ -67,7 +67,7 @@ def test_binary_recommend_ml100k(recommender, hit_rate_threshold, seed=None):
     hit_rate2 = num_hits / NUM_USERS_ML100K
 
     # The hit rate should have increased.
-    assert hit_rate1 < hit_rate2
+    assert hit_rate1 < hit_rate2, hit_rate2
 
 
 def test_recommend_simple(recommender):

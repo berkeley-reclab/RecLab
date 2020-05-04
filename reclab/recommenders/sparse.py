@@ -92,10 +92,9 @@ class SLIM(recommender.PredictRecommender):
 
     @property
     def dense_predictions(self):  # noqa: D102
-        if self._dense_predictions is not None:
-            return self._dense_predictions
-        preds = (self._ratings @ self._weights).todense()
-        return preds
+        if self._dense_predictions is None:
+            self._dense_predictions = (self._ratings @ self._weights).todense()
+        return self._dense_predictions
 
     def _predict(self, user_item):  # noqa: D102
         # Predict on all user-item pairs.
@@ -161,10 +160,9 @@ class EASE(recommender.PredictRecommender):
 
     @property
     def dense_predictions(self):  # noqa: D102
-        if self._dense_predictions is not None:
-            return self._dense_predictions
-        preds = (self._ratings @ self._weights)
-        return preds
+        if self._dense_predictions is None:
+            self._dense_predictions = (self._ratings @ self._weights)
+        return self._dense_predictions
 
     def _predict(self, user_item):  # noqa: D102
         # Predict on all user-item pairs.

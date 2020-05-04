@@ -5,7 +5,7 @@ from . import utils
 
 def test_predict():
     """Test that EASE predicts well and that it gets better with more data."""
-    recommender = EASE(lam=10)
+    recommender = EASE(lam=100, binarize=True)
     utils.test_binary_recommend_ml100k(recommender, 0.1)
 
 

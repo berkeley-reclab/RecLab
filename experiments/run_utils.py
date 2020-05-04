@@ -48,8 +48,9 @@ def plot_ratings_mses(ratings,
         the function will plot with an x-axis based on round number.
 
     threshold: float
-        the threshold filtering on the predictions, predictions larger than it will be set ot 0. 
+        the threshold filtering on the predictions, predictions larger than it will be set to 0.
         default is 10
+
     """
     def get_stats(arr):
         # Swap the trial and step axes.
@@ -69,8 +70,8 @@ def plot_ratings_mses(ratings,
         x_vals = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])
     else:
         x_vals = np.arange(ratings.shape[2])
- 
-    #setting the predictions for a user/item that has no ratings in the training data to 0
+
+    # setting the predictions for a user/item that has no ratings in the training data to 0
     predictions[predictions > threshold] = 0
 
     plt.figure(figsize=[9, 4])
@@ -136,7 +137,7 @@ def plot_regret(ratings,
         arr = np.swapaxes(arr, 0, 1)
         # Flatten the trial and user axes together.
         arr = arr.reshape(arr.shape[0], -1)
-        #compute the commulative regret
+        # Compute the commulative regret
         arr = arr.cumsum(axis=1)
         # Compute the means and standard deviations of the means for each step.
         means = arr.mean(axis=1)
@@ -154,11 +155,11 @@ def plot_regret(ratings,
 
     plt.figure(figsize=[5, 4])
     for recommender_ratings, label in zip(ratings, labels):
-        #plot the regret for the recommenders that are not perfect
+        # Plot the regret for the recommenders that are not perfect
         if label != 'perfect':
             regrets = perfect_ratings  - recommender_ratings
             mean_regrets, lower_bounds, upper_bounds = get_regret_stats(regrets)
-            #plotting the regret over steps and correct the associated intervals.
+            # Plotting the regret over steps and correct the associated intervals.
             plt.plot(x_vals, mean_regrets, label=label)
             plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
     plt.xlabel('# ratings')
@@ -256,8 +257,10 @@ def run_env_experiment(environments,
     all_dense_predictions = []
     for env_name, environment in zip(environment_names, environments):
         print('Started experiments on environment:', env_name)
-        initial_density, final_density, good_item_density = compute_experiment_density(len_trial, environment)
-        print('\tInitial density: {}%, Final density: {}%, '.format(100 * initial_density, 100 * final_density) +
+        initial_density, final_density, good_item_density = compute_experiment_density(len_trial,
+                                                                                       environment)
+        print('\tInitial density: {}%, Final density: {}%, '.format(100 * initial_density,
+                                                                    100 * final_density) +
               'Good item density: {}%'.format(100 * good_item_density))
 
         all_ratings.append([])
@@ -425,7 +428,7 @@ def compute_experiment_density(len_trial, environment, threshold=4):
     """
     # Initialize environment
     get_env_dataset(environment)
-    total_num_ratings = len(environment._users) * len(environment._items)
+    total_num_ratings = len(environment.users) * len(environment.items)
 
     initial_density = environment._num_init_ratings / total_num_ratings
     num_ratings_per_it = len(environment._users) * environment._rating_frequency
@@ -436,7 +439,7 @@ def compute_experiment_density(len_trial, environment, threshold=4):
     good_item_density = num_good_ratings / total_num_ratings
 
     return initial_density, final_density, good_item_density
-        
+
 
 class ModelTuner:
     """The tuner allows for easy tuning.

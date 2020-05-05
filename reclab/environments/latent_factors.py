@@ -49,15 +49,18 @@ class LatentFactorBehavior(environment.DictEnvironment):
         The factor on the penalty on the rating when a user is bored. The penalty
         is the average of the values which exceed the boredom_threshold, and the decrease
         in rating is the penalty multiplied by this factor.
+    user_dist_choice : str
+        The choice of user distribution for selecting online users. By default, the subset of
+        online users is chosen from a uniform distribution. Currently supports normal and lognormal.
 
     """
 
     def __init__(self, latent_dim, num_users, num_items,
                  rating_frequency=0.02, num_init_ratings=0,
                  noise=0.0, memory_length=0, affinity_change=0.0,
-                 boredom_threshold=0, boredom_penalty=0.0):
+                 boredom_threshold=0, boredom_penalty=0.0, user_dist_choice='uniform'):
         """Create a Latent Factor environment."""
-        super().__init__(rating_frequency, num_init_ratings, memory_length)
+        super().__init__(rating_frequency, num_init_ratings, memory_length, user_dist_choice)
         self._latent_dim = latent_dim
         self._num_users = num_users
         self._num_items = num_items

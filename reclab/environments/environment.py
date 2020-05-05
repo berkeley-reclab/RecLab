@@ -460,16 +460,16 @@ class DictEnvironment(Environment):
             user_dist = np.ones(num_users) / num_users
         elif dist_choice == 'norm':
             idx = np.random.permutation(num_users)
-            user_dist = np.array([norm.pdf(idx[i], scale=int(num_users /7),
+            user_dist = np.array([norm.pdf(idx[i], scale=num_users / 7,
                                   loc=int(num_users / 2)) for i in range(num_users)])
-            user_dist = np.clip(user_dist, 0, 1)
             user_dist = user_dist / sum(user_dist)
+            user_dist = np.clip(user_dist, 0, 1)
         elif dist_choice == 'lognorm':
             idx = np.random.permutation(num_users)
-            user_dist = np.array([lognorm.pdf(idx[i], 1, scale=int(num_users / 7))
+            user_dist = np.array([lognorm.pdf(idx[i], 1, scale=num_users / 7, loc=-1)
                                   for i in range(num_users)])
-            user_dist = np.clip(user_dist, 0, 1)
             user_dist = user_dist / sum(user_dist)
+            user_dist = np.clip(user_dist, 0, 1)
         else:
             raise ValueError('user distribution name not recognized')
 

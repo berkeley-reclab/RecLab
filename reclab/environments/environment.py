@@ -165,7 +165,6 @@ class DictEnvironment(Environment):
         self._online_users = None
         self._user_histories = collections.defaultdict(list)
         self._memory_length = memory_length
-        self._user_prob = self._get_user_prob()
 
     def reset(self):
         """Reset the environment to its original state. Must be called before the first step.
@@ -190,6 +189,7 @@ class DictEnvironment(Environment):
         self._user_histories = collections.defaultdict(list)
         num_users = len(self._users)
         num_items = len(self._items)
+        self._user_prob = self._get_user_prob()
 
         # We will lazily compute dense ratings.
         self._dense_ratings = None
@@ -461,7 +461,7 @@ class DictEnvironment(Environment):
         elif dist_choice == 'norm':
             idx = np.random.permutation(num_users)
             user_dist = np.array([norm.pdf(idx[i], scale=num_users / 7,
-                                  loc=int(num_users / 2)) for i in range(num_users)])
+                                  loc=num_users / 2) for i in range(num_users)])
             user_dist = user_dist / sum(user_dist)
             user_dist = np.clip(user_dist, 0, 1)
         elif dist_choice == 'lognorm':

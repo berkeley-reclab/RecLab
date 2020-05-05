@@ -115,8 +115,6 @@ class EASE(recommender.PredictRecommender):
         Determines whether to binarize ratings before fitting a model.
     lam : float
         Constant that multiplies the regularization terms.
-    seed : int
-        The random seed to use when training the model.
 
     """
 

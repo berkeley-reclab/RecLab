@@ -506,7 +506,7 @@ class ModelTuner:
 
             mse = np.mean((predicted_ratings - true_ratings)**2)
             if self.verbose:
-                print('mse={}'.format(mse))
+                print('mse={}, rmse={}'.format(mse, np.sqrt(mse)))
             mses.append(mse)
 
         if self.verbose:

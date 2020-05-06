@@ -436,9 +436,9 @@ def compute_experiment_density(len_trial, environment, threshold=4):
     Parameters
     ----------
     len_trial : int
-        length of trial
+        Length of trial.
     environment : Environment
-        The recommender to use for this trial.
+        The environment to consider.
     threshold : int
         The threshold for a rating to be considered "good".
 

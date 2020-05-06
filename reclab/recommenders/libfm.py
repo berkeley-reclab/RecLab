@@ -68,9 +68,10 @@ class LibFM(recommender.PredictRecommender):
                  two_way_reg=None,
                  init_stdev=0.1,
                  num_iter=100,
-                 seed=0):
+                 seed=0,
+                 **kwargs):
         """Create a LibFM recommender."""
-        super().__init__()
+        super().__init__(**kwargs)
         if bias_reg is None:
             bias_reg = reg
         if one_way_reg is None:

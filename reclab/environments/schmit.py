@@ -102,3 +102,21 @@ class Schmit(environment.DictEnvironment):
 
     def _rate_item(self, user_id, item_id):
         return self.value(user_id, item_id)
+
+    def _get_dense_ratings(self):
+        """Compute all the true ratings on every user-item pair at the current timestep.
+
+        A true rating is defined as the rating a user would make with all noise removed.
+
+        Returns
+        -------
+        dense_ratings : np.ndarray
+            The array of all true ratings where true_ratings[i, j] is the rating by user i
+            on item j.
+
+        """
+        dense_ratings = np.zeros([self._num_users, self._num_items])
+        for u in range(self._num_users):
+            for i in range(self._num_items):
+                dense_ratings[u, i] = self.true_score(u, i) + self.X[u] @ self.Y[i].T + 3
+        return dense_ratings

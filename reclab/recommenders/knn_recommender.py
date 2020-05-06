@@ -30,9 +30,10 @@ class KNNRecommender(recommender.PredictRecommender):
     """
 
     def __init__(self, shrinkage=0, neighborhood_size=40,
-                 user_based=True, use_content=True, use_means=True):
+                 user_based=True, use_content=True, use_means=True,
+                 **kwargs):
         """Create a new neighborhood recommender."""
-        super().__init__()
+        super().__init__(**kwargs)
         self._shrinkage = shrinkage
         self._neighborhood_size = neighborhood_size
         self._user_based = user_based

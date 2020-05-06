@@ -25,6 +25,7 @@ TEMP_FILE_NAME = 'temp.out'
 def plot_ratings_mses(ratings,
                       predictions,
                       labels,
+                      summary_type='mean',
                       num_init_ratings=None, threshold=10):
     """Plot the performance results for multiple recommenders.
 
@@ -43,6 +44,9 @@ def plot_ratings_mses(ratings,
         during RMSE plotting.
     labels : list of str
         The name of each recommender.
+    summary_type : str
+        Which time of summary statistics: either 'mean' for mean and std deviation
+        or 'median' for median and quartiles.
     num_init_ratings : int
         The number of ratings initially available to recommenders. If set to None
         the function will plot with an x-axis based on round number.
@@ -51,19 +55,34 @@ def plot_ratings_mses(ratings,
         default is 10
 
     """
-    def get_stats(arr):
-        # Swap the trial and step axes.
-        arr = np.swapaxes(arr, 0, 1)
-        # Flatten the trial and user axes together.
-        arr = arr.reshape(arr.shape[0], -1)
-        # Compute the means and standard deviations of the means for each step.
-        means = arr.mean(axis=1)
-        # Use Bessel's correction here.
-        stds = arr.std(axis=1) / np.sqrt(arr.shape[1] - 1)
-        # Compute the 95% confidence intervals using the CLT.
-        upper_bounds = means + 2 * stds
-        lower_bounds = np.maximum(means - 2 * stds, 0)
-        return means, lower_bounds, upper_bounds
+    if summary_type == 'mean':
+        def get_stats(arr):
+            # Swap the trial and step axes.
+            arr = np.swapaxes(arr, 0, 1)
+            # Flatten the trial and user axes together.
+            arr = arr.reshape(arr.shape[0], -1)
+            # Compute the means and standard deviations of the means for each step.
+            means = arr.mean(axis=1)
+            # Use Bessel's correction here.
+            stds = arr.std(axis=1) / np.sqrt(arr.shape[1] - 1)
+            # Compute the 95% confidence intervals using the CLT.
+            upper_bounds = means + 2 * stds
+            lower_bounds = np.maximum(means - 2 * stds, 0)
+            return means, lower_bounds, upper_bounds
+    elif summary_type == 'median':
+        def get_stats(arr):
+            # Swap the trial and step axes.
+            arr = np.swapaxes(arr, 0, 1)
+            # Flatten the trial and user axes together.
+            arr = arr.reshape(arr.shape[0], -1)
+            # Compute the medians and quartiles of the means for each step.
+            meds = np.median(arr, axis=1)
+            # Compute the 95% confidence intervals using the CLT.
+            upper_bounds = np.quantile(arr, 0.75, axis=1)
+            lower_bounds = np.quantile(arr, 0.25, axis=1)
+            return meds, lower_bounds, upper_bounds
+    else:
+        assert False, "Invalid summary_type"
 
     if num_init_ratings is not None:
         x_vals = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])

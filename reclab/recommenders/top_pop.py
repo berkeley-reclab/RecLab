@@ -1,116 +1,52 @@
 """An implementation of the top popularity baseline recommender."""
-import collections
-
 import numpy as np
+import scipy.sparse
 
 from . import recommender
 
 
-class TopPop(recommender.Recommender):
-    """The top popularity recommendation model."""
+class TopPop(recommender.PredictRecommender):
+    """The top popularity recommendation model based on ratings.
+    
+    TODO: add flag to allow this to also be based on number of times rated.
+
+    """
 
     def __init__(self):
         """Create a TopPop recommender."""
-        self._ratings = collections.defaultdict(dict)
-        self._rated_items = collections.defaultdict(set)
-        self._ranked_items = []
+        super().__init__()
 
     @property
     def name(self):  # noqa: D102
         return 'top-pop'
 
     @property
-    def hyperparameters(self):  # noqa: D102
-        return {}
+    def dense_predictions(self):  # noqa: D102
+        if self._dense_predictions is None:
+            item_vector = self._average_item_ratings()
+            self._dense_predictions = np.vstack([item_vector] * self._ratings.shape[0])
+        return self._dense_predictions
 
-    def reset(self, users=None, items=None, ratings=None):
-        """Reset the recommender with optional starting user, item, and rating data.
+    def _average_item_ratings(self):
+        # Compute average rating of each item
+        row, col = self._ratings.nonzero()
+        data = np.ones(len(row))
+        binary_ratings = scipy.sparse.csr_matrix((data, (row, col)), shape=self._ratings.shape)
 
-        Parameters
-        ----------
-        users : dict, optional
-            All starting users where the key is the user id while the value is the
-            user features.
-        items : dict, optional
-            All starting items where the key is the user id while the value is the
-            item features.
-        ratings : np.ndarray, optional
-            All starting ratings where the key is a double is a double whose first index is the
-            id of the user making the rating and the second index is the id of the item being
-            rated. The value is a double whose first index is the rating value and the second
-            index is a numpy array that represents the context in which the rating was made.
+        summed_item_ratings = self._ratings.sum(0)
+        num_times_rated = binary_ratings.sum(0)
 
-        """
-        self._ratings = collections.defaultdict(dict)
-        self._rated_items = collections.defaultdict(set)
-        self._ranked_items = []
-        self.update(users, items, ratings)
+        item_vector = -np.inf * np.ones(num_times_rated.shape)
+        idx_rated = np.where(num_times_rated > 0)
+        item_vector[idx_rated] = summed_item_ratings[idx_rated] / num_times_rated[idx_rated]
 
-    def update(self, users=None, items=None, ratings=None):  # pylint: disable=unused-argument
-        """Update the recommender with new user, item, and rating data.
+        return item_vector.flatten()
 
-        Parameters
-        ----------
-        users : dict, optional
-            All new users where the key is the user id while the value is the
-            user features.
-        items : dict, optional
-            All new items where the key is the user id while the value is the
-            item features.
-        ratings : dict, optional
-            All new ratings where the key is a double whose first index is the
-            id of the user making the rating and the second index is the id of the item being
-            rated. The value is a double whose first index is the rating value and the second
-            index is a numpy array that represents the context in which the rating was made.
+    def _predict(self, user_item):  # noqa: D102
+        # Predict on all user-item pairs.
+        average_item_ratings = self._average_item_ratings()
+        predictions = []
+        for _, item_id, _ in user_item:
+            predictions.append(average_item_ratings[item_id])
 
-        """
-        # Save all new data.
-        item_ids = set(self._ranked_items)
-        if items is not None:
-            item_ids.update(items)
-        if ratings is not None:
-            for (user_id, item_id), (rating, _) in ratings.items():
-                self._ratings[item_id][user_id] = rating
-                self._rated_items[user_id].add(item_id)
-
-        # Compute item averages making sure to take into account items that haven't been rated.
-        item_averages = {}
-        for item_id in item_ids:
-            if item_id in self._ratings:
-                item_averages[item_id] = np.mean(list(self._ratings[item_id].values()))
-            else:
-                item_averages[item_id] = -np.inf
-
-        # Rank all items based on their average.
-        self._ranked_items = sorted(item_averages, key=item_averages.get, reverse=True)
-
-    def recommend(self, user_contexts, num_recommendations):
-        """Recommend items to users.
-
-        Parameters
-        ----------
-        user_contexts : ordered dict
-            The setting each user is going to be recommended items in. The key is the user id and
-            the value is the rating features.
-        num_recommendations : int
-            The number of items to recommend to each user.
-
-        Returns
-        -------
-        recs : np.ndarray of int
-            The recommendations made to each user. recs[i] is the array of item ids recommended
-            to the i-th user.
-        predicted_ratings : np.ndarray
-            None since this recommender does not attempt to predict ratings.
-
-        """
-        recs = np.zeros((len(user_contexts), num_recommendations), dtype=np.int)
-        for i, user_id in enumerate(user_contexts):
-            num_items = 0
-            for item_id in self._ranked_items:
-                if num_items == num_recommendations:
-                    break
-                if item_id not in self._rated_items[user_id]:
-                    recs[i, num_items] = item_id
-                    num_items += 1
-        return recs, None
+        return np.array(predictions)

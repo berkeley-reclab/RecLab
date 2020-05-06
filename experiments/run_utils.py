@@ -25,6 +25,7 @@ TEMP_FILE_NAME = 'temp.out'
 def plot_ratings_mses(ratings,
                       predictions,
                       labels,
+                      summary_type='mean',
                       num_init_ratings=None, threshold=10):
     """Plot the performance results for multiple recommenders.
 
@@ -43,35 +44,52 @@ def plot_ratings_mses(ratings,
         during RMSE plotting.
     labels : list of str
         The name of each recommender.
+    summary_type : str
+        Which time of summary statistics: either 'mean' for mean and std deviation
+        or 'median' for median and quartiles.
     num_init_ratings : int
         The number of ratings initially available to recommenders. If set to None
         the function will plot with an x-axis based on round number.
-
     threshold: float
-        the threshold filtering on the predictions, predictions larger than it will be set to 0.
+        The threshold filtering on the predictions, predictions larger than it will be set to 0.
         default is 10
 
     """
-    def get_stats(arr):
-        # Swap the trial and step axes.
-        arr = np.swapaxes(arr, 0, 1)
-        # Flatten the trial and user axes together.
-        arr = arr.reshape(arr.shape[0], -1)
-        # Compute the means and standard deviations of the means for each step.
-        means = arr.mean(axis=1)
-        # Use Bessel's correction here.
-        stds = arr.std(axis=1) / np.sqrt(arr.shape[1] - 1)
-        # Compute the 95% confidence intervals using the CLT.
-        upper_bounds = means + 2 * stds
-        lower_bounds = np.maximum(means - 2 * stds, 0)
-        return means, lower_bounds, upper_bounds
+    if summary_type == 'mean':
+        def get_stats(arr):
+            # Swap the trial and step axes.
+            arr = np.swapaxes(arr, 0, 1)
+            # Flatten the trial and user axes together.
+            arr = arr.reshape(arr.shape[0], -1)
+            # Compute the means and standard deviations of the means for each step.
+            means = arr.mean(axis=1)
+            # Use Bessel's correction here.
+            stds = arr.std(axis=1) / np.sqrt(arr.shape[1] - 1)
+            # Compute the 95% confidence intervals using the CLT.
+            upper_bounds = means + 2 * stds
+            lower_bounds = np.maximum(means - 2 * stds, 0)
+            return means, lower_bounds, upper_bounds
+    elif summary_type == 'median':
+        def get_stats(arr):
+            # Swap the trial and step axes.
+            arr = np.swapaxes(arr, 0, 1)
+            # Flatten the trial and user axes together.
+            arr = arr.reshape(arr.shape[0], -1)
+            # Compute the medians and quartiles of the means for each step.
+            meds = np.median(arr, axis=1)
+            # Compute the 95% confidence intervals using the CLT.
+            upper_bounds = np.quantile(arr, 0.75, axis=1)
+            lower_bounds = np.quantile(arr, 0.25, axis=1)
+            return meds, lower_bounds, upper_bounds
+    else:
+        assert False, "Invalid summary_type"
 
     if num_init_ratings is not None:
         x_vals = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])
     else:
         x_vals = np.arange(ratings.shape[2])
 
-    # setting the predictions for a user/item that has no ratings in the training data to 0
+    # Setting the predictions for a user/item that has no ratings in the training data to 0.
     predictions[predictions > threshold] = 0
 
     plt.figure(figsize=[9, 4])
@@ -116,15 +134,15 @@ def plot_regret(ratings,
     labels : list of str
         The name of each recommender. Default label for the perfect recommender is 'perfect'.
     perfect_ratings : np.ndarray, can be none if labels contains 'perfect'
-        The array of all ratings made for the perfect recommenders thoughout all trials. ratings[j, k, l]
-        corresponds to the rating made by the l-th online user during the k-th step of the
-        j-th trial for the perfect recommender.
+        The array of all ratings made for the perfect recommenders thoughout all trials.
+        ratings[j, k, l] corresponds to the rating made by the l-th online user during
+        the k-th step of the j-th trial for the perfect recommender.
     num_init_ratings : int
         The number of ratings initially available to recommenders. If set to None
         the function will plot with an x-axis based on round number.
 
     """
-    if perfect_ratings == None:
+    if perfect_ratings is None:
         if 'perfect' in labels:
             idx = labels.index('perfert')
             perfect_ratings = ratings[idx]
@@ -137,7 +155,7 @@ def plot_regret(ratings,
         arr = np.swapaxes(arr, 0, 1)
         # Flatten the trial and user axes together.
         arr = arr.reshape(arr.shape[0], -1)
-        # Compute the commulative regret
+        # Compute the commulative regret.
         arr = arr.cumsum(axis=1)
         # Compute the means and standard deviations of the means for each step.
         means = arr.mean(axis=1)
@@ -155,9 +173,9 @@ def plot_regret(ratings,
 
     plt.figure(figsize=[5, 4])
     for recommender_ratings, label in zip(ratings, labels):
-        # Plot the regret for the recommenders that are not perfect
+        # Plot the regret for the recommenders that are not perfect.
         if label != 'perfect':
-            regrets = perfect_ratings  - recommender_ratings
+            regrets = perfect_ratings - recommender_ratings
             mean_regrets, lower_bounds, upper_bounds = get_regret_stats(regrets)
             # Plotting the regret over steps and correct the associated intervals.
             plt.plot(x_vals, mean_regrets, label=label)
@@ -352,6 +370,8 @@ def run_trial(env,
     all_predictions = []
     all_dense_ratings = []
     all_dense_predictions = []
+    all_recs = []
+    all_online_users = []
     all_env_snapshots = [copy.deepcopy(env)]
     # We have a seperate variable for ratings.
     all_env_snapshots[-1]._ratings = None
@@ -377,6 +397,8 @@ def run_trial(env,
         all_predictions.append(predictions.flatten())
         all_dense_ratings.append(dense_ratings)
         all_dense_predictions.append(dense_predictions)
+        all_recs.append(recommendations)
+        all_online_users.append(online_users)
         all_env_snapshots.append(copy.deepcopy(env))
         all_env_snapshots[-1]._ratings = None
 
@@ -385,6 +407,8 @@ def run_trial(env,
     all_predictions = np.array(all_predictions)
     all_dense_ratings = np.array(all_dense_ratings)
     all_dense_predictions = np.array(all_dense_predictions)
+    all_recs = np.array(all_recs)
+    all_online_users = np.array(all_online_users)
 
     # Save content to S3 if needed.
     if bucket is not None:
@@ -398,6 +422,8 @@ def run_trial(env,
                       all_predictions,
                       all_dense_ratings,
                       all_dense_predictions,
+                      all_recs,
+                      all_online_users,
                       all_env_snapshots)
 
     # TODO: We might want to return the env snapshots too.
@@ -666,6 +692,8 @@ def s3_save_trial(bucket,
                   predictions,
                   dense_ratings,
                   dense_predictions,
+                  recommendations,
+                  online_users,
                   env_snapshots):
     """Save a trial in s3 within the given directory."""
     info = {
@@ -682,6 +710,8 @@ def s3_save_trial(bucket,
     serialize_and_put(bucket, dir_name, 'predictions', predictions)
     serialize_and_put(bucket, dir_name, 'dense_ratings', dense_ratings)
     serialize_and_put(bucket, dir_name, 'dense_predictions', dense_predictions)
+    serialize_and_put(bucket, dir_name, 'recommendations', recommendations)
+    serialize_and_put(bucket, dir_name, 'online_users', online_users)
     serialize_and_put(bucket, dir_name, 'env_snapshots', env_snapshots)
 
 

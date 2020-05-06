@@ -91,7 +91,7 @@ class LibFM(recommender.PredictRecommender):
                                  num_iter=num_iter,
                                  seed=seed)
         self._hyperparameters.update(locals())
-        self._has_xt = method == 'mcmc' or method == 'als'
+        self._has_xt = method in ('mcmc', 'als')
 
         # We only want the function arguments so remove class related objects.
         del self._hyperparameters['self']

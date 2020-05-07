@@ -14,14 +14,14 @@ from reclab.recommenders import RandomRec
 # ====Step 4====
 # S3 storage parameters
 bucket_name = 'recsys-eval'
-data_dir = None # 'master'
+data_dir = 'master'
 overwrite = True
 
 # Experiment setup.
 n_trials = 10
 trial_seeds = [i for i in range(n_trials)]
 len_trial = get_len_trial(TOPICS_STATIC)
-
+print(len_trial)
 # Environment setup
 environment_name = TOPICS_STATIC['name']
 env = Topics(**TOPICS_STATIC['params'], **TOPICS_STATIC['optional_params'])

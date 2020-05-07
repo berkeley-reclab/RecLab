@@ -4,8 +4,8 @@ import math
 def get_len_trial(ENV_PARAMS):
     num_users = ENV_PARAMS['params']['num_users']
     num_items = ENV_PARAMS['params']['num_items']
-    num_init_ratings = ENV_PARAMS['misc']['num_final_ratings']
-    num_final_ratings = ENV_PARAMS['optional_params']['num_init_ratings']
+    num_final_ratings = ENV_PARAMS['misc']['num_final_ratings']
+    num_init_ratings = ENV_PARAMS['optional_params']['num_init_ratings']
     rating_frequency = ENV_PARAMS['optional_params']['rating_frequency']
     len_trial = math.ceil((num_final_ratings - num_init_ratings) /
                           (num_users * rating_frequency))

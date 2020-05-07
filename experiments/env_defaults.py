@@ -132,15 +132,13 @@ ML_100K = {
         'rating_frequency': 0.2,
         'num_init_ratings': 100000,
         'memory_length': 0,
+        'noise': 0.5,
+        'boredom_threshold'	: 0,
+        'boredom_penalty': 0,
     },
     'misc': {
         'num_final_ratings': 200000,
         'sampling': 'uniform',
-        'noise': 0.5,
-        'topic_change': 0,
-        'memory_length': 0,
-        'boredom_threshold'	: 0,
-        'boredom_penalty': 0,
     },
 }
 
@@ -277,5 +275,27 @@ FIXED_SMALL = {
     },
     'misc': {
         'num_final_ratings': 2000,
+    },
+}
+
+ML_100K_SMALL = {
+    'name': 'ml_100k_small',
+    'params': {
+            'name': 'ml-100k',
+    },
+    'optional_params': {
+        'max_num_users' : 100,
+        'max_num_items' : 170,
+        'latent_dim': 32,
+        'rating_frequency': 0.2,
+        'num_init_ratings': 1000,
+        'memory_length': 0,
+        'noise': 0.5,
+        'boredom_threshold'	: 0,
+        'boredom_penalty': 0,
+    },
+    'misc': {
+        'num_final_ratings': 2000,
+        'sampling': 'uniform',
     },
 }

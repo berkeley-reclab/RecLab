@@ -60,7 +60,7 @@ class Llorma():
                  pre_learning_rate=2e-4, pre_lambda_val=10,
                  pre_train_steps=100, rank=10, learning_rate=1e-2,
                  lambda_val=1e-3, train_steps=1000, batch_size=1024,
-                 use_cache=True, result_path='results'):
+                 use_cache=True, result_path='results', kernel_fun=None):
         """ Initialize a LLORMA recommender
         """
         self.max_user = max_user
@@ -77,6 +77,7 @@ class Llorma():
         self.batch_size = batch_size
         self.use_cache = use_cache
         self.result_path = result_path
+        self.kernel_fun = kernel_fun
         self.user_latent_init = None
         self.item_latent_init = None
         self.batch_manager = None
@@ -354,7 +355,8 @@ class Llorma():
         self.anchor_manager = AnchorManager(self.n_anchor,
                                             self.batch_manager,
                                             self.user_latent_init,
-                                            self.item_latent_init)
+                                            self.item_latent_init,
+                                            self.kernel_fun)
         session = init_session()
 
         local_models = [

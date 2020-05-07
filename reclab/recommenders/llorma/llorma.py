@@ -55,14 +55,15 @@ class Llorma(recommender.PredictRecommender):
                  train_steps=10,
                  batch_size=128,
                  use_cache=True,
-                 result_path='results'):
+                 result_path='results',
+                 kernel_fun=None):
         """Create new Local Low-Rank Matrix Approximation (LLORMA) recommender."""
         super().__init__()
 
         self.model = llorma_g.Llorma(max_user, max_item, n_anchor, pre_rank,
                                      pre_learning_rate, pre_lambda_val, pre_train_steps,
                                      rank, learning_rate, lambda_val, train_steps,
-                                     batch_size, use_cache, result_path)
+                                     batch_size, use_cache, result_path, kernel_fun)
         self._hyperparameters.update(locals())
 
         # We only want the function arguments so remove class related objects.

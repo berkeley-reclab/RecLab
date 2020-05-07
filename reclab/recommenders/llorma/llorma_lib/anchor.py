@@ -192,7 +192,8 @@ class AnchorManager:
             n_anchor,
             batch_manager,
             row_latent_init,
-            col_latent_init, ):
+            col_latent_init,
+            kernel_fun):
         """ Instantiate an AnchorManager
         """
 
@@ -201,7 +202,11 @@ class AnchorManager:
         row_latent = row_latent_init
         col_latent = col_latent_init
 
-        row_k, col_k = _get_ks_from_latents(row_latent, col_latent)
+        if kernel_fun is None:
+            row_k, col_k = _get_ks_from_latents(row_latent, col_latent)
+        else:
+            row_k = kernel_fun(row_latent)
+            col_k = kernel_fun(col_latent)
 
         anchor_idxs = _init_anchor_points(train_data, n_anchor, row_k, col_k)
         assert len(anchor_idxs) == n_anchor

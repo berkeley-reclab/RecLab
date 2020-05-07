@@ -8,7 +8,7 @@ sys.path.append('../../')
 from run_utils import get_env_dataset, run_env_experiment
 from run_utils import ModelTuner
 from reclab.environments import Topics
-from env_defaults import TOPICS_STATIC
+from env_defaults import TOPICS_STATIC, get_len_trial
 from reclab.recommenders import RandomRec
 
 # ====Step 4====

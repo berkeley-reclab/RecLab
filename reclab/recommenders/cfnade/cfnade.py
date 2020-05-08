@@ -40,7 +40,7 @@ class Cfnade(recommender.PredictRecommender):
     def __init__(
             self, num_users, num_items,
             batch_size=64, train_epoch=10,
-            rating_bucket=5, hidden_dim=250,
+            rating_bucket=5, hidden_dim=500,
             learning_rate=0.001):
         """Create new Cfnade recommender."""
         super().__init__()

@@ -110,8 +110,8 @@ def D_output_shape(input_shape):
 
 
 def rating_cost_lambda_func(args):
-    alpha = 1.
-    std = 0.01
+    alpha=1.0
+    std=0.01
     pred_score, true_ratings, input_masks, output_masks, D, d = args
     pred_score_cum = K.cumsum(pred_score, axis=2)
     prob_item_ratings = K.softmax(pred_score_cum)

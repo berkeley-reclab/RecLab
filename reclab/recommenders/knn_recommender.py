@@ -124,6 +124,7 @@ class KNNRecommender(recommender.PredictRecommender):
                 self._feature_matrix = scipy.sparse.hstack([self._feature_matrix, self._items])
         self._similarity_matrix = cosine_similarity(self._feature_matrix, self._feature_matrix,
                                                     self._shrinkage)
+        np.fill_diagonal(self._similarity_matrix, 0)
         # TODO: this may not be the best way to store ratings, but it does speed access
         self._ratings_matrix = self._ratings.A
 

@@ -747,6 +747,36 @@ def s3_load_trial(bucket, dir_name):
             dense_ratings, dense_predictions, env_snapshots)
 
 
+def s3_load_trial_quick(bucket, dir_name):
+    """Load a trial saved in a given directory within S3."""
+    def get_and_unserialize(name, use_json=False):
+        file_name = os.path.join(dir_name, name)
+        if use_json:
+            file_name = file_name + '.json'
+        else:
+            file_name = file_name + '.pickle'
+
+        with open(TEMP_FILE_NAME, 'wb') as temp_file:
+            bucket.download_fileobj(Key=file_name, Fileobj=temp_file)
+
+        with open(TEMP_FILE_NAME, 'rb') as temp_file:
+            if use_json:
+                obj = json.load(temp_file)
+            else:
+                obj = pickle.load(temp_file)
+        os.remove(TEMP_FILE_NAME)
+
+        return obj
+
+    # rec_hyperparameters = get_and_unserialize('rec_hyperparameters', use_json=True)
+    ratings = get_and_unserialize('ratings')
+    predictions = get_and_unserialize('predictions')
+    # dense_ratings = get_and_unserialize('dense_ratings')
+    # dense_predictions = get_and_unserialize('dense_predictions')
+    # env_snapshots = get_and_unserialize('env_snapshots')
+
+    return ratings, predictions
+
 def serialize_and_put(bucket, dir_name, name, obj, use_json=False):
     """Serialize an object and upload it to S3."""
     file_name = os.path.join(dir_name, name)

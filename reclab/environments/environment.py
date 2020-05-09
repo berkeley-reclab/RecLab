@@ -7,7 +7,7 @@ import abc
 import collections
 
 import numpy as np
-from scipy.stats import norm, lognorm
+from scipy.stats import norm, lognorm, pareto
 
 class Environment(abc.ABC):
     """The interface all environments must implement."""
@@ -468,6 +468,11 @@ class DictEnvironment(Environment):
             idx = np.random.permutation(num_users)
             user_dist = np.array([lognorm.pdf(idx[i], 1, scale=num_users / 7, loc=-1)
                                   for i in range(num_users)])
+            user_dist = user_dist / sum(user_dist)
+            user_dist = np.clip(user_dist, 0, 1)
+        elif dist_choice == 'pareto':
+            idx = np.random.permutation(num_users)
+            user_dist = np.array([pareto.pdf(idx[i], 1, scale=num_users / 1e4, loc=-1) for i in range(num_users)])
             user_dist = user_dist / sum(user_dist)
             user_dist = np.clip(user_dist, 0, 1)
         else:

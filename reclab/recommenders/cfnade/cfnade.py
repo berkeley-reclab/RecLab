@@ -56,6 +56,7 @@ class Cfnade(recommender.PredictRecommender):
         self._learning_rate = learning_rate
         self._train_epoch = train_epoch
         self._hyperparameters.update(locals())
+        self._new_items = np.zeros(num_items)
 
         # We only want the function arguments so remove class related objects.
         del self._hyperparameters['self']
@@ -111,6 +112,11 @@ class Cfnade(recommender.PredictRecommender):
         ratings_matrix = self._ratings.toarray()
         ratings_matrix = np.around(ratings_matrix.transpose())
         ratings_matrix = ratings_matrix.astype(int)
+        
+        #keep track of unseen items in ratings
+        ratings_matrix_total = ratings_matrix.transpose().sum(axis=1)
+        self._new_items = np.where(ratings_matrix_total == 0)[0]
+        
         train_set = utils.DataSet(ratings_matrix,
                                   num_users=self._num_users,
                                   num_items=self._num_items,
@@ -140,6 +146,9 @@ class Cfnade(recommender.PredictRecommender):
 
         predictions = []
         for user, item, _ in user_item:
-            predictions.append(pred_rating[item, user])
+            if item in self._new_items:
+                predictions.append(3)
+            else:
+                predictions.append(pred_rating[item, user])
 
         return np.array(predictions)

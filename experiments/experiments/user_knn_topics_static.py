@@ -5,6 +5,7 @@ import numpy as np
 
 sys.path.append('../')
 sys.path.append('../../')
+from env_defaults import TOPICS_STATIC
 from run_utils import get_env_dataset, run_env_experiment
 from run_utils import ModelTuner
 from reclab.environments import Topics
@@ -17,26 +18,17 @@ data_dir = 'master'
 overwrite = True
 
 # Experiment setup.
-num_users = 1000
-num_items = 1700
-num_init_ratings = 100000
-num_final_ratings = 200000
-rating_frequency = 0.2
+num_init_ratings = TOPICS_STATIC['optional_params']['num_init_ratings']
+num_final_ratings = TOPICS_STATIC['misc']['num_final_ratings']
+rating_frequency = TOPICS_STATIC['optional_params']['rating_frequency']
 n_trials = 10
 len_trial = math.ceil((num_final_ratings - num_init_ratings) /
                       (num_users * rating_frequency))
 trial_seeds = [i for i in range(n_trials)]
 
 # Environment setup
-num_topics = 19
-environment_name = 'topics_static'
-noise = 0.5
-env = Topics(num_users=num_users,
-             num_items=num_items,
-             rating_frequency=rating_frequency,
-             num_topics=num_topics,
-             num_init_ratings=num_init_ratings,
-             noise=noise)
+environment_name = TOPICS_STATIC['name']
+env = Topics(TOPICS_STATIC['params'], TOPICS_STATIC['optional_params'])
 
 # Recommender setup
 recommender_name = 'UserKnn'
@@ -64,7 +56,6 @@ tuner = ModelTuner(starting_data,
 
 # Verify that the performance dependent hyperparameters lead to increased performance.
 print("Larger neighborhood sizes should lead to increased performance.")
-print(starting_data[0])
 shrinkages = [0]
 neighborhood_sizes = np.linspace(10, 1001, 10, dtype=np.int).tolist()
 tuner.evaluate_grid(neighborhood_size=neighborhood_sizes,

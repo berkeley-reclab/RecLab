@@ -13,7 +13,7 @@ TOPICS_STATIC = {
         'noise': 0.5,
         'topic_change': 0,
         'memory_length': 0,
-        'boredom_threshold'	: 0,
+        'boredom_threshold': 0,
         'boredom_penalty': 0,
     },
     'misc': {
@@ -34,7 +34,7 @@ TOPICS_DYNAMIC = {
         'noise': 0.5,
         'topic_change': 0.1,
         'memory_length': 5,
-        'boredom_threshold'	: 2,
+        'boredom_threshold': 2,
         'boredom_penalty': 1,
     },
     'misc': {
@@ -55,7 +55,7 @@ LATENT_STATIC = {
         'num_init_ratings': 100000,
         'noise': 0.5,
         'memory_length': 0,
-        'boredom_threshold'	: 0,
+        'boredom_threshold': 0,
         'boredom_penalty': 0,
     },
     'misc': {
@@ -76,7 +76,7 @@ LATENT_DYNAMIC = {
         'num_init_ratings': 100000,
         'noise': 0.5,
         'memory_length': 5,
-        'boredom_threshold'	: 2,
+        'boredom_threshold': 2,
         'boredom_penalty': 1,
     },
     'misc': {
@@ -155,7 +155,7 @@ TOPICS_STATIC_SMALL = {
         'noise': 0.5,
         'topic_change': 0,
         'memory_length': 0,
-        'boredom_threshold'	: 0,
+        'boredom_threshold': 0,
         'boredom_penalty': 0,
     },
     'misc': {
@@ -176,7 +176,7 @@ TOPICS_DYNAMIC_SMALL = {
         'noise': 0.5,
         'topic_change': 0.1,
         'memory_length': 5,
-        'boredom_threshold'	: 2,
+        'boredom_threshold': 2,
         'boredom_penalty': 1,
     },
     'misc': {
@@ -197,7 +197,7 @@ LATENT_STATIC_SMALL = {
         'num_init_ratings': 1000,
         'noise': 0.5,
         'memory_length': 0,
-        'boredom_threshold'	: 0,
+        'boredom_threshold': 0,
         'boredom_penalty': 0,
     },
     'misc': {
@@ -218,7 +218,7 @@ LATENT_DYNAMIC_SMALL = {
         'num_init_ratings': 1000,
         'noise': 0.5,
         'memory_length': 5,
-        'boredom_threshold'	: 2,
+        'boredom_threshold': 2,
         'boredom_penalty': 1,
     },
     'misc': {
@@ -291,7 +291,7 @@ ML_100K_SMALL = {
         'num_init_ratings': 1000,
         'memory_length': 0,
         'noise': 0.5,
-        'boredom_threshold'	: 0,
+        'boredom_threshold': 0,
         'boredom_penalty': 0,
     },
     'misc': {

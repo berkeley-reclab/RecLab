@@ -18,6 +18,7 @@ data_dir = 'master'
 overwrite = True
 
 # Experiment setup.
+num_users = TOPICS_STATIC['params']['num_users']
 num_init_ratings = TOPICS_STATIC['optional_params']['num_init_ratings']
 num_final_ratings = TOPICS_STATIC['misc']['num_final_ratings']
 rating_frequency = TOPICS_STATIC['optional_params']['rating_frequency']
@@ -28,7 +29,7 @@ trial_seeds = [i for i in range(n_trials)]
 
 # Environment setup
 environment_name = TOPICS_STATIC['name']
-env = Topics(TOPICS_STATIC['params'], TOPICS_STATIC['optional_params'])
+env = Topics(**TOPICS_STATIC['params'], **TOPICS_STATIC['optional_params'])
 
 # Recommender setup
 recommender_name = 'UserKnn'

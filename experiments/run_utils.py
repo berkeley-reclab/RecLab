@@ -144,10 +144,10 @@ def plot_regret(ratings,
     """
     if perfect_ratings is None:
         if 'perfect' in labels:
-            idx = labels.index('perfert')
+            idx = labels.index('perfect')
             perfect_ratings = ratings[idx]
         else:
-            print('no ratings from the perfect recommeder')
+            print('No ratings from the perfect recommender.')
             return
 
     def get_regret_stats(arr):
@@ -661,6 +661,27 @@ def git_branch():
     return subprocess.check_output(['git', 'rev-parse',
                                     '--abbrev-ref', 'HEAD']).decode('ascii').strip()
 
+
+def s3_compute_across_trials(bucket,
+                             data_dir,
+                             env_name,
+                             rec_name,
+                             seeds,
+                             func):
+    """Applies func to all the trials of an experiment and returns a list of func's return values.
+
+    This function loads one trial at a time to prevent memory issues.
+    """
+    results = []
+    for seed in seeds:
+        dir_name = s3_experiment_dir_name(data_dir, env_name, rec_name, seed)
+        (_, ratings, predictions,
+         dense_ratings, dense_predictions, _) = s3_load_trial(bucket, dir_name)
+        results.append(func(ratings, predictions, dense_ratings, dense_predictions))
+        # Make these variables out of scope so they can be garbage collected.
+        ratings, predictions, dense_ratings, dense_predictions = None, None, None, None
+
+    return results
 
 def s3_experiment_dir_name(data_dir, env_name, rec_name, trial_seed):
     """Get the directory name that corresponds to a given trial."""

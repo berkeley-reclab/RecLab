@@ -116,6 +116,8 @@ def plot_ratings_mses_s3(labels,
         The name of the environment for which we are plotting the results.
     seeds : list of int
         The trial seeds across which we are averaging results.
+    plot_dense : bool
+        Whether to plot performance numbers using dense ratings and predictions.
     num_init_ratings : int
         The number of ratings initially available to recommenders. If set to None
         the function will plot with an x-axis based on the timestep.
@@ -130,7 +132,7 @@ def plot_ratings_mses_s3(labels,
         prediction_name = 'predictions'
 
     def squared_diff(**kwargs):
-        return (kwargs[rating_name] - kwargs[prediction_name]) ** 2
+        return (kwargs[rating_name][0] - kwargs[prediction_name][0]) ** 2
 
     if num_init_ratings is not None:
         x_vals = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])
@@ -143,7 +145,7 @@ def plot_ratings_mses_s3(labels,
         means, lower_bounds, upper_bounds = compute_stats_s3(bucket=bucket,
                                                              data_dir_name=data_dir_name,
                                                              env_name=env_name,
-                                                             rec_names=labels,
+                                                             rec_names=[label],
                                                              seeds=seeds,
                                                              arr_name=rating_name,
                                                              bound_zero=True)
@@ -158,7 +160,7 @@ def plot_ratings_mses_s3(labels,
         mse, lower_bounds, upper_bounds = compute_stats_s3(bucket=bucket,
                                                            data_dir_name=data_dir_name,
                                                            env_name=env_name,
-                                                           rec_names=labels,
+                                                           rec_names=[label],
                                                            seeds=seeds,
                                                            arr_func=squared_diff,
                                                            bound_zero=True)
@@ -216,10 +218,75 @@ def plot_regret(ratings,
         # Plot the regret for the recommenders that are not perfect.
         if label != 'perfect':
             regrets = perfect_ratings - recommender_ratings
-            mean_regrets, lower_bounds, upper_bounds = get_regret_stats(regrets)
+            regrets = np.cumsum(regrets, axis=1)
+            mean_regrets, lower_bounds, upper_bounds = compute_stats(regrets)
             # Plotting the regret over steps and correct the associated intervals.
             plt.plot(x_vals, mean_regrets, label=label)
             plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
+    plt.xlabel('# ratings')
+    plt.ylabel('Regret')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_ratings_mses_s3(labels,
+                         bucket_name,
+                         data_dir_name,
+                         env_name,
+                         seeds,
+                         perfect_name='PerfectRec',
+                         plot_dense=False,
+                         num_init_ratings=None):
+    """Plot the regret for multiple recommenders using data stored in S3.
+
+    Parameters
+    ----------
+    labels : list of str
+        The name of each recommender.
+    bucket_name : str
+        The bucket in which the experiment data is saved.
+    data_dir_name : str
+        The name of the directory in which the experiment data is saved.
+    env_name : str
+        The name of the environment for which we are plotting the results.
+    seeds : list of int
+        The trial seeds across which we are averaging results.
+    perfect_name : str
+        The name of the recommender against which to compute regret.
+    plot_dense : bool
+        Whether to plot regret using the dense ratings.
+    num_init_ratings : int
+        The number of ratings initially available to recommenders. If set to None
+        the function will plot with an x-axis based on the timestep.
+
+    """
+    bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
+    if plot_dense:
+        rating_name = 'dense_ratings'
+    else:
+        rating_name = 'ratings'
+
+    def regret(**kwargs):
+        return np.cumsum(kwargs[rating_name][0] - kwargs[rating_name][1], axis=0)
+
+    if num_init_ratings is not None:
+        x_vals = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])
+    else:
+        x_vals = np.arange(ratings.shape[2])
+
+    plt.figure(figsize=[5, 4])
+    for recommender_ratings, label in zip(ratings, labels):
+        mean_regrets, lower_bounds, upper_bounds = compute_stats_s3(bucket=bucket,
+                                                                    data_dir_name=data_dir_name,
+                                                                    env_name=env_name,
+                                                                    rec_names=[perfect_name, label],
+                                                                    seeds=seeds,
+                                                                    arr_func=regret)
+        mean_regrets, lower_bounds, upper_bounds = compute_stats(regrets)
+        # Plotting the regret over steps and correct the associated intervals.
+        plt.plot(x_vals, mean_regrets, label=label)
+        plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
     plt.xlabel('# ratings')
     plt.ylabel('Regret')
     plt.legend()
@@ -253,15 +320,16 @@ def compute_stats(arr, bound_zero=False, use_median=False):
 
 def compute_stats_s3(bucket,
                      data_dir_name,
-                     env_name,
+                     env_names,
                      rec_names,
                      seeds,
                      arr_name=None,
                      arr_func=None,
                      bound_zero=False):
     if arr_func is None:
+        assert len(rec_names) == 1
         def arr_func(**kwargs):
-            return kwargs[arr_name]
+            return kwargs[arr_name][0]
 
     def get_sum_func(preprocess_func):
         def compute_sums(**kwargs):
@@ -272,7 +340,7 @@ def compute_stats_s3(bucket,
 
     results = s3_compute_across_trials(bucket,
                                        data_dir_name,
-                                       env_name,
+                                       env_names,
                                        rec_names,
                                        seeds,
                                        get_sum_func(arr_func))
@@ -804,7 +872,10 @@ def s3_compute_across_trials(bucket,
             all_predictions.append(predictions)
             all_dense_ratings.append(dense_ratings)
             all_dense_predictions.append(dense_predictions)
-        results.append(func(all_ratings, all_predictions, all_dense_ratings, all_dense_predictions))
+        results.append(func(ratings=all_ratings,
+                            predictions=all_predictions,
+                            dense_ratings=all_dense_ratings,
+                            dense_predictions=all_dense_predictions))
 
         # Make these variables out of scope so they can be garbage collected.
         ratings = None

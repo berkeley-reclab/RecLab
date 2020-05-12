@@ -25,8 +25,9 @@ TEMP_FILE_NAME = 'temp.out'
 def plot_ratings_mses(ratings,
                       predictions,
                       labels,
-                      summary_type='mean',
-                      num_init_ratings=None, threshold=10):
+                      use_median=False,
+                      num_init_ratings=None,
+                      threshold=10):
     """Plot the performance results for multiple recommenders.
 
     Parameters
@@ -44,46 +45,17 @@ def plot_ratings_mses(ratings,
         during RMSE plotting.
     labels : list of str
         The name of each recommender.
-    summary_type : str
-        Which time of summary statistics: either 'mean' for mean and std deviation
-        or 'median' for median and quartiles.
+    use_median : bool
+        Which type of summary statistics: either False for mean and std deviation
+        or True for median and quartiles.
     num_init_ratings : int
         The number of ratings initially available to recommenders. If set to None
-        the function will plot with an x-axis based on round number.
+        the function will plot with an x-axis based on the timestep.
     threshold: float
         The threshold filtering on the predictions, predictions larger than it will be set to 0.
         default is 10
 
     """
-    if summary_type == 'mean':
-        def get_stats(arr):
-            # Swap the trial and step axes.
-            arr = np.swapaxes(arr, 0, 1)
-            # Flatten the trial and user axes together.
-            arr = arr.reshape(arr.shape[0], -1)
-            # Compute the means and standard deviations of the means for each step.
-            means = arr.mean(axis=1)
-            # Use Bessel's correction here.
-            stds = arr.std(axis=1) / np.sqrt(arr.shape[1] - 1)
-            # Compute the 95% confidence intervals using the CLT.
-            upper_bounds = means + 2 * stds
-            lower_bounds = np.maximum(means - 2 * stds, 0)
-            return means, lower_bounds, upper_bounds
-    elif summary_type == 'median':
-        def get_stats(arr):
-            # Swap the trial and step axes.
-            arr = np.swapaxes(arr, 0, 1)
-            # Flatten the trial and user axes together.
-            arr = arr.reshape(arr.shape[0], -1)
-            # Compute the medians and quartiles of the means for each step.
-            meds = np.median(arr, axis=1)
-            # Compute the 95% confidence intervals using the CLT.
-            upper_bounds = np.quantile(arr, 0.75, axis=1)
-            lower_bounds = np.quantile(arr, 0.25, axis=1)
-            return meds, lower_bounds, upper_bounds
-    else:
-        assert False, "Invalid summary_type"
-
     if num_init_ratings is not None:
         x_vals = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])
     else:
@@ -95,7 +67,9 @@ def plot_ratings_mses(ratings,
     plt.figure(figsize=[9, 4])
     plt.subplot(1, 2, 1)
     for recommender_ratings, label in zip(ratings, labels):
-        means, lower_bounds, upper_bounds = get_stats(recommender_ratings)
+        means, lower_bounds, upper_bounds = compute_stats(recommender_ratings,
+                                                          bound_zero=True,
+                                                          use_median=use_median)
         plt.plot(x_vals, means, label=label)
         plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
     plt.xlabel('# ratings')
@@ -105,7 +79,89 @@ def plot_ratings_mses(ratings,
     plt.subplot(1, 2, 2)
     squared_diffs = (ratings - predictions) ** 2
     for recommender_squared_diffs, label in zip(squared_diffs, labels):
-        mse, lower_bounds, upper_bounds = get_stats(recommender_squared_diffs)
+        mse, lower_bounds, upper_bounds = compute_stats(recommender_squared_diffs,
+                                                        bound_zero=True,
+                                                        use_median=use_median)
+        # Transform the MSE into the RMSE and correct the associated intervals.
+        rmse = np.sqrt(mse)
+        lower_bounds = np.sqrt(lower_bounds)
+        upper_bounds = np.sqrt(upper_bounds)
+        plt.plot(x_vals, rmse, label=label)
+        plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
+    plt.xlabel('# ratings')
+    plt.ylabel('RMSE')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_ratings_mses_s3(labels,
+                         bucket_name,
+                         data_dir_name,
+                         env_name,
+                         seeds,
+                         plot_dense=False,
+                         num_init_ratings=None):
+    """Plot the performance results for multiple recommenders using data stored in S3.
+
+    Parameters
+    ----------
+    labels : list of str
+        The name of each recommender.
+    bucket_name : str
+        The bucket in which the experiment data is saved.
+    data_dir_name : str
+        The name of the directory in which the experiment data is saved.
+    env_name : str
+        The name of the environment for which we are plotting the results.
+    seeds : list of int
+        The trial seeds across which we are averaging results.
+    num_init_ratings : int
+        The number of ratings initially available to recommenders. If set to None
+        the function will plot with an x-axis based on the timestep.
+
+    """
+    bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
+    if plot_dense:
+        rating_name = 'dense_ratings'
+        prediction_name = 'dense_predictions'
+    else:
+        rating_name = 'ratings'
+        prediction_name = 'predictions'
+
+    def squared_diff(**kwargs):
+        return (kwargs[rating_name] - kwargs[prediction_name]) ** 2
+
+    if num_init_ratings is not None:
+        x_vals = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])
+    else:
+        x_vals = np.arange(ratings.shape[2])
+
+    plt.figure(figsize=[9, 4])
+    plt.subplot(1, 2, 1)
+    for recommender_ratings, label in zip(ratings, labels):
+        means, lower_bounds, upper_bounds = compute_stats_s3(bucket=bucket,
+                                                             data_dir_name=data_dir_name,
+                                                             env_name=env_name,
+                                                             rec_names=labels,
+                                                             seeds=seeds,
+                                                             arr_name=rating_name,
+                                                             bound_zero=True)
+        plt.plot(x_vals, means, label=label)
+        plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
+    plt.xlabel('# ratings')
+    plt.ylabel('Mean Rating')
+    plt.legend()
+
+    plt.subplot(1, 2, 2)
+    for recommender_squared_diffs, label in zip(squared_diffs, labels):
+        mse, lower_bounds, upper_bounds = compute_stats_s3(bucket=bucket,
+                                                           data_dir_name=data_dir_name,
+                                                           env_name=env_name,
+                                                           rec_names=labels,
+                                                           seeds=seeds,
+                                                           arr_func=squared_diff,
+                                                           bound_zero=True)
         # Transform the MSE into the RMSE and correct the associated intervals.
         rmse = np.sqrt(mse)
         lower_bounds = np.sqrt(lower_bounds)
@@ -150,22 +206,6 @@ def plot_regret(ratings,
             print('No ratings from the perfect recommender.')
             return
 
-    def get_regret_stats(arr):
-        # Swap the trial and step axes (trial, step, user --> step, trial, user)
-        arr = np.swapaxes(arr, 0, 1)
-        # Flatten the trial and user axes together.
-        arr = arr.reshape(arr.shape[0], -1)
-        # Compute the commulative regret.
-        arr = arr.cumsum(axis=1)
-        # Compute the means and standard deviations of the means for each step.
-        means = arr.mean(axis=1)
-        # Use Bessel's correction here.
-        stds = arr.std(axis=1) / np.sqrt(arr.shape[1] - 1)
-        # Compute the 95% confidence intervals using the CLT.
-        upper_bounds = means + 2 * stds
-        lower_bounds = means - 2 * stds
-        return means, lower_bounds, upper_bounds
-
     if num_init_ratings is not None:
         x_vals = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])
     else:
@@ -185,6 +225,84 @@ def plot_regret(ratings,
     plt.legend()
     plt.tight_layout()
     plt.show()
+
+
+def compute_stats(arr, bound_zero=False, use_median=False):
+    # Swap the trial and step axes (trial, step, user --> step, trial, user)
+    arr = np.swapaxes(arr, 0, 1)
+    # Flatten the trial and user axes together.
+    arr = arr.reshape(arr.shape[0], -1)
+    if use_median:
+        # Compute the medians and quartiles of the means for each step.
+        centers = np.median(arr, axis=1)
+        upper_bounds = np.quantile(arr, 0.75, axis=1)
+        lower_bounds = np.quantile(arr, 0.25, axis=1)
+    else:
+        # Compute the means and standard deviations of the means for each step.
+        centers = arr.mean(axis=1)
+        # Use Bessel's correction here.
+        stds = arr.std(axis=1) / np.sqrt(arr.shape[1] - 1)
+        # Compute the 95% confidence intervals using the CLT.
+        upper_bounds = centers + 2 * stds
+        lower_bounds = centers - 2 * stds
+    if bound_zero:
+        lower_bounds = np.max(0, lower_bounds)
+
+    return centers, lower_bounds, upper_bounds
+
+
+def compute_stats_s3(bucket,
+                     data_dir_name,
+                     env_name,
+                     rec_names,
+                     seeds,
+                     arr_name=None,
+                     arr_func=None,
+                     bound_zero=False):
+    if arr_func is None:
+        def arr_func(**kwargs):
+            return kwargs[arr_name]
+
+    def get_sum_func(preprocess_func):
+        def compute_sums(**kwargs):
+            arr = preprocess_func(**kwargs)
+            sums = arr.sum(axis=1)
+            return sums, arr.shape[1]
+        return compute_sums
+
+    results = s3_compute_across_trials(bucket,
+                                       data_dir_name,
+                                       env_name,
+                                       rec_names,
+                                       seeds,
+                                       get_sum_func(arr_func))
+    sums, lengths = zip(*results)
+    means = np.average(sums, axis=0, weights=lengths)
+
+    diff_func = functional.compose(lambda x: (x - means[:, np.newaxis]) ** 2, arr_func)
+    results = s3_compute_across_trials(bucket,
+                                       data_dir_name,
+                                       env_name,
+                                       rec_names,
+                                       seeds,
+                                       get_sum_func(diff_func))
+    sums, lengths = zip(*results)
+    variances = np.average(sums, axis=0, weights=lengths)
+
+    # Apply Bessel's correction.
+    num_samples = sum(lengths)
+    variances = variances * num_samples / (num_samples - 1)
+
+    # Compute the standard error of each sample mean.
+    stds = np.sqrt(variances) / (num_samples - 1)
+
+    # Compute the 95% confidence intervals using the CLT.
+    upper_bounds = means + 2 * stds
+    lower_bounds = means - 2 * stds
+    if bound_zero:
+        lower_bounds = np.max(0, lower_bounds)
+
+    return means, lower_bounds, upper_bounds
 
 
 def get_env_dataset(environment):
@@ -665,7 +783,7 @@ def git_branch():
 def s3_compute_across_trials(bucket,
                              data_dir,
                              env_name,
-                             rec_name,
+                             rec_names,
                              seeds,
                              func):
     """Applies func to all the trials of an experiment and returns a list of func's return values.
@@ -674,12 +792,29 @@ def s3_compute_across_trials(bucket,
     """
     results = []
     for seed in seeds:
-        dir_name = s3_experiment_dir_name(data_dir, env_name, rec_name, seed)
-        (_, ratings, predictions,
-         dense_ratings, dense_predictions, _) = s3_load_trial(bucket, dir_name)
-        results.append(func(ratings, predictions, dense_ratings, dense_predictions))
+        all_ratings = []
+        all_predictions = []
+        all_dense_ratings = []
+        all_dense_predictions = []
+        for rec_name in rec_names:
+            dir_name = s3_experiment_dir_name(data_dir, env_name, rec_name, seed)
+            (_, ratings, predictions,
+             dense_ratings, dense_predictions, _) = s3_load_trial(bucket, dir_name)
+            all_ratings.append(ratings)
+            all_predictions.append(predictions)
+            all_dense_ratings.append(dense_ratings)
+            all_dense_predictions.append(dense_predictions)
+        results.append(func(all_ratings, all_predictions, all_dense_ratings, all_dense_predictions))
+
         # Make these variables out of scope so they can be garbage collected.
-        ratings, predictions, dense_ratings, dense_predictions = None, None, None, None
+        ratings = None
+        predictions = None
+        dense_ratings = None
+        dense_predictions = None
+        all_ratings = None
+        all_predictions = None
+        all_dense_ratings = None
+        all_dense_predictions = None
 
     return results
 

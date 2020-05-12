@@ -48,21 +48,29 @@ class DataSet(Callback):
             input_mask_vectors = np.zeros((self.batch_size, self.num_users), dtype='int8')
             output_mask_vectors = np.zeros((self.batch_size, self.num_users), dtype='int8')
             for i, line in enumerate(next_n_data_lines):
-                if self.mode == 0:
+                user_ids = np.nonzero(line)[0]
+                ratings_line = line[line != 0]
+
+                if self.mode == 0 and len(user_ids) != 0:
                     # a random ordered list 0 to len(user_ids)-1
-                    ordering = np.random.permutation(np.arange(self.num_users))
+    
+                    ordering = np.random.permutation(np.arange(len(user_ids)))
                     random_num = np.random.randint(0, len(ordering))
                     flag_in = (ordering < random_num)
                     flag_out = (ordering >= random_num)
-                    user_ids = range(self.num_users)
+                  
                     input_mask_vectors[i][user_ids] = flag_in
                     output_mask_vectors[i][user_ids] = flag_out
 
-                    for j, (user_id, value) in enumerate(zip(user_ids, line)):
+                    for j, (user_id, value) in enumerate(zip(user_ids, ratings_line)):
                         if flag_in[j]:
                             input_ranking_vectors[i, user_id, (value-1)] = 1
                         else:
                             output_ranking_vectors[i, user_id, (value-1)] = 1
+                if self.mode == 2:
+                    for j, (user_id, value) in enumerate(zip(user_ids, ratings_line)):
+                        input_ranking_vectors[i, user_id, (value-1)] = 1                  
+
             inputs = {
                 'input_ratings': input_ranking_vectors,
                 'output_ratings': output_ranking_vectors,
@@ -110,8 +118,8 @@ def D_output_shape(input_shape):
 
 
 def rating_cost_lambda_func(args):
-    alpha=0.01
-    std=1.0
+    alpha=1.0
+    std=0.0
     pred_score, true_ratings, input_masks, output_masks, D, d = args
     pred_score_cum = K.cumsum(pred_score, axis=2)
     prob_item_ratings = K.softmax(pred_score_cum)

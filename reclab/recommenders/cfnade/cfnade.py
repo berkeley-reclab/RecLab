@@ -41,7 +41,7 @@ class Cfnade(recommender.PredictRecommender):
             self, num_users, num_items,
             batch_size=64, train_epoch=10,
             rating_bucket=5, hidden_dim=500,
-            learning_rate=0.001):
+            learning_rate=0.001, normalized_layer=False):
         """Create new Cfnade recommender."""
         super().__init__()
         self._num_users = num_users
@@ -73,7 +73,8 @@ class Cfnade(recommender.PredictRecommender):
                         W_regularizer=keras.regularizers.l2(0.02),
                         V_regularizer=keras.regularizers.l2(0.02),
                         b_regularizer=keras.regularizers.l2(0.02),
-                        c_regularizer=keras.regularizers.l2(0.02))(nade_layer)
+                        c_regularizer=keras.regularizers.l2(0.02), normalized_layer=normalized_layer)(nade_layer)
+        
 
         predicted_ratings = Lambda(
             utils.prediction_layer,
@@ -112,25 +113,31 @@ class Cfnade(recommender.PredictRecommender):
         ratings_matrix = self._ratings.toarray()
         ratings_matrix = np.around(ratings_matrix.transpose())
         ratings_matrix = ratings_matrix.astype(int)
-        
-        #keep track of unseen items in ratings
-        ratings_matrix_total = ratings_matrix.transpose().sum(axis=1)
-        self._new_items = np.where(ratings_matrix_total == 0)[0]
-        
+       
         train_set = utils.DataSet(ratings_matrix,
                                   num_users=self._num_users,
                                   num_items=self._num_items,
                                   batch_size=self._batch_size,
                                   rating_bucket=self._rating_bucket,
                                   mode=0)
+        #print(next(train_set.generate()))
         self._cf_nade_model.fit_generator(train_set.generate(),
                                           steps_per_epoch=(self._num_items // self._batch_size),
                                           epochs=self._train_epoch,
                                           callbacks=[train_set], verbose=1)
 
     def _predict(self, user_item):  # noqa: D102
-        test_df = np.zeros((self._num_items, self._num_users, 5))
-        test_set = utils.DataSet(test_df,
+        #test_df = np.zeros((self._num_items, self._num_users, 5))
+        ratings_matrix = self._ratings.toarray()
+        ratings_matrix = np.around(ratings_matrix.transpose())
+        ratings_matrix = ratings_matrix.astype(int)
+        
+        #keep track of unseen items in ratings
+        ratings_matrix_total = ratings_matrix.transpose().sum(axis=1)
+        self._new_items = np.where(ratings_matrix_total == 0)[0]
+        
+        
+        test_set = utils.DataSet(ratings_matrix,
                                  num_users=self._num_users,
                                  num_items=self._num_items,
                                  batch_size=self._batch_size,

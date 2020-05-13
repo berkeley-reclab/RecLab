@@ -11,15 +11,18 @@ from reclab.environments import Topics
 from env_defaults import TOPICS_STATIC, TOPICS_DYNAMIC, LATENT_STATIC, LATENT_DYNAMIC, get_len_trial
 from reclab.recommenders import PerfectRec
 
-env_name = str(sys.argv[1])
 if env_name == 'topics_static':
     ENV_PARAMS = TOPICS_STATIC
+    EnvObj = Topics
 elif env_name == 'topics_dynamic':
     ENV_PARAMS = TOPICS_DYNAMIC
+    EnvObj = Topics
 elif env_name == 'latent_static':
     ENV_PARAMS = LATENT_STATIC
+    EnvObj = LatentFactorBehavior
 elif env_name == 'latent_dynamic':
     ENV_PARAMS = LATENT_DYNAMIC
+    EnvObj = LatentFactorBehavior
 else:
     assert False, "environment not implemented!"
 

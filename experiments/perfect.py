@@ -29,7 +29,7 @@ else:
 
 # ====Step 4====
 # S3 storage parameters
-bucket_name = 'recsys-eval'
+bucket_name = None # 'recsys-eval'
 data_dir = 'master'
 overwrite = True
 
@@ -46,7 +46,7 @@ env = EnvObj(**ENV_PARAMS['params'], **ENV_PARAMS['optional_params'])
 recommender_name = 'PerfectRec'
 recommender_class = PerfectRec
 
-def rating_func(user_id, item_id):
+def rating_func():
     ratings = env.dense_ratings
     return ratings[user_id, item_id]
 

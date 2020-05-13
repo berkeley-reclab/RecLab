@@ -6,14 +6,11 @@ from . import recommender
 
 
 class TopPop(recommender.PredictRecommender):
-    """The top popularity recommendation model based on ratings.
-    
-    TODO: add flag to allow this to also be based on number of times rated.
-
-    """
+    """The top popularity recommendation model based on ratings."""
 
     def __init__(self):
         """Create a TopPop recommender."""
+        # TODO: add flag to allow this to also be based on number of times rated.
         super().__init__()
 
     @property

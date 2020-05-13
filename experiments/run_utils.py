@@ -317,6 +317,7 @@ def plot_regret_s3(labels,
 
 
 def compute_stats(arr, bound_zero=False, use_median=False):
+    """Compute the mean/median and lower and upper bounds of an experiment result."""
     # Swap the trial and step axes (trial, step, user --> step, trial, user)
     arr = np.swapaxes(arr, 0, 1)
     # Flatten the trial and user axes together.
@@ -349,6 +350,7 @@ def compute_stats_s3(bucket,
                      arr_name=None,
                      arr_func=None,
                      bound_zero=False):
+    """Compute the mean/median and lower and upper bounds of an experiment result stored in S3."""
     if arr_func is None:
         assert len(rec_names) == 1
         def arr_func(**kwargs):
@@ -361,7 +363,7 @@ def compute_stats_s3(bucket,
             return means, arr.shape[1]
         return compute_means
 
-    results = s3_compute_across_trials(bucket,
+    results = compute_across_trials_s3(bucket,
                                        data_dir_name,
                                        env_name,
                                        rec_names,
@@ -371,7 +373,7 @@ def compute_stats_s3(bucket,
     means = np.average(means, axis=0, weights=lengths)
 
     diff_func = functional.compose(lambda x: (x - means[:, np.newaxis]) ** 2, arr_func)
-    results = s3_compute_across_trials(bucket,
+    results = compute_across_trials_s3(bucket,
                                        data_dir_name,
                                        env_name,
                                        rec_names,
@@ -582,7 +584,7 @@ def run_trial(env,
     all_recs = []
     all_online_users = []
     all_env_snapshots = [copy.deepcopy(env)]
-    # We have a seperate variable for ratings.
+    # We have a separate variable for ratings.
     all_env_snapshots[-1]._ratings = None
 
     # Now recommend items to users.
@@ -640,7 +642,7 @@ def run_trial(env,
 
 
 def compute_experiment_density(len_trial, environment, threshold=4):
-    """ Compute the rating density for the proposed experiment.
+    """Compute the rating density for the proposed experiment.
 
     Parameters
     ----------
@@ -871,13 +873,13 @@ def git_branch():
                                     '--abbrev-ref', 'HEAD']).decode('ascii').strip()
 
 
-def s3_compute_across_trials(bucket,
+def compute_across_trials_s3(bucket,
                              data_dir,
                              env_name,
                              rec_names,
                              seeds,
                              func):
-    """Applies func to all the trials of an experiment and returns a list of func's return values.
+    """Apply func to all the trials of an experiment and return a list of func's return values.
 
     This function loads one trial at a time to prevent memory issues.
     """
@@ -911,6 +913,7 @@ def s3_compute_across_trials(bucket,
         all_dense_predictions = None
 
     return results
+
 
 def s3_experiment_dir_name(data_dir, env_name, rec_name, trial_seed):
     """Get the directory name that corresponds to a given trial."""

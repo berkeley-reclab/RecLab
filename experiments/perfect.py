@@ -29,7 +29,7 @@ else:
 
 # ====Step 4====
 # S3 storage parameters
-bucket_name = None # 'recsys-eval'
+bucket_name = 'recsys-eval'
 data_dir = 'master'
 overwrite = True
 

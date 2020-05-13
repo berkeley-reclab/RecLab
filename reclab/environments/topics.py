@@ -43,14 +43,17 @@ class Topics(environment.DictEnvironment):
         penalty.
     boredom_penalty : float
         The penalty on the rating when a user is bored
+    user_dist_choice : str
+        The choice of user distribution for selecting online users. By default, the subset of
+        online users is chosen from a uniform distribution. Currently supports normal and lognormal.
 
     """
 
     def __init__(self, num_topics, num_users, num_items, rating_frequency=1.0,
                  num_init_ratings=0, noise=0.0, topic_change=0.0, memory_length=0,
-                 boredom_threshold=0, boredom_penalty=0.0):
+                 boredom_threshold=0, boredom_penalty=0.0, user_dist_choice='uniform'):
         """Create a Topics environment."""
-        super().__init__(rating_frequency, num_init_ratings, memory_length)
+        super().__init__(rating_frequency, num_init_ratings, memory_length, user_dist_choice)
         self._num_topics = num_topics
         self._num_users = num_users
         self._num_items = num_items

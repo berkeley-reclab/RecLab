@@ -31,12 +31,13 @@ else:
 # S3 storage parameters
 bucket_name = 'recsys-eval'
 data_dir = 'master'
-overwrite = True
+overwrite = False
 
 # Experiment setup.
 n_trials = 10
 trial_seeds = [i for i in range(n_trials)]
 len_trial = get_len_trial(ENV_PARAMS)
+len_trial = 2
 print(len_trial)
 # Environment setup
 environment_name = ENV_PARAMS['name']

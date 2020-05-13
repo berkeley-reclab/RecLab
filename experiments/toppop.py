@@ -7,10 +7,11 @@ sys.path.append('../')
 sys.path.append('../../')
 from run_utils import get_env_dataset, run_env_experiment
 from run_utils import ModelTuner
-from reclab.environments import Topics
+from reclab.environments import Topics, LatentFactorBehavior
 from env_defaults import TOPICS_STATIC, TOPICS_DYNAMIC, LATENT_STATIC, LATENT_DYNAMIC, get_len_trial
 from reclab.recommenders import TopPop
 
+env_name = str(sys.argv[1])
 if env_name == 'topics_static':
     ENV_PARAMS = TOPICS_STATIC
     EnvObj = Topics

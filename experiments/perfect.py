@@ -48,7 +48,7 @@ recommender_class = PerfectRec
 
 def rating_func():
     ratings = env.dense_ratings
-    return ratings[user_id, item_id]
+    return ratings
 
 
 # ====Step 5====

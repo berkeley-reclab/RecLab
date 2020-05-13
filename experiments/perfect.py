@@ -39,7 +39,7 @@ len_trial = get_len_trial(ENV_PARAMS)
 
 # Environment setup
 environment_name = ENV_PARAMS['name']
-env = Topics(**ENV_PARAMS['params'], **ENV_PARAMS['optional_params'])
+env = EnvObj(**ENV_PARAMS['params'], **ENV_PARAMS['optional_params'])
 
 # Recommender setup
 recommender_name = 'PerfectRec'

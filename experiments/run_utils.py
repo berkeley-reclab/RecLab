@@ -247,12 +247,14 @@ def plot_regret(ratings,
 
 
 def plot_regret_s3(labels,
+                   len_trial,
                    bucket_name,
                    data_dir_name,
                    env_name,
                    seeds,
                    perfect_name='PerfectRec',
                    plot_dense=False,
+                   num_users=None,
                    num_init_ratings=None):
     """Plot the regret for multiple recommenders using data stored in S3.
 
@@ -260,6 +262,8 @@ def plot_regret_s3(labels,
     ----------
     labels : list of str
         The name of each recommender.
+    len_trial : int
+        The length of each trial.
     bucket_name : str
         The bucket in which the experiment data is saved.
     data_dir_name : str
@@ -272,6 +276,9 @@ def plot_regret_s3(labels,
         The name of the recommender against which to compute regret.
     plot_dense : bool
         Whether to plot regret using the dense ratings.
+    num_users : int
+        The number of users. If set to None the function will plot with an x-axis
+        based on the timestep
     num_init_ratings : int
         The number of ratings initially available to recommenders. If set to None
         the function will plot with an x-axis based on the timestep.
@@ -286,20 +293,19 @@ def plot_regret_s3(labels,
     def regret(**kwargs):
         return np.cumsum(kwargs[rating_name][0] - kwargs[rating_name][1], axis=0)
 
-    if num_init_ratings is not None:
-        x_vals = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])
+    if num_init_ratings is not None and num_users is not None:
+        x_vals = num_init_ratings + num_users * np.arange(len_trial)
     else:
-        x_vals = np.arange(ratings.shape[2])
+        x_vals = np.arange(len_trial)
 
     plt.figure(figsize=[5, 4])
-    for recommender_ratings, label in zip(ratings, labels):
+    for label in labels:
         mean_regrets, lower_bounds, upper_bounds = compute_stats_s3(bucket=bucket,
                                                                     data_dir_name=data_dir_name,
                                                                     env_name=env_name,
                                                                     rec_names=[perfect_name, label],
                                                                     seeds=seeds,
                                                                     arr_func=regret)
-        mean_regrets, lower_bounds, upper_bounds = compute_stats(regrets)
         # Plotting the regret over steps and correct the associated intervals.
         plt.plot(x_vals, mean_regrets, label=label)
         plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)

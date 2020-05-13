@@ -64,13 +64,13 @@ tuner = ModelTuner(starting_data,
 print("Larger latent dimensions should lead to increased performance.")
 init_stdevs = [1.0]
 num_iters = [1000]
-num_two_ways = np.linspace(0, 100, 10, dtype=np.int).tolist()
+num_two_ways = np.linspace(1, 100, 10, dtype=np.int).tolist()
 tuner.evaluate_grid(num_two_way_factors=num_two_ways,
                     num_iter=num_iters,
                     init_stdev=init_stdevs)
 
 # Set latent dimension to tradeoff runtime and performance.
-num_two_way_factors = 30
+num_two_way_factors = 20
 
 print("More iterations should lead to increased performance.")
 init_stdevs = [1.0]
@@ -92,8 +92,6 @@ tuner.evaluate_grid(num_two_way_factors=num_two_ways,
                     init_stdev=init_stdevs)
 
 # Set init_stdev.
-num_two_way_factors = 30
-num_iter = 200
 init_stdev = 1.0
 
 # ====Step 7====

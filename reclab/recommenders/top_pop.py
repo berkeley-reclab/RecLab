@@ -7,7 +7,7 @@ from . import recommender
 
 class TopPop(recommender.PredictRecommender):
     """The top popularity recommendation model based on ratings.
-    
+
     TODO: add flag to allow this to also be based on number of times rated.
 
     """

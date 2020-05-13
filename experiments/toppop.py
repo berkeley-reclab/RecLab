@@ -5,10 +5,9 @@ import numpy as np
 
 sys.path.append('../')
 sys.path.append('../../')
-from run_utils import get_env_dataset, run_env_experiment
-from run_utils import ModelTuner
-from reclab.environments import Topics
 from env_defaults import TOPICS_STATIC, TOPICS_DYNAMIC, LATENT_STATIC, LATENT_DYNAMIC, get_len_trial
+from run_utils import run_env_experiment
+from reclab.environments import Topics
 from reclab.recommenders import TopPop
 
 env_name = str(sys.argv[1])
@@ -21,7 +20,7 @@ elif env_name == 'latent_static':
 elif env_name == 'latent_dynamic':
     ENV_PARAMS = LATENT_DYNAMIC
 else:
-    assert False, "environment not implemented!"
+    assert False, 'environment not implemented!'
 
 # ====Step 4====
 # S3 storage parameters
@@ -51,13 +50,12 @@ recommender_class = TopPop
 # ====Step 7====
 recommender = recommender_class()
 for i, seed in enumerate(trial_seeds):
-    run_env_experiment(
-            [env],
-            [recommender],
-            [seed],
-            len_trial,
-            environment_names=[environment_name],
-            recommender_names=[recommender_name],
-            bucket_name=bucket_name,
-            data_dir=data_dir,
-            overwrite=overwrite)
+    run_env_experiment([env],
+                       [recommender],
+                       [seed],
+                       len_trial,
+                       environment_names=[environment_name],
+                       recommender_names=[recommender_name],
+                       bucket_name=bucket_name,
+                       data_dir=data_dir,
+                       overwrite=overwrite)

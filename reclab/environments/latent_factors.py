@@ -88,7 +88,7 @@ class LatentFactorBehavior(environment.DictEnvironment):
         item_norms = np.linalg.norm(self._item_factors, axis=1)
         penalties = (self._item_factors @ self._item_factors.T /
                      item_norms[:, np.newaxis] / item_norms[np.newaxis, :])
-        penalties = np.max(penalties - self._boredom_penalty, 0)
+        penalties = self._boredom_penalty * np.max(penalties - self._boredom_threshold, 0)
         for user_id in range(self._num_users):
             for item_id in self._user_histories[user_id]:
                 if item_id is not None:

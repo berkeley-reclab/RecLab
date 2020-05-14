@@ -87,8 +87,8 @@ LATENT_DYNAMIC = {
         'num_init_ratings': 100000,
         'noise': 0.5,
         'memory_length': 5,
-        'boredom_threshold'	: 2,
-        'boredom_penalty': 1,
+        'boredom_threshold'	: 0.,
+        'boredom_penalty': 2,
     },
     'misc': {
         'num_final_ratings': 200000,
@@ -229,8 +229,8 @@ LATENT_DYNAMIC_SMALL = {
         'num_init_ratings': 1000,
         'noise': 0.5,
         'memory_length': 5,
-        'boredom_threshold'	: 2,
-        'boredom_penalty': 1,
+        'boredom_threshold'	: 0.,
+        'boredom_penalty': 2,
     },
     'misc': {
         'num_final_ratings': 2000,

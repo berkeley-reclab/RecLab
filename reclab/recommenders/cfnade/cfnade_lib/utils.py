@@ -118,8 +118,8 @@ def D_output_shape(input_shape):
 
 
 def rating_cost_lambda_func(args):
-    alpha=1.0 #in the paper they reported alpha = 0.01 and std = 1.0. THis is what was used in the repo.
-    std=0.0
+    alpha=0.01 #in the paper they reported alpha = 0.01 and std = 1.0. THis is what was used in the repo.
+    std=1.0
     pred_score, true_ratings, input_masks, output_masks, D, d = args
     pred_score_cum = K.cumsum(pred_score, axis=2)
     prob_item_ratings = K.softmax(pred_score_cum)

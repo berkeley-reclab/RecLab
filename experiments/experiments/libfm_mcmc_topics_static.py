@@ -9,7 +9,7 @@ from env_defaults import TOPICS_STATIC
 from run_utils import get_env_dataset, run_env_experiment
 from run_utils import ModelTuner
 from reclab.environments import Topics
-from reclab.recommenders import KNNRecommender
+from reclab.recommenders import LibFM
 
 # ====Step 4====
 # S3 storage parameters
@@ -32,8 +32,8 @@ environment_name = TOPICS_STATIC['name']
 env = Topics(**TOPICS_STATIC['params'], **TOPICS_STATIC['optional_params'])
 
 # Recommender setup
-recommender_name = 'UserKnn'
-recommender_class = KNNRecommender
+recommender_name = 'LibFM (MCMC)'
+recommender_class = LibFM
 
 
 # ====Step 5====
@@ -43,7 +43,12 @@ starting_data = get_env_dataset(env)
 # ====Step 6====
 # Recommender tuning setup
 n_fold = 5
-default_params = dict(user_based=True)
+default_params = dict(num_user_features=0,
+                      num_item_features=0,
+                      num_rating_features=0,
+                      max_num_users=num_users,
+                      max_num_items=TOPICS_STATIC['params']['num_items'],
+                      method='mcmc')
 tuner = ModelTuner(starting_data,
                    default_params,
                    recommender_class,
@@ -56,34 +61,44 @@ tuner = ModelTuner(starting_data,
                    overwrite=overwrite)
 
 # Verify that the performance dependent hyperparameters lead to increased performance.
-print("Larger neighborhood sizes should lead to increased performance.")
-shrinkages = [0]
-neighborhood_sizes = np.linspace(10, 1001, 10, dtype=np.int).tolist()
-tuner.evaluate_grid(neighborhood_size=neighborhood_sizes,
-                    shrinkage=shrinkages)
+print("Larger latent dimensions should lead to increased performance.")
+init_stdevs = [1.0]
+num_iters = [1000]
+num_two_ways = np.linspace(1, 100, 10, dtype=np.int).tolist()
+tuner.evaluate_grid(num_two_way_factors=num_two_ways,
+                    num_iter=num_iters,
+                    init_stdev=init_stdevs)
 
-# Set neighborhood size to tradeoff runtime and performance.
-neighborhood_size = 250
+# Set latent dimension to tradeoff runtime and performance.
+num_two_way_factors = 20
+
+print("More iterations should lead to increased performance.")
+init_stdevs = [1.0]
+num_iters = np.linspace(1, 1000, 10, dtype=np.int).tolist()
+num_two_ways = [num_two_way_factors]
+tuner.evaluate_grid(num_two_way_factors=num_two_ways,
+                    num_iter=num_iters,
+                    init_stdev=init_stdevs)
+
+# Set number of iterations to tradeoff runtime and performance.
+num_iter = 200
 
 # Tune the performance independent hyperparameters.
-# Start with a coarse grid.
-shrinkages = np.linspace(0, 1000, 10).tolist()
-neighborhood_sizes = [neighborhood_size]
-tuner.evaluate_grid(neighborhood_size=neighborhood_sizes,
-                    shrinkage=shrinkages)
+init_stdevs = np.linspace(0.01, 10, 10).tolist()
+num_iters = [num_iter]
+num_two_ways = [num_two_way_factors]
+tuner.evaluate_grid(num_two_way_factors=num_two_ways,
+                    num_iter=num_iters,
+                    init_stdev=init_stdevs)
 
-# It seems that shrinkage doesn't have much of an effect here but let's
-# refine the grid just in case.
-shrinkages = np.linspace(0, 10, 10).tolist()
-neighborhood_sizes = [neighborhood_size]
-tuner.evaluate_grid(neighborhood_size=neighborhood_sizes,
-                    shrinkage=shrinkages)
-
-# Set shrinkage to zero since its value doesn't seem to have an effect.
-shrinkage = 0
+# Set init_stdev.
+init_stdev = 1.0
 
 # ====Step 7====
-recommender = recommender_class(shrinkage=shrinkage, neighborhood_size=neighborhood_size)
+recommender = recommender_class(num_iter=num_iter,
+                                num_two_way_factors=num_two_way_factors,
+                                init_stdev=init_stdev,
+                                **default_params)
 for i, seed in enumerate(trial_seeds):
     run_env_experiment(
             [env],

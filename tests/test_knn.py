@@ -6,13 +6,13 @@ from . import utils
 def test_user_predict():
     """Test that KNN-user predicts well and that it gets better with more data."""
     recommender = KNNRecommender(user_based=True)
-    utils.test_predict_ml100k(recommender, rmse_threshold=1.1)
+    utils.test_predict_ml100k(recommender, rmse_threshold=1.1, test_dense=True)
 
 
 def test_item_predict():
     """Test that KNN-user predicts well and that it gets better with more data."""
     recommender = KNNRecommender(user_based=False, shrinkage=0.1)
-    utils.test_predict_ml100k(recommender, rmse_threshold=1.5)
+    utils.test_predict_ml100k(recommender, rmse_threshold=1.5, test_dense=True)
 
 
 def test_user_recommend():

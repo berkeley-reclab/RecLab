@@ -7,7 +7,7 @@ import abc
 import collections
 
 import numpy as np
-
+from scipy.stats import norm, lognorm, pareto
 
 class Environment(abc.ABC):
     """The interface all environments must implement."""
@@ -141,10 +141,14 @@ class DictEnvironment(Environment):
         The number of ratings available from the start. User-item pairs are randomly selected.
     memory : int
         The number of recent items a user remembers which affect the rating
+    user_dist_choice : str
+        The choice of user distribution for selecting online users. By default, the subset of
+        online users is chosen from a uniform distribution. Currently supports normal and lognormal.
 
     """
 
-    def __init__(self, rating_frequency=0.02, num_init_ratings=0, memory_length=0):
+    def __init__(self, rating_frequency=0.02, num_init_ratings=0, memory_length=0,
+                 user_dist_choice='uniform'):
         """Create a Topics environment."""
         self._timestep = -1
         # The RandomState to use while initializing the environment.
@@ -153,6 +157,7 @@ class DictEnvironment(Environment):
         self._dynamics_random = np.random.RandomState()
         self._rating_frequency = rating_frequency
         self._num_init_ratings = num_init_ratings
+        self._user_dist_choice = user_dist_choice
         self._users = None
         self._items = None
         self._ratings = None
@@ -184,13 +189,15 @@ class DictEnvironment(Environment):
         self._user_histories = collections.defaultdict(list)
         num_users = len(self._users)
         num_items = len(self._items)
+        self._user_prob = self._get_user_prob()
 
         # We will lazily compute dense ratings.
         self._dense_ratings = None
 
         # Fill the rating dict with initial data.
         idx_1d = self._init_random.choice(num_users * num_items, self._num_init_ratings,
-                                          replace=False)
+                                          replace=False,
+                                          p=np.repeat(self._user_prob, num_items) / num_items)
         user_ids = idx_1d // num_items
         item_ids = idx_1d % num_items
         self._ratings = {}
@@ -440,6 +447,40 @@ class DictEnvironment(Environment):
         """
         return np.zeros(0)
 
+    def _get_user_prob(self):
+        """Get the probability distribution for choosing online users at each timestep.
+
+        The default assumes that users are drawn at uniform. To modify, change the parameters
+        _user_dist when initializing the environment.
+
+        """
+        dist_choice = self._user_dist_choice
+        num_users = len(self._users)
+
+        if dist_choice == 'uniform':
+            user_dist = np.ones(num_users) / num_users
+        elif dist_choice == 'norm':
+            idx = np.random.permutation(num_users)
+            user_dist = np.array([norm.pdf(idx[i], scale=num_users / 7,
+                                  loc=num_users / 2) for i in range(num_users)])
+            user_dist = user_dist / sum(user_dist)
+            user_dist = np.clip(user_dist, 0, 1)
+        elif dist_choice == 'lognorm':
+            idx = np.random.permutation(num_users)
+            user_dist = np.array([lognorm.pdf(idx[i], 1, scale=num_users / 7, loc=-1)
+                                  for i in range(num_users)])
+            user_dist = user_dist / sum(user_dist)
+            user_dist = np.clip(user_dist, 0, 1)
+        elif dist_choice == 'pareto':
+            idx = np.random.permutation(num_users)
+            user_dist = np.array([pareto.pdf(idx[i], 1, scale=num_users / 1e4, loc=-1) for i in range(num_users)])
+            user_dist = user_dist / sum(user_dist)
+            user_dist = np.clip(user_dist, 0, 1)
+        else:
+            raise ValueError('user distribution name not recognized')
+
+        return user_dist
+
     def _select_online_users(self):
         """Select the online users at this timestep.
 
@@ -451,4 +492,5 @@ class DictEnvironment(Environment):
         """
         num_users = len(self._users)
         num_online = int(self._rating_frequency * num_users)
-        return self._dynamics_random.choice(num_users, size=num_online, replace=False)
+        return self._dynamics_random.choice(num_users, size=num_online,
+                                            replace=False, p=self._user_prob)

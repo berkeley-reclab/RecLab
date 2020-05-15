@@ -57,6 +57,10 @@ class User:
             User's known utility, found by multiplying true utility
             by the fraction of utility that is known
 
+        user_dist_choice : str
+            The choice of user distribution for selecting online users. By default, the subset of
+            online users is chosen from a uniform distribution. Currently supports normal and lognormal.
+
         """
         true_util = np.dot(self.preferences, item_attributes) * 5
         return true_util
@@ -72,9 +76,10 @@ class Engelhardt(environment.DictEnvironment):
     """
 
     def __init__(self, num_topics, num_users, num_items, rating_frequency=0.2,
-                 num_init_ratings=0, known_weight=0.98, beta_var=10 ** -5):
+                 num_init_ratings=0, known_weight=0.98, beta_var=10 ** -5,
+                 user_dist_choice='uniform'):
         """Create an Engelhardt environment."""
-        super().__init__(rating_frequency, num_init_ratings)
+        super().__init__(rating_frequency, num_init_ratings, 0, user_dist_choice)
         self.known_weight = known_weight
         self.beta_var = beta_var
         self.user_topic_weights = scipy.special.softmax(self._init_random.rand(num_topics))

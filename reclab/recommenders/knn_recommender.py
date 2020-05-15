@@ -30,9 +30,10 @@ class KNNRecommender(recommender.PredictRecommender):
     """
 
     def __init__(self, shrinkage=0, neighborhood_size=40,
-                 user_based=True, use_content=True, use_means=True):
+                 user_based=True, use_content=True, use_means=True,
+                 **kwargs):
         """Create a new neighborhood recommender."""
-        super().__init__()
+        super().__init__(**kwargs)
         self._shrinkage = shrinkage
         self._neighborhood_size = neighborhood_size
         self._user_based = user_based
@@ -51,6 +52,55 @@ class KNNRecommender(recommender.PredictRecommender):
     @property
     def name(self):  # noqa: D102
         return 'knn'
+
+    @property
+    def dense_predictions(self):  # noqa: D102
+        if self._dense_predictions is not None:
+            return self._dense_predictions
+
+        # Set up whether we will loop over users or items.
+        if self._user_based:
+            loop_range = range(len(self._users))
+            ratings_matrix = self._ratings_matrix
+        else:
+            loop_range = range(len(self._items))
+            ratings_matrix = self._ratings_matrix.T
+
+        preds = []
+        for idx in loop_range:
+            relevant_idxs = nlargest_indices(
+                self._neighborhood_size, self._similarity_matrix[idx])
+            ratings = ratings_matrix[relevant_idxs]
+            # We only care about means and similarities with corresponding nonzero ratings.
+            zero = ratings == 0
+
+            # Create a matrix of means that can easily be subtracted by the ratings.
+            relevant_means = self._means[relevant_idxs]
+            relevant_means = np.tile(relevant_means, (ratings_matrix.shape[1], 1)).T
+            relevant_means[zero] = 0.0
+
+            # Create a matrix of relevant similarities that can easily be multiplied with ratings.
+            similarities = self._similarity_matrix[relevant_idxs, idx]
+            similarities = np.tile(similarities, (ratings_matrix.shape[1], 1)).T
+            similarities[zero] = 0.0
+
+            # Ensure that we aren't weighting by all 0.
+            zero = np.all(np.isclose(similarities, 0), axis=0)
+            similarities[:, zero] = 1.0
+
+            # Compute the predictions.
+            if self._use_means:
+                ratings_sum = self._means[idx] + (ratings - relevant_means)
+            else:
+                ratings_sum = ratings
+            preds.append((ratings_sum * similarities).sum(axis=0) / similarities.sum(axis=0))
+
+        preds = np.array(preds)
+        if not self._user_based:
+            preds = preds.T
+
+        self._dense_predictions = preds
+        return preds
 
     def reset(self, users=None, items=None, ratings=None):  # noqa: D102
         self._feature_matrix = scipy.sparse.csr_matrix((0, 0))
@@ -74,21 +124,27 @@ class KNNRecommender(recommender.PredictRecommender):
                 self._feature_matrix = scipy.sparse.hstack([self._feature_matrix, self._items])
         self._similarity_matrix = cosine_similarity(self._feature_matrix, self._feature_matrix,
                                                     self._shrinkage)
+        np.fill_diagonal(self._similarity_matrix, 0)
         # TODO: this may not be the best way to store ratings, but it does speed access
         self._ratings_matrix = self._ratings.A
 
     def _predict(self, user_item):  # noqa: D102
         preds = []
+        relevant_idxs_cache = {}
         for user_id, item_id, _ in user_item:
             if self._user_based:
-                relevant_idxs = nlargest_indices(self._neighborhood_size,
-                                                 self._similarity_matrix[user_id])
+                if user_id not in relevant_idxs_cache:
+                    relevant_idxs_cache[user_id] = nlargest_indices(
+                        self._neighborhood_size, self._similarity_matrix[user_id])
+                relevant_idxs = relevant_idxs_cache[user_id]
                 similarities = self._similarity_matrix[relevant_idxs, user_id]
                 ratings = self._ratings_matrix[relevant_idxs, item_id].ravel()
                 mean = self._means[user_id]
             else:
-                relevant_idxs = nlargest_indices(self._neighborhood_size,
-                                                 self._similarity_matrix[item_id])
+                if item_id not in relevant_idxs_cache:
+                    relevant_idxs_cache[item_id] = nlargest_indices(
+                        self._neighborhood_size, self._similarity_matrix[item_id])
+                relevant_idxs = relevant_idxs_cache[item_id]
                 similarities = self._similarity_matrix[relevant_idxs, item_id]
                 ratings = self._ratings_matrix.T[relevant_idxs, user_id].ravel()
                 mean = self._means[item_id]

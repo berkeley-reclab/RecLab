@@ -68,9 +68,10 @@ class LibFM(recommender.PredictRecommender):
                  two_way_reg=None,
                  init_stdev=0.1,
                  num_iter=100,
-                 seed=0):
+                 seed=0,
+                 **kwargs):
         """Create a LibFM recommender."""
-        super().__init__()
+        super().__init__(**kwargs)
         if bias_reg is None:
             bias_reg = reg
         if one_way_reg is None:
@@ -90,6 +91,7 @@ class LibFM(recommender.PredictRecommender):
                                  num_iter=num_iter,
                                  seed=seed)
         self._hyperparameters.update(locals())
+        self._has_xt = method in ('mcmc', 'als')
 
         # We only want the function arguments so remove class related objects.
         del self._hyperparameters['self']
@@ -101,8 +103,7 @@ class LibFM(recommender.PredictRecommender):
         rating_inputs = scipy.sparse.csr_matrix((0, self._num_features))
         # Each row of rating_outputs consists of the numerical value assigned to that interaction.
         rating_outputs = np.empty((0,))
-        # TODO: We need to add support for MCMC/ALS by adding has_xt here and for the test set.
-        self._train_data = wpyfm.Data(rating_inputs, rating_outputs)
+        self._train_data = wpyfm.Data(rating_inputs, rating_outputs, has_xt=self._has_xt)
 
     @property
     def name(self):  # noqa: D102
@@ -111,7 +112,7 @@ class LibFM(recommender.PredictRecommender):
     def reset(self, users=None, items=None, ratings=None):  # noqa: D102
         rating_inputs = scipy.sparse.csr_matrix((0, self._num_features))
         rating_outputs = np.empty((0,))
-        self._train_data = wpyfm.Data(rating_inputs, rating_outputs)
+        self._train_data = wpyfm.Data(rating_inputs, rating_outputs, has_xt=self._has_xt)
         super().reset(users, items, ratings)
 
     def update(self, users=None, items=None, ratings=None):  # noqa: D102
@@ -188,9 +189,12 @@ class LibFM(recommender.PredictRecommender):
 
         test_inputs = scipy.sparse.csr_matrix((data, row_col),
                                               shape=(len(user_item), self._num_features))
-        test_data = wpyfm.Data(test_inputs, np.zeros(test_inputs.shape[0]))
+        test_data = wpyfm.Data(test_inputs, np.zeros(test_inputs.shape[0]), has_xt=self._has_xt)
 
-        self._model.train(self._train_data)
+        if self._has_xt:
+            self._model.train(self._train_data, test=test_data)
+        else:
+            self._model.train(self._train_data)
         predictions = self._model.predict(test_data)
 
         return predictions

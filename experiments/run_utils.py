@@ -1,4 +1,5 @@
 """A utility module for running experiments."""
+import codecs
 import collections
 import copy
 import datetime
@@ -17,12 +18,15 @@ import tqdm.autonotebook
 
 # The random seed that defines the initial state of each environment.
 INIT_SEED = 0
+# The name of the file temporarily created for uploads to S3.
+TEMP_FILE_NAME = 'temp.out'
 
 
 def plot_ratings_mses(ratings,
                       predictions,
                       labels,
-                      num_init_ratings=None):
+                      summary_type='mean',
+                      num_init_ratings=None, threshold=10):
     """Plot the performance results for multiple recommenders.
 
     Parameters
@@ -40,29 +44,53 @@ def plot_ratings_mses(ratings,
         during RMSE plotting.
     labels : list of str
         The name of each recommender.
+    summary_type : str
+        Which time of summary statistics: either 'mean' for mean and std deviation
+        or 'median' for median and quartiles.
     num_init_ratings : int
         The number of ratings initially available to recommenders. If set to None
         the function will plot with an x-axis based on round number.
+    threshold: float
+        The threshold filtering on the predictions, predictions larger than it will be set to 0.
+        default is 10
 
     """
-    def get_stats(arr):
-        # Swap the trial and step axes.
-        arr = np.swapaxes(arr, 0, 1)
-        # Flatten the trial and user axes together.
-        arr = arr.reshape(arr.shape[0], -1)
-        # Compute the means and standard deviations of the means for each step.
-        means = arr.mean(axis=1)
-        # Use Bessel's correction here.
-        stds = arr.std(axis=1) / np.sqrt(arr.shape[1] - 1)
-        # Compute the 95% confidence intervals using the CLT.
-        upper_bounds = means + 2 * stds
-        lower_bounds = np.maximum(means - 2 * stds, 0)
-        return means, lower_bounds, upper_bounds
+    if summary_type == 'mean':
+        def get_stats(arr):
+            # Swap the trial and step axes.
+            arr = np.swapaxes(arr, 0, 1)
+            # Flatten the trial and user axes together.
+            arr = arr.reshape(arr.shape[0], -1)
+            # Compute the means and standard deviations of the means for each step.
+            means = arr.mean(axis=1)
+            # Use Bessel's correction here.
+            stds = arr.std(axis=1) / np.sqrt(arr.shape[1] - 1)
+            # Compute the 95% confidence intervals using the CLT.
+            upper_bounds = means + 2 * stds
+            lower_bounds = np.maximum(means - 2 * stds, 0)
+            return means, lower_bounds, upper_bounds
+    elif summary_type == 'median':
+        def get_stats(arr):
+            # Swap the trial and step axes.
+            arr = np.swapaxes(arr, 0, 1)
+            # Flatten the trial and user axes together.
+            arr = arr.reshape(arr.shape[0], -1)
+            # Compute the medians and quartiles of the means for each step.
+            meds = np.median(arr, axis=1)
+            # Compute the 95% confidence intervals using the CLT.
+            upper_bounds = np.quantile(arr, 0.75, axis=1)
+            lower_bounds = np.quantile(arr, 0.25, axis=1)
+            return meds, lower_bounds, upper_bounds
+    else:
+        assert False, "Invalid summary_type"
 
     if num_init_ratings is not None:
         x_vals = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])
     else:
         x_vals = np.arange(ratings.shape[2])
+
+    # Setting the predictions for a user/item that has no ratings in the training data to 0.
+    predictions[predictions > threshold] = 0
 
     plt.figure(figsize=[9, 4])
     plt.subplot(1, 2, 1)
@@ -106,15 +134,15 @@ def plot_regret(ratings,
     labels : list of str
         The name of each recommender. Default label for the perfect recommender is 'perfect'.
     perfect_ratings : np.ndarray, can be none if labels contains 'perfect'
-        The array of all ratings made for the perfect recommenders thoughout all trials. ratings[j, k, l]
-        corresponds to the rating made by the l-th online user during the k-th step of the
-        j-th trial for the perfect recommender.
+        The array of all ratings made for the perfect recommenders thoughout all trials.
+        ratings[j, k, l] corresponds to the rating made by the l-th online user during
+        the k-th step of the j-th trial for the perfect recommender.
     num_init_ratings : int
         The number of ratings initially available to recommenders. If set to None
         the function will plot with an x-axis based on round number.
 
     """
-    if perfect_ratings == None:
+    if perfect_ratings is None:
         if 'perfect' in labels:
             idx = labels.index('perfert')
             perfect_ratings = ratings[idx]
@@ -127,7 +155,7 @@ def plot_regret(ratings,
         arr = np.swapaxes(arr, 0, 1)
         # Flatten the trial and user axes together.
         arr = arr.reshape(arr.shape[0], -1)
-        #compute the commulative regret
+        # Compute the commulative regret.
         arr = arr.cumsum(axis=1)
         # Compute the means and standard deviations of the means for each step.
         means = arr.mean(axis=1)
@@ -145,11 +173,11 @@ def plot_regret(ratings,
 
     plt.figure(figsize=[5, 4])
     for recommender_ratings, label in zip(ratings, labels):
-        #plot the regret for the recommenders that are not perfect
+        # Plot the regret for the recommenders that are not perfect.
         if label != 'perfect':
-            regrets = perfect_ratings  - recommender_ratings
+            regrets = perfect_ratings - recommender_ratings
             mean_regrets, lower_bounds, upper_bounds = get_regret_stats(regrets)
-            #plotting the regret over steps and correct the associated intervals.
+            # Plotting the regret over steps and correct the associated intervals.
             plt.plot(x_vals, mean_regrets, label=label)
             plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
     plt.xlabel('# ratings')
@@ -247,6 +275,12 @@ def run_env_experiment(environments,
     all_dense_predictions = []
     for env_name, environment in zip(environment_names, environments):
         print('Started experiments on environment:', env_name)
+        initial_density, final_density, good_item_density = compute_experiment_density(len_trial,
+                                                                                       environment)
+        print('\tInitial density: {}%, Final density: {}%, '.format(100 * initial_density,
+                                                                    100 * final_density) +
+              'Good item density: {}%'.format(100 * good_item_density))
+
         all_ratings.append([])
         all_predictions.append([])
         all_dense_ratings.append([])
@@ -323,7 +357,7 @@ def run_trial(env,
 
     """
     if not overwrite and s3_dir_exists(bucket, dir_name):
-        print('Loading past results from S3.')
+        print('Loading past results from S3 at directory:', dir_name)
         results = s3_load_trial(bucket, dir_name)
         return results[1:-1]
 
@@ -336,42 +370,45 @@ def run_trial(env,
     all_predictions = []
     all_dense_ratings = []
     all_dense_predictions = []
+    all_recs = []
+    all_online_users = []
     all_env_snapshots = [copy.deepcopy(env)]
-    user_item = []
-    for i in range(len(env.users)):
-        for j in range(len(env.items)):
-            user_item.append((i, j, np.zeros(0)))
+    # We have a seperate variable for ratings.
+    all_env_snapshots[-1]._ratings = None
 
     # Now recommend items to users.
     for _ in tqdm.autonotebook.tqdm(range(len_trial)):
         online_users = env.online_users()
+        dense_predictions = rec.dense_predictions.flatten()
         recommendations, predictions = rec.recommend(online_users, num_recommendations=1)
+
         recommendations = recommendations.flatten()
         dense_ratings = np.clip(env.dense_ratings.flatten(), 1, 5)
         items, users, ratings, _ = env.step(recommendations)
+        rec.update(users, items, ratings)
 
         # Account for the case where the recommender doesn't predict ratings.
         if predictions is None:
             predictions = np.ones_like(ratings) * np.nan
             dense_predictions = np.ones_like(dense_ratings) * np.nan
-        else:
-            predictions = predictions.flatten()
-            dense_predictions = rec.predict(user_item)
 
         # Save all relevant info.
         all_ratings.append([rating for rating, _ in ratings.values()])
-        all_predictions.append(predictions)
+        all_predictions.append(predictions.flatten())
         all_dense_ratings.append(dense_ratings)
         all_dense_predictions.append(dense_predictions)
+        all_recs.append(recommendations)
+        all_online_users.append(online_users)
         all_env_snapshots.append(copy.deepcopy(env))
-
-        rec.update(users, items, ratings)
+        all_env_snapshots[-1]._ratings = None
 
     # Convert lists to numpy arrays
     all_ratings = np.array(all_ratings)
     all_predictions = np.array(all_predictions)
     all_dense_ratings = np.array(all_dense_ratings)
     all_dense_predictions = np.array(all_dense_predictions)
+    all_recs = np.array(all_recs)
+    all_online_users = np.array(all_online_users)
 
     # Save content to S3 if needed.
     if bucket is not None:
@@ -385,10 +422,49 @@ def run_trial(env,
                       all_predictions,
                       all_dense_ratings,
                       all_dense_predictions,
+                      all_recs,
+                      all_online_users,
                       all_env_snapshots)
 
     # TODO: We might want to return the env snapshots too.
     return all_ratings, all_predictions, all_dense_ratings, all_dense_predictions
+
+
+def compute_experiment_density(len_trial, environment, threshold=4):
+    """ Compute the rating density for the proposed experiment.
+
+    Parameters
+    ----------
+    len_trial : int
+        Length of trial.
+    environment : Environment
+        The environment to consider.
+    threshold : int
+        The threshold for a rating to be considered "good".
+
+    Returns
+    -------
+    initial_density : float
+        The initial rating matrix density.
+    final_density : float
+        The final rating matrix density.
+    good_item_density : float
+        The underlying density of good items in the environment.
+
+    """
+    # Initialize environment
+    get_env_dataset(environment)
+    total_num_ratings = len(environment.users) * len(environment.items)
+
+    initial_density = environment._num_init_ratings / total_num_ratings
+    num_ratings_per_it = len(environment._users) * environment._rating_frequency
+    final_num_ratings = environment._num_init_ratings + len_trial * num_ratings_per_it
+    final_density = final_num_ratings / total_num_ratings
+
+    num_good_ratings = np.sum(environment.dense_ratings > threshold)
+    good_item_density = num_good_ratings / total_num_ratings
+
+    return initial_density, final_density, good_item_density
 
 
 class ModelTuner:
@@ -506,7 +582,7 @@ class ModelTuner:
 
             mse = np.mean((predicted_ratings - true_ratings)**2)
             if self.verbose:
-                print('mse={}'.format(mse))
+                print('mse={}, rmse={}'.format(mse, np.sqrt(mse)))
             mses.append(mse)
 
         if self.verbose:
@@ -616,6 +692,8 @@ def s3_save_trial(bucket,
                   predictions,
                   dense_ratings,
                   dense_predictions,
+                  recommendations,
+                  online_users,
                   env_snapshots):
     """Save a trial in s3 within the given directory."""
     info = {
@@ -632,6 +710,8 @@ def s3_save_trial(bucket,
     serialize_and_put(bucket, dir_name, 'predictions', predictions)
     serialize_and_put(bucket, dir_name, 'dense_ratings', dense_ratings)
     serialize_and_put(bucket, dir_name, 'dense_predictions', dense_predictions)
+    serialize_and_put(bucket, dir_name, 'recommendations', recommendations)
+    serialize_and_put(bucket, dir_name, 'online_users', online_users)
     serialize_and_put(bucket, dir_name, 'env_snapshots', env_snapshots)
 
 
@@ -643,13 +723,17 @@ def s3_load_trial(bucket, dir_name):
             file_name = file_name + '.json'
         else:
             file_name = file_name + '.pickle'
-        with io.BytesIO() as stream:
-            bucket.download_fileobj(Key=file_name, Fileobj=stream)
-            serialized_obj = stream.getvalue()
-        if use_json:
-            obj = json.loads(serialized_obj)
-        else:
-            obj = pickle.loads(serialized_obj)
+
+        with open(TEMP_FILE_NAME, 'wb') as temp_file:
+            bucket.download_fileobj(Key=file_name, Fileobj=temp_file)
+
+        with open(TEMP_FILE_NAME, 'rb') as temp_file:
+            if use_json:
+                obj = json.load(temp_file)
+            else:
+                obj = pickle.load(temp_file)
+        os.remove(TEMP_FILE_NAME)
+
         return obj
 
     rec_hyperparameters = get_and_unserialize('rec_hyperparameters', use_json=True)
@@ -666,18 +750,28 @@ def s3_load_trial(bucket, dir_name):
 def serialize_and_put(bucket, dir_name, name, obj, use_json=False):
     """Serialize an object and upload it to S3."""
     file_name = os.path.join(dir_name, name)
-    if use_json:
-        serialized_obj = json.dumps(obj, sort_keys=True, indent=4)
-        file_name = file_name + '.json'
-    else:
-        serialized_obj = pickle.dumps(obj, protocol=4)
-        file_name = file_name + '.pickle'
-    bucket.put_object(Key=file_name, Body=serialized_obj)
+    with open(TEMP_FILE_NAME, 'wb') as temp_file:
+        if use_json:
+            json.dump(obj, codecs.getwriter('utf-8')(temp_file),
+                      sort_keys=True, indent=4)
+            file_name = file_name + '.json'
+        else:
+            pickle.dump(obj, temp_file, protocol=4)
+            file_name = file_name + '.pickle'
+
+    with open(TEMP_FILE_NAME, 'rb') as temp_file:
+        bucket.upload_fileobj(Key=file_name, Fileobj=temp_file)
+
+    os.remove(TEMP_FILE_NAME)
 
 
 def put_dataframe(bucket, dir_name, name, dataframe):
     """Upload a dataframe to S3 as a csv file."""
     with io.StringIO() as stream:
         dataframe.to_csv(stream)
+        csv_str = stream.getvalue()
+
+    with io.BytesIO() as stream:
+        stream.write(csv_str.encode('utf-8'))
         file_name = os.path.join(dir_name, name + '.csv')
-        bucket.put_object(Key=file_name, Body=stream.getvalue())
+        bucket.upload_fileobj(Key=file_name, Fileobj=stream)

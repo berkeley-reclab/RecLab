@@ -32,7 +32,7 @@ environment_name = TOPICS_STATIC['name']
 env = Topics(**TOPICS_STATIC['params'], **TOPICS_STATIC['optional_params'])
 
 # Recommender setup
-recommender_name = 'UserKnn'
+recommender_name = 'ItemKnn'
 recommender_class = KNNRecommender
 
 
@@ -43,7 +43,7 @@ starting_data = get_env_dataset(env)
 # ====Step 6====
 # Recommender tuning setup
 n_fold = 5
-default_params = dict(user_based=True)
+default_params = dict(user_based=False)
 tuner = ModelTuner(starting_data,
                    default_params,
                    recommender_class,

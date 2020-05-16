@@ -86,9 +86,11 @@ class LatentFactorBehavior(environment.DictEnvironment):
                    self._item_biases[np.newaxis, :] + self._offset)
         # Compute the boredom penalties.
         item_norms = np.linalg.norm(self._item_factors, axis=1)
-        penalties = (self._item_factors @ self._item_factors.T /
-                     item_norms[:, np.newaxis] / item_norms[np.newaxis, :])
-        penalties = np.max(penalties - self._boredom_penalty, 0)
+        normalized_items = self._item_factors / item_norms[:, np.newaxis]
+        similarities = normalized_items @ normalized_items.T 
+        similarities -= self._boredom_threshold
+        similarities[similarities<0] = 0
+        penalties = self._boredom_penalty * similarities
         for user_id in range(self._num_users):
             for item_id in self._user_histories[user_id]:
                 if item_id is not None:
@@ -118,7 +120,8 @@ class LatentFactorBehavior(environment.DictEnvironment):
         # Computing boredom penalty
         recent_item_factors = [self._item_factors[item] for item in self._user_histories[user_id]]
         boredom_penalty = 0
-        for item_factor in recent_item_factors:
+        for item_id_hist in self._user_histories[user_id]:
+            item_factor = self._item_factors[item_id_hist]
             if item_factor is not None:
                 similarity = ((self._item_factors[item_id] @ item_factor)
                               / np.linalg.norm(item_factor)

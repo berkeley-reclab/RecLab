@@ -84,15 +84,23 @@ tuner.evaluate_grid(num_two_way_factors=num_two_ways,
 num_iter = 200
 
 # Tune the performance independent hyperparameters.
-init_stdevs = np.linspace(0.01, 10, 10).tolist()
+init_stdevs = [1.0]
+regs = np.linspace(0.01, 0.1, 10).tolist()
+lrs = np.linspace(1e-3, 1e-2, 5).tolist()
 num_iters = [num_iter]
 num_two_ways = [num_two_way_factors]
-tuner.evaluate_grid(num_two_way_factors=num_two_ways,
+results = tuner.evaluate_grid(num_two_way_factors=num_two_ways,
                     num_iter=num_iters,
-                    init_stdev=init_stdevs)
+                    init_stdev=init_stdevs,
+                    reg=regs,
+                    learning_rate=lrs
+                    )
 
-# Set init_stdev.
+# Set parameters based on tuning
 init_stdev = 1.0
+best_params = results[results['average_mse'] == results['average_mse'].min()]
+reg = best_params['reg']
+lr = best_params['lr']
 
 # ====Step 7====
 recommender = recommender_class(num_iter=num_iter,

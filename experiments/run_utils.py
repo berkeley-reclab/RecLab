@@ -139,7 +139,7 @@ def plot_ratings_mses_s3(labels,
 
     def squared_diff(ratings, predictions):
         # Setting the predictions for a user/item that has no ratings in the training data to 0.
-        predictions[predictions > threshold] = 0
+        predictions[0][predictions[0] > threshold] = 0
         return (ratings[0] - predictions[0]) ** 2
 
     if num_init_ratings is not None and num_users is not None:
@@ -155,7 +155,7 @@ def plot_ratings_mses_s3(labels,
                                                              env_name=env_name,
                                                              rec_names=[label],
                                                              seeds=seeds,
-                                                             arr_name=rating_name,
+                                                             use_ratings=True,
                                                              bound_zero=True,
                                                              load_dense=plot_dense)
         plt.plot(x_vals, means, label=label)
@@ -172,7 +172,8 @@ def plot_ratings_mses_s3(labels,
                                                            rec_names=[label],
                                                            seeds=seeds,
                                                            arr_func=squared_diff,
-                                                           bound_zero=True)
+                                                           bound_zero=True,
+                                                           load_dense=plot_dense)
         # Transform the MSE into the RMSE and correct the associated intervals.
         rmse = np.sqrt(mse)
         lower_bounds = np.sqrt(lower_bounds)
@@ -336,15 +337,18 @@ def compute_stats_s3(bucket,
                      env_name,
                      rec_names,
                      seeds,
-                     arr_name=None,
+                     use_ratings=True,
                      arr_func=None,
                      bound_zero=False,
                      load_dense=False):
     """Compute the mean/median and lower and upper bounds of an experiment result stored in S3."""
     if arr_func is None:
         assert len(rec_names) == 1
-        def arr_func(**kwargs):
-            return kwargs[arr_name][0]
+        def arr_func(ratings, predictions):
+            if use_ratings:
+                return ratings[0]
+            else:
+                return predictions[0]
 
     def get_mean_func(preprocess_func):
         def compute_means(**kwargs):

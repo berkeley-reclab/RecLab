@@ -136,19 +136,11 @@ def plot_ratings_mses_s3(labels,
 
     """
     bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
-    if plot_dense:
-        rating_name = 'dense_ratings'
-        prediction_name = 'dense_predictions'
-    else:
-        rating_name = 'ratings'
-        prediction_name = 'predictions'
 
-    def squared_diff(**kwargs):
+    def squared_diff(ratings, predictions):
         # Setting the predictions for a user/item that has no ratings in the training data to 0.
-        predictions = kwargs[prediction_name][0]
         predictions[predictions > threshold] = 0
-        print(predictions)
-        return (kwargs[rating_name][0] - predictions) ** 2
+        return (ratings[0] - predictions[0]) ** 2
 
     if num_init_ratings is not None and num_users is not None:
         x_vals = num_init_ratings + num_users * np.arange(len_trial)
@@ -164,7 +156,8 @@ def plot_ratings_mses_s3(labels,
                                                              rec_names=[label],
                                                              seeds=seeds,
                                                              arr_name=rating_name,
-                                                             bound_zero=True)
+                                                             bound_zero=True,
+                                                             load_dense=plot_dense)
         plt.plot(x_vals, means, label=label)
         plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
     plt.xlabel('# ratings')
@@ -285,13 +278,8 @@ def plot_regret_s3(labels,
 
     """
     bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
-    if plot_dense:
-        rating_name = 'dense_ratings'
-    else:
-        rating_name = 'ratings'
-
-    def regret(**kwargs):
-        return np.cumsum(kwargs[rating_name][0] - kwargs[rating_name][1], axis=0)
+    def regret(ratings, predictions):
+        return np.cumsum(ratings[0] - ratings[1], axis=0)
 
     if num_init_ratings is not None and num_users is not None:
         x_vals = num_init_ratings + num_users * np.arange(len_trial)
@@ -305,7 +293,8 @@ def plot_regret_s3(labels,
                                                                     env_name=env_name,
                                                                     rec_names=[perfect_name, label],
                                                                     seeds=seeds,
-                                                                    arr_func=regret)
+                                                                    arr_func=regret,
+                                                                    load_dense=plot_dense)
         # Plotting the regret over steps and correct the associated intervals.
         plt.plot(x_vals, mean_regrets, label=label)
         plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
@@ -349,7 +338,8 @@ def compute_stats_s3(bucket,
                      seeds,
                      arr_name=None,
                      arr_func=None,
-                     bound_zero=False):
+                     bound_zero=False,
+                     load_dense=False):
     """Compute the mean/median and lower and upper bounds of an experiment result stored in S3."""
     if arr_func is None:
         assert len(rec_names) == 1
@@ -368,7 +358,8 @@ def compute_stats_s3(bucket,
                                        env_name,
                                        rec_names,
                                        seeds,
-                                       get_mean_func(arr_func))
+                                       get_mean_func(arr_func),
+                                       load_dense=load_dense)
     means, lengths = zip(*results)
     means = np.average(means, axis=0, weights=lengths)
 
@@ -378,7 +369,8 @@ def compute_stats_s3(bucket,
                                        env_name,
                                        rec_names,
                                        seeds,
-                                       get_mean_func(diff_func))
+                                       get_mean_func(diff_func),
+                                       load_dense=load_dense)
     variances, lengths = zip(*results)
     variances = np.average(variances, axis=0, weights=lengths)
 
@@ -878,7 +870,8 @@ def compute_across_trials_s3(bucket,
                              env_name,
                              rec_names,
                              seeds,
-                             func):
+                             func,
+                             load_dense=False):
     """Apply func to all the trials of an experiment and return a list of func's return values.
 
     This function loads one trial at a time to prevent memory issues.
@@ -887,20 +880,19 @@ def compute_across_trials_s3(bucket,
     for seed in seeds:
         all_ratings = []
         all_predictions = []
-        all_dense_ratings = []
-        all_dense_predictions = []
         for rec_name in rec_names:
             dir_name = s3_experiment_dir_name(data_dir, env_name, rec_name, seed)
             (_, ratings, predictions,
-             dense_ratings, dense_predictions, _) = s3_load_trial(bucket, dir_name)
+             dense_ratings, dense_predictions, _) = s3_load_trial(bucket,
+                                                                  dir_name,
+                                                                  load_dense=load_dense)
+            if load_dense:
+                ratings = dense_ratings
+                predictions = dense_predictions
             all_ratings.append(ratings)
             all_predictions.append(predictions)
-            all_dense_ratings.append(dense_ratings)
-            all_dense_predictions.append(dense_predictions)
         results.append(func(ratings=all_ratings,
-                            predictions=all_predictions,
-                            dense_ratings=all_dense_ratings,
-                            dense_predictions=all_dense_predictions))
+                            predictions=all_predictions))
 
         # Make these variables out of scope so they can be garbage collected.
         ratings = None
@@ -909,8 +901,6 @@ def compute_across_trials_s3(bucket,
         dense_predictions = None
         all_ratings = None
         all_predictions = None
-        all_dense_ratings = None
-        all_dense_predictions = None
 
     return results
 
@@ -968,7 +958,7 @@ def s3_save_trial(bucket,
     serialize_and_put(bucket, dir_name, 'env_snapshots', env_snapshots)
 
 
-def s3_load_trial(bucket, dir_name):
+def s3_load_trial(bucket, dir_name, load_dense=True):
     """Load a trial saved in a given directory within S3."""
     def get_and_unserialize(name, use_json=False):
         file_name = os.path.join(dir_name, name)
@@ -992,8 +982,12 @@ def s3_load_trial(bucket, dir_name):
     rec_hyperparameters = get_and_unserialize('rec_hyperparameters', use_json=True)
     ratings = get_and_unserialize('ratings')
     predictions = get_and_unserialize('predictions')
-    dense_ratings = get_and_unserialize('dense_ratings')
-    dense_predictions = get_and_unserialize('dense_predictions')
+    if load_dense:
+        dense_ratings = get_and_unserialize('dense_ratings')
+        dense_predictions = get_and_unserialize('dense_predictions')
+    else:
+        dense_ratings = None
+        dense_predictions = None
     env_snapshots = get_and_unserialize('env_snapshots')
 
     return (rec_hyperparameters, ratings, predictions,

@@ -1,4 +1,4 @@
-""" Default parameters to experimental environments """
+"""Default parameters to experimental environments."""
 import math
 
 def get_len_trial(ENV_PARAMS):
@@ -14,9 +14,9 @@ def get_len_trial(ENV_PARAMS):
 TOPICS_STATIC = {
     'name': 'topics_static',
     'params': {
-            'num_topics': 19,
-            'num_users': 1000,
-            'num_items': 1700,
+        'num_topics': 19,
+        'num_users': 1000,
+        'num_items': 1700,
     },
     'optional_params': {
         'rating_frequency': 0.2,
@@ -35,9 +35,9 @@ TOPICS_STATIC = {
 TOPICS_DYNAMIC = {
     'name': 'topics_dynamic',
     'params': {
-            'num_topics': 19,
-            'num_users': 1000,
-            'num_items': 1700,
+        'num_topics': 19,
+        'num_users': 1000,
+        'num_items': 1700,
     },
     'optional_params': {
         'rating_frequency': 0.2,
@@ -57,9 +57,9 @@ TOPICS_DYNAMIC = {
 LATENT_STATIC = {
     'name': 'latent_static',
     'params': {
-            'latent_dim': 100,
-            'num_users': 943,
-            'num_items': 1682,
+        'latent_dim': 100,
+        'num_users': 943,
+        'num_items': 1682,
     },
     'optional_params': {
         'rating_frequency': 0.2,
@@ -78,17 +78,17 @@ LATENT_STATIC = {
 LATENT_DYNAMIC = {
     'name': 'latent_dynamic',
     'params': {
-            'latent_dim': 100,
-            'num_users': 943,
-            'num_items': 1682,
+        'latent_dim': 100,
+        'num_users': 943,
+        'num_items': 1682,
     },
     'optional_params': {
         'rating_frequency': 0.2,
         'num_init_ratings': 100000,
         'noise': 0.5,
         'memory_length': 5,
-        'boredom_threshold'	: 0.,
-        'boredom_penalty': 2,
+        'boredom_threshold': 2,
+        'boredom_penalty': 1,
     },
     'misc': {
         'num_final_ratings': 200000,
@@ -99,8 +99,8 @@ LATENT_DYNAMIC = {
 SCHMIT = {
     'name': 'schmit',
     'params': {
-            'num_users': 1000,
-            'num_items': 1700,
+        'num_users': 1000,
+        'num_items': 1700,
     },
     'optional_params': {
         'rating_frequency': 0.2,
@@ -117,9 +117,9 @@ SCHMIT = {
 ENGELHARDT = {
     'name': 'engelhardt',
     'params': {
-            'num_topics': 19,
-            'num_users': 1000,
-            'num_items': 1700,
+        'num_topics': 19,
+        'num_users': 1000,
+        'num_items': 1700,
     },
     'optional_params': {
         'rating_frequency': 0.2,
@@ -136,7 +136,7 @@ ENGELHARDT = {
 ML_100K = {
     'name': 'ml_100k',
     'params': {
-            'name': 'ml-100k',
+        'name': 'ml-100k',
     },
     'optional_params': {
         'latent_dim': 100,
@@ -144,7 +144,7 @@ ML_100K = {
         'num_init_ratings': 100000,
         'memory_length': 0,
         'noise': 0.5,
-        'boredom_threshold'	: 0,
+        'boredom_threshold': 0,
         'boredom_penalty': 0,
     },
     'misc': {
@@ -156,9 +156,9 @@ ML_100K = {
 TOPICS_STATIC_SMALL = {
     'name': 'topics_static_small',
     'params': {
-            'num_topics': 5,
-            'num_users': 100,
-            'num_items': 170,
+        'num_topics': 5,
+        'num_users': 100,
+        'num_items': 170,
     },
     'optional_params': {
         'rating_frequency': 0.2,
@@ -174,12 +174,13 @@ TOPICS_STATIC_SMALL = {
         'sampling': 'uniform',
     },
 }
+
 TOPICS_DYNAMIC_SMALL = {
     'name': 'topics_dynamic_small',
     'params': {
-            'num_topics': 5,
-            'num_users': 100,
-            'num_items': 170,
+        'num_topics': 5,
+        'num_users': 100,
+        'num_items': 170,
     },
     'optional_params': {
         'rating_frequency': 0.2,
@@ -199,9 +200,9 @@ TOPICS_DYNAMIC_SMALL = {
 LATENT_STATIC_SMALL = {
     'name': 'latent_static_small',
     'params': {
-            'latent_dim': 32,
-            'num_users': 100,
-            'num_items': 170,
+        'latent_dim': 32,
+        'num_users': 100,
+        'num_items': 170,
     },
     'optional_params': {
         'rating_frequency': 0.2,
@@ -220,17 +221,17 @@ LATENT_STATIC_SMALL = {
 LATENT_DYNAMIC_SMALL = {
     'name': 'latent_dynamic_small',
     'params': {
-            'latent_dim': 32,
-            'num_users': 100,
-            'num_items': 170,
+        'latent_dim': 32,
+        'num_users': 100,
+        'num_items': 170,
     },
     'optional_params': {
         'rating_frequency': 0.2,
         'num_init_ratings': 1000,
         'noise': 0.5,
         'memory_length': 5,
-        'boredom_threshold'	: 0.,
-        'boredom_penalty': 2,
+        'boredom_threshold': 2,
+        'boredom_penalty': 1,
     },
     'misc': {
         'num_final_ratings': 2000,
@@ -241,8 +242,8 @@ LATENT_DYNAMIC_SMALL = {
 SCHMIT_SMALL = {
     'name': 'schmit_small',
     'params': {
-            'num_users': 100,
-            'num_items': 170,
+        'num_users': 100,
+        'num_items': 170,
     },
     'optional_params': {
         'rating_frequency': 0.2,
@@ -259,9 +260,9 @@ SCHMIT_SMALL = {
 ENGELHARDT_SMALL = {
     'name': 'engelhardt_small',
     'params': {
-            'num_topics': 5,
-            'num_users': 100,
-            'num_items': 170,
+        'num_topics': 5,
+        'num_users': 100,
+        'num_items': 170,
     },
     'optional_params': {
         'rating_frequency': 0.2,
@@ -277,8 +278,8 @@ ENGELHARDT_SMALL = {
 FIXED_SMALL = {
     'name': 'fixed_small',
     'params': {
-            'num_users': 100,
-            'num_items': 170,
+        'num_users': 100,
+        'num_items': 170,
     },
     'optional_params': {
         'rating_frequency': 0.2,
@@ -292,11 +293,11 @@ FIXED_SMALL = {
 ML_100K_SMALL = {
     'name': 'ml_100k_small',
     'params': {
-            'name': 'ml-100k',
+        'name': 'ml-100k',
     },
     'optional_params': {
-        'max_num_users' : 100,
-        'max_num_items' : 170,
+        'max_num_users': 100,
+        'max_num_items': 170,
         'latent_dim': 32,
         'rating_frequency': 0.2,
         'num_init_ratings': 1000,

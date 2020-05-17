@@ -30,13 +30,17 @@ class Schmit(environment.DictEnvironment):
         Rank of user preferences.
     sigma : float
         Variance of the Gaussian noise added to determine user-item value.
+    user_dist_choice : str
+        The choice of user distribution for selecting online users. By default, the subset of
+        online users is chosen from a uniform distribution. Currently supports normal and lognormal.
 
     """
 
     def __init__(self, num_users, num_items, rating_frequency=0.2,
-                 num_init_ratings=0, rank=10, sigma=0.2):
+                 num_init_ratings=0, rank=10, sigma=0.2,
+                 user_dist_choice='uniform'):
         """Create an environment."""
-        super().__init__(rating_frequency, num_init_ratings)
+        super().__init__(rating_frequency, num_init_ratings, 0, user_dist_choice)
         self._num_users = num_users
         self._num_items = num_items
 

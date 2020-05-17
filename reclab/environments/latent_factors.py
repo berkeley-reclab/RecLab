@@ -49,15 +49,18 @@ class LatentFactorBehavior(environment.DictEnvironment):
         The factor on the penalty on the rating when a user is bored. The penalty
         is the average of the values which exceed the boredom_threshold, and the decrease
         in rating is the penalty multiplied by this factor.
+    user_dist_choice : str
+        The choice of user distribution for selecting online users. By default, the subset of
+        online users is chosen from a uniform distribution. Currently supports normal and lognormal.
 
     """
 
     def __init__(self, latent_dim, num_users, num_items,
                  rating_frequency=0.02, num_init_ratings=0,
                  noise=0.0, memory_length=0, affinity_change=0.0,
-                 boredom_threshold=0, boredom_penalty=0.0):
+                 boredom_threshold=0, boredom_penalty=0.0, user_dist_choice='uniform'):
         """Create a Latent Factor environment."""
-        super().__init__(rating_frequency, num_init_ratings, memory_length)
+        super().__init__(rating_frequency, num_init_ratings, memory_length, user_dist_choice)
         self._latent_dim = latent_dim
         self._num_users = num_users
         self._num_items = num_items
@@ -83,9 +86,11 @@ class LatentFactorBehavior(environment.DictEnvironment):
                    self._item_biases[np.newaxis, :] + self._offset)
         # Compute the boredom penalties.
         item_norms = np.linalg.norm(self._item_factors, axis=1)
-        penalties = (self._item_factors @ self._item_factors.T /
-                     item_norms[:, np.newaxis] / item_norms[np.newaxis, :])
-        penalties = np.max(penalties - self._boredom_penalty, 0)
+        normalized_items = self._item_factors / item_norms[:, np.newaxis]
+        similarities = normalized_items @ normalized_items.T 
+        similarities -= self._boredom_threshold
+        similarities[similarities<0] = 0
+        penalties = self._boredom_penalty * similarities
         for user_id in range(self._num_users):
             for item_id in self._user_histories[user_id]:
                 if item_id is not None:
@@ -115,7 +120,8 @@ class LatentFactorBehavior(environment.DictEnvironment):
         # Computing boredom penalty
         recent_item_factors = [self._item_factors[item] for item in self._user_histories[user_id]]
         boredom_penalty = 0
-        for item_factor in recent_item_factors:
+        for item_id_hist in self._user_histories[user_id]:
+            item_factor = self._item_factors[item_id_hist]
             if item_factor is not None:
                 similarity = ((self._item_factors[item_id] @ item_factor)
                               / np.linalg.norm(item_factor)

@@ -6,11 +6,11 @@ import numpy as np
 
 sys.path.append('../')
 sys.path.append('../../')
+from env_defaults import TOPICS_STATIC
 from run_utils import get_env_dataset, run_env_experiment
 from run_utils import ModelTuner
 from reclab.environments import Topics
 from reclab.recommenders import KNNRecommender
-
 
 def main():
     """Reproduce the experiment."""

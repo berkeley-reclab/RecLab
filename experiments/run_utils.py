@@ -1008,16 +1008,18 @@ def s3_load_trial(bucket, dir_name, load_dense=True):
 
         return obj
 
-    rec_hyperparameters = get_and_unserialize('rec_hyperparameters', use_json=True)
     ratings = get_and_unserialize('ratings')
     predictions = get_and_unserialize('predictions')
     if load_dense:
+        rec_hyperparameters = get_and_unserialize('rec_hyperparameters', use_json=True)
         dense_ratings = get_and_unserialize('dense_ratings')
         dense_predictions = get_and_unserialize('dense_predictions')
+        env_snapshots = get_and_unserialize('env_snapshots')
     else:
+        rec_hyperparameters = None
         dense_ratings = None
         dense_predictions = None
-    env_snapshots = get_and_unserialize('env_snapshots')
+        env_snapshots = None
 
     return (rec_hyperparameters, ratings, predictions,
             dense_ratings, dense_predictions, env_snapshots)

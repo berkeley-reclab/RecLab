@@ -305,7 +305,6 @@ def plot_regret_s3(labels,
     plt.tight_layout()
     plt.show()
 
-
 def compute_stats(arr, bound_zero=False, use_median=False):
     """Compute the mean/median and lower and upper bounds of an experiment result."""
     # Swap the trial and step axes (trial, step, user --> step, trial, user)
@@ -326,7 +325,7 @@ def compute_stats(arr, bound_zero=False, use_median=False):
         upper_bounds = centers + 2 * stds
         lower_bounds = centers - 2 * stds
     if bound_zero:
-        print(lower_bounds)
+        # print(lower_bounds)
         lower_bounds = np.maximum(lower_bounds, 0)
 
     return centers, lower_bounds, upper_bounds
@@ -719,7 +718,8 @@ class ModelTuner:
                  data_dir=None,
                  environment_name=None,
                  recommender_name=None,
-                 overwrite=False):
+                 overwrite=False,
+                 use_mse=True):
         """Create a model tuner."""
         self.users, self.items, self.ratings = data
         self.default_params = default_params
@@ -733,6 +733,7 @@ class ModelTuner:
         self.recommender_name = recommender_name
         self.overwrite = overwrite
         self.num_evaluations = 0
+        self.use_mse = use_mse
 
         if bucket_name is not None:
             if self.data_dir is None:
@@ -761,7 +762,7 @@ class ModelTuner:
         defaults = {key: self.default_params[key] for key in self.default_params.keys()
                     if key not in params.keys()}
         recommender = self.recommender_class(**defaults, **params)
-        mses = []
+        metrics = []
         if self.verbose:
             print('Evaluating:', params)
         for i, fold in enumerate(self.train_test_folds):
@@ -784,25 +785,49 @@ class ModelTuner:
                 true_r, context = self.ratings[(user, item)]
                 ratings_to_predict.append((user, item, context))
                 true_ratings.append(true_r)
-
             predicted_ratings = recommender.predict(ratings_to_predict)
 
-            mse = np.mean((predicted_ratings - true_ratings)**2)
-            if self.verbose:
-                print('mse={}, rmse={}'.format(mse, np.sqrt(mse)))
-            mses.append(mse)
+            if self.use_mse:
+                mse = np.mean((predicted_ratings - true_ratings)**2)
+                if self.verbose:
+                    print('mse={}, rmse={}'.format(mse, np.sqrt(mse)))
+                metrics.append(mse)
+            else:
+                # Note that this is not quite a traditional NDCG
+                # normally we would consider users individually
+                # this computation lumps all predictions together.
+                def get_ranks(array):
+                    array = np.array(array)
+                    temp = array.argsort()
+                    ranks = np.empty_like(temp)
+                    ranks[temp] = np.arange(len(array))
+                    return len(ranks) - ranks
+                def get_dcg(ranks, relevances, cutoff=5):
+                    dcg = 0
+                    for rank, relevance in zip(ranks, relevances):
+                        if rank <= cutoff:
+                            dcg += relevance / np.log2(rank+1)
+                    return dcg
+                cutoff = int(len(true_ratings) / 5)
+                idcg = get_dcg(get_ranks(true_ratings), true_ratings, cutoff=cutoff)
+                dcg = get_dcg(get_ranks(predicted_ratings), true_ratings, cutoff=cutoff)
+                ndcg = dcg / idcg
+                if self.verbose:
+                    print('dcg={}, ndcg={}'.format(dcg, ndcg))
+                metrics.append(ndcg)
+            
 
         if self.verbose:
-            print('Average MSE:', np.mean(mses))
-        return np.array(mses)
+            print('Average Metric:', np.mean(metrics))
+        return np.array(metrics)
 
     def evaluate_grid(self, **params):
         """Train over a grid of parameters."""
         def recurse_grid(fixed_params, grid_params):
             if len(grid_params) == 0:
                 result = fixed_params
-                result['mse'] = self.evaluate(fixed_params)
-                result['average_mse'] = np.mean(result['mse'])
+                result['metric'] = self.evaluate(fixed_params)
+                result['average_metric'] = np.mean(result['metric'])
                 return [result]
 
             curr_param, curr_values = list(grid_params.items())[0]

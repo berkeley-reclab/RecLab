@@ -99,8 +99,8 @@ results = tuner.evaluate_grid(num_two_way_factors=num_two_ways,
 # Set parameters based on tuning
 init_stdev = 1.0
 best_params = results[results['average_mse'] == results['average_mse'].min()]
-reg = best_params['reg']
-lr = best_params['lr']
+reg = float(best_params['reg'])
+lr = float(best_params['learning_rate'])
 
 # ====Step 7====
 recommender = recommender_class(num_iter=num_iter,

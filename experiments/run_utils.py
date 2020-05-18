@@ -28,7 +28,8 @@ def plot_ratings_mses(ratings,
                       labels,
                       use_median=False,
                       num_init_ratings=None,
-                      threshold=10):
+                      threshold=10,
+                      title=['', '']):
     """Plot the performance results for multiple recommenders.
 
     Parameters
@@ -75,6 +76,7 @@ def plot_ratings_mses(ratings,
         plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
     plt.xlabel('# ratings')
     plt.ylabel('Mean Rating')
+    plt.title(title[0])
     plt.legend()
 
     plt.subplot(1, 2, 2)
@@ -91,6 +93,7 @@ def plot_ratings_mses(ratings,
         plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
     plt.xlabel('# ratings')
     plt.ylabel('RMSE')
+    plt.title(title[1])
     plt.legend()
     plt.tight_layout()
     plt.show()
@@ -105,7 +108,8 @@ def plot_ratings_mses_s3(labels,
                          plot_dense=False,
                          num_users=None,
                          num_init_ratings=None,
-                         threshold=10):
+                         threshold=10,
+                         title=['', '']):
     """Plot the performance results for multiple recommenders using data stored in S3.
 
     Parameters
@@ -162,6 +166,7 @@ def plot_ratings_mses_s3(labels,
         plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
     plt.xlabel('# ratings')
     plt.ylabel('Mean Rating')
+    plt.title(title[0])
     plt.legend()
 
     plt.subplot(1, 2, 2)
@@ -182,6 +187,7 @@ def plot_ratings_mses_s3(labels,
         plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
     plt.xlabel('# ratings')
     plt.ylabel('RMSE')
+    plt.title(title[1])
     plt.legend()
     plt.tight_layout()
     plt.show()

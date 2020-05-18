@@ -1,7 +1,9 @@
-"""Default parameters to experimental environments."""
+""" Default parameters to experimental environments """
 import math
 
 def get_len_trial(ENV_PARAMS):
+    """Get length of trial based on the environment parameters.
+    """
     num_users = ENV_PARAMS['params']['num_users']
     num_items = ENV_PARAMS['params']['num_items']
     num_final_ratings = ENV_PARAMS['misc']['num_final_ratings']

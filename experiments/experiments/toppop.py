@@ -39,7 +39,7 @@ if len(sys.argv) > 2:
 else:
     n_trials = 10
     trial_seeds = [i for i in range(n_trials)]
-    len_trial = get_len_trial(ENV_PARAMS)
+len_trial = get_len_trial(ENV_PARAMS)
 
 # Environment setup
 environment_name = ENV_PARAMS['name']

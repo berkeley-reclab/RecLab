@@ -70,6 +70,7 @@ LATENT_STATIC = {
         'memory_length': 0,
         'boredom_threshold': 0,
         'boredom_penalty': 0,
+        'affinity_change': 0,
     },
     'misc': {
         'num_final_ratings': 200000,
@@ -91,6 +92,7 @@ LATENT_DYNAMIC = {
         'memory_length': 5,
         'boredom_threshold': 2,
         'boredom_penalty': 1,
+        'affinity_change': 0.1,
     },
     'misc': {
         'num_final_ratings': 200000,

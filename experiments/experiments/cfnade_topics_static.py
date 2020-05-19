@@ -8,6 +8,7 @@ sys.path.append('../../')
 from env_defaults import TOPICS_STATIC
 from run_utils import get_env_dataset, run_env_experiment
 from run_utils import ModelTuner
+from run_utils import plot_ratings_mses_s3
 from reclab.environments import Topics
 from reclab.recommenders.cfnade import Cfnade
 
@@ -133,17 +134,17 @@ len_trial = math.ceil((num_final_ratings - num_init_ratings) /
 trial_seeds = [i for i in range(n_trials)]
 
 
-for i, seed in enumerate(trial_seeds):
-    run_env_experiment(
-            [env],
-            [recommender],
-            [seed],
-            len_trial,
-            environment_names=[environment_name],
-            recommender_names=[recommender_name],
-            bucket_name=bucket_name,
-            data_dir=data_dir,
-            overwrite=overwrite)
+# for i, seed in enumerate(trial_seeds):
+#     run_env_experiment(
+#             [env],
+#             [recommender],
+#             [seed],
+#             len_trial,
+#             environment_names=[environment_name],
+#             recommender_names=[recommender_name],
+#             bucket_name=bucket_name,
+#             data_dir=data_dir,
+#             overwrite=overwrite)
 
 
 plot_ratings_mses_s3(labels=[recommender_name],
@@ -153,6 +154,7 @@ plot_ratings_mses_s3(labels=[recommender_name],
                          env_name=environment_name,
                          seeds=trial_seeds,
                          plot_dense=False,
+                         rating_frequency = rating_frequency, 
                          num_users=num_users,
                          num_init_ratings=num_init_ratings,
                          threshold=10)

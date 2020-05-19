@@ -107,6 +107,7 @@ def plot_ratings_mses_s3(labels,
                          seeds,
                          plot_dense=False,
                          num_users=None,
+                         rating_frequency=None,
                          num_init_ratings=None,
                          threshold=10,
                          title=['', '']):
@@ -146,8 +147,8 @@ def plot_ratings_mses_s3(labels,
         predictions[0][predictions[0] > threshold] = 0
         return (ratings[0] - predictions[0]) ** 2
 
-    if num_init_ratings is not None and num_users is not None:
-        x_vals = num_init_ratings + num_users * np.arange(len_trial)
+    if num_init_ratings is not None and num_users is not None and rating_frequency is not None:
+        x_vals = num_init_ratings + num_users * rating_frequency * np.arange(len_trial)
     else:
         x_vals = np.arange(len_trial)
 

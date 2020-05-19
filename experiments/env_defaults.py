@@ -92,7 +92,7 @@ LATENT_DYNAMIC = {
         'memory_length': 5,
         'boredom_threshold': 2,
         'boredom_penalty': 1,
-        'affinity_change': 0.1,
+        'affinity_change': 0.2,
     },
     'misc': {
         'num_final_ratings': 200000,

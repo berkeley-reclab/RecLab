@@ -1,0 +1,158 @@
+import math
+import sys
+
+import numpy as np
+
+sys.path.append('../')
+sys.path.append('../../')
+from env_defaults import TOPICS_STATIC
+from run_utils import get_env_dataset, run_env_experiment
+from run_utils import ModelTuner
+from reclab.environments import Topics
+from reclab.recommenders.cfnade import Cfnade
+
+# ====Step 4====
+# S3 storage parameters
+bucket_name = 'recsys-eval'
+data_dir = 'master'
+overwrite = True
+
+# Experiment setup.
+num_users = TOPICS_STATIC['params']['num_users']
+num_init_ratings = TOPICS_STATIC['optional_params']['num_init_ratings']
+num_final_ratings = TOPICS_STATIC['misc']['num_final_ratings']
+rating_frequency = TOPICS_STATIC['optional_params']['rating_frequency']
+n_trials = 10
+len_trial = math.ceil((num_final_ratings - num_init_ratings) /
+                      (num_users * rating_frequency))
+trial_seeds = [i for i in range(n_trials)]
+
+# Environment setup
+environment_name = TOPICS_STATIC['name']
+env = Topics(**TOPICS_STATIC['params'], **TOPICS_STATIC['optional_params'])
+
+# Recommender setup
+recommender_name = 'CFNade'
+recommender_class = Cfnade
+
+
+# ====Step 5====
+starting_data = get_env_dataset(env)
+
+
+# ====Step 6====
+# Recommender tuning setup
+n_fold = 5
+'''
+Cfnade(num_users=len(users), num_items=len(items), 
+                     batch_size=512, train_epoch=30, hidden_dim=500, 
+                     learning_rate=0.001)
+'''
+default_params = dict(num_users=num_users,
+                      num_items=TOPICS_STATIC['params']['num_items'])
+
+tuner = ModelTuner(starting_data,
+                   default_params,
+                   recommender_class,
+                   n_fold=n_fold,
+                   verbose=True,
+                   bucket_name=bucket_name,
+                   data_dir=data_dir,
+                   environment_name=environment_name,
+                   recommender_name=recommender_name,
+                   overwrite=overwrite)
+
+# Verify that the performance dependent hyperparameters lead to increased performance.
+# print("More train epochs should lead to increased performance.")
+# train_epochs = [10, 15, 20]
+# hidden_dims = [500]
+# learning_rates =[0.001]
+# batch_sizes = [512]
+# tuner.evaluate_grid(train_epoch=train_epochs,
+#                     hidden_dim=hidden_dims,
+#                     learning_rate = learning_rates,
+#                     batch_size = batch_sizes)
+
+# Set num of train epochs to tradeoff runtime and performance.
+train_epoch = 30
+
+# print("Smaller batch size should lead to increased performance.")
+# train_epochs = [30]
+# hidden_dims = [500]
+# learning_rates =[0.001]
+# batch_sizes = [64, 128, 256, 512]
+# tuner.evaluate_grid(train_epoch=train_epochs,
+#                     hidden_dim=hidden_dims,
+#                     learning_rate = learning_rates,
+#                     batch_size = batch_sizes)
+
+# Set batch size to tradeoff runtime and performance.
+batch_size = 64
+
+# print("Larger hidden dim should lead to increased performance.")
+# train_epochs = [30]
+# hidden_dims = [100, 250, 500]
+# learning_rates =[0.001]
+# batch_sizes = [256]
+# tuner.evaluate_grid(train_epoch=train_epochs,
+#                     hidden_dim=hidden_dims,
+#                     learning_rate = learning_rates,
+#                     batch_size = batch_sizes)
+
+# Set hidden dim to tradeoff runtime and performance.
+hidden_dim = 500
+
+# Tune the performance independent hyperparameters.
+# learning_rates = np.linspace(1e-4, 1e-3, 5).tolist()
+# train_epochs = [train_epoch]
+# hidden_dims = [hidden_dim]
+# batch_sizes = [batch_size]
+
+# results = tuner.evaluate_grid(train_epoch=train_epochs,
+#                     hidden_dim=hidden_dims,
+#                     learning_rate = [0.001],
+#                     batch_size = batch_sizes)
+
+# # Set parameters based on tuning
+# best_params = results[results['average_mse'] == results['average_mse'].min()]
+# learning_rate = float(best_params['learning_rate'])
+
+learning_rate = 0.001
+
+# # ====Step 7====
+recommender = recommender_class(num_users=num_users,
+                                num_items=TOPICS_STATIC['params']['num_items'], 
+                                batch_size=batch_size,
+                                train_epoch=train_epoch,
+                                hidden_dim=hidden_dim, 
+                                learning_rate=learning_rate)
+
+n_trials = 1
+len_trial = math.ceil((num_final_ratings - num_init_ratings) /
+                      (num_users * rating_frequency))
+trial_seeds = [i for i in range(n_trials)]
+
+
+for i, seed in enumerate(trial_seeds):
+    run_env_experiment(
+            [env],
+            [recommender],
+            [seed],
+            len_trial,
+            environment_names=[environment_name],
+            recommender_names=[recommender_name],
+            bucket_name=bucket_name,
+            data_dir=data_dir,
+            overwrite=overwrite)
+
+
+plot_ratings_mses_s3(labels=[recommender_name],
+                         len_trial=len_trial,
+                         bucket_name=bucket_name,
+                         data_dir_name=data_dir,
+                         env_name=environment_name,
+                         seeds=trial_seeds,
+                         plot_dense=False,
+                         num_users=num_users,
+                         num_init_ratings=num_init_ratings,
+                         threshold=10)

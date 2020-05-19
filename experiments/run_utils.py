@@ -784,9 +784,9 @@ class ModelTuner:
                 true_r, context = self.ratings[(user, item)]
                 ratings_to_predict.append((user, item, context))
                 true_ratings.append(true_r)
-
+         
             predicted_ratings = recommender.predict(ratings_to_predict)
-
+      
             mse = np.mean((predicted_ratings - true_ratings)**2)
             if self.verbose:
                 print('mse={}, rmse={}'.format(mse, np.sqrt(mse)))

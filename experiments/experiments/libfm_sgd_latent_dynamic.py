@@ -5,10 +5,10 @@ import numpy as np
 
 sys.path.append('../')
 sys.path.append('../../')
-from env_defaults import TOPICS_DYNAMIC
+from env_defaults import LATENT_DYNAMIC
 from run_utils import get_env_dataset, run_env_experiment
 from run_utils import ModelTuner
-from reclab.environments import Topics
+from reclab.environments import LatentFactorBehavior
 from reclab.recommenders import LibFM
 
 # ====Step 4====
@@ -18,18 +18,18 @@ data_dir = 'master'
 overwrite = True
 
 # Experiment setup.
-num_users = TOPICS_DYNAMIC['params']['num_users']
-num_init_ratings = TOPICS_DYNAMIC['optional_params']['num_init_ratings']
-num_final_ratings = TOPICS_DYNAMIC['misc']['num_final_ratings']
-rating_frequency = TOPICS_DYNAMIC['optional_params']['rating_frequency']
+num_users = LATENT_DYNAMIC['params']['num_users']
+num_init_ratings = LATENT_DYNAMIC['optional_params']['num_init_ratings']
+num_final_ratings = LATENT_DYNAMIC['misc']['num_final_ratings']
+rating_frequency = LATENT_DYNAMIC['optional_params']['rating_frequency']
 n_trials = 10
 len_trial = math.ceil((num_final_ratings - num_init_ratings) /
                       (num_users * rating_frequency))
 trial_seeds = [i for i in range(n_trials)]
 
 # Environment setup
-environment_name = TOPICS_DYNAMIC['name']
-env = Topics(**TOPICS_DYNAMIC['params'], **TOPICS_DYNAMIC['optional_params'])
+environment_name = LATENT_DYNAMIC['name']
+env = LatentFactorBehavior(**LATENT_DYNAMIC['params'], **LATENT_DYNAMIC['optional_params'])
 
 # Recommender setup
 recommender_name = 'LibFM (SGD)'
@@ -47,7 +47,7 @@ default_params = dict(num_user_features=0,
                       num_item_features=0,
                       num_rating_features=0,
                       max_num_users=num_users,
-                      max_num_items=TOPICS_DYNAMIC['params']['num_items'],
+                      max_num_items=LATENT_DYNAMIC['params']['num_items'],
                       method='sgd')
 tuner = ModelTuner(starting_data,
                    default_params,
@@ -100,7 +100,7 @@ results = tuner.evaluate_grid(num_two_way_factors=num_two_ways,
 init_stdev = 1.0
 best_params = results[results['average_mse'] == results['average_mse'].min()]
 reg = float(best_params['reg'])
-lr = float(best_params['lr'])
+lr = float(best_params['learning_rate'])
 
 # ====Step 7====
 recommender = recommender_class(num_iter=num_iter,

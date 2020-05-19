@@ -48,7 +48,7 @@ default_params = dict(num_user_features=0,
                       num_rating_features=0,
                       max_num_users=num_users,
                       max_num_items=LATENT_STATIC['params']['num_items'],
-                      method='mcmc')
+                      method='sgd')
 tuner = ModelTuner(starting_data,
                    default_params,
                    recommender_class,

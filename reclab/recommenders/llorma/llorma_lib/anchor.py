@@ -156,11 +156,6 @@ def _get_ks_from_latents(row_latent, col_latent):
         row_k: entry (i,j) is the similarity between user_i and user_j
         col_k: entry (i,j) is the similarity between item_i and item_j
     """
-    # row_d = _get_distance_matrix(row_latent)
-    # col_d = _get_distance_matrix(col_latent)
-
-    # row_k = _get_k_from_distance(row_d)
-    # col_k = _get_k_from_distance(col_d)
 
     row_k = _get_rbf_k(row_latent)
     col_k = _get_rbf_k(col_latent)

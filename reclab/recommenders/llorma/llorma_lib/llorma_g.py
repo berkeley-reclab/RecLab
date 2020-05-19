@@ -55,6 +55,9 @@ class Llorma():
     result_path : str, optional
         directory name where model data will be saved,
         by default 'results'
+    kernel_fun : callable, optional
+        kernel function used for similarity,
+        by_default None
     """
     def __init__(self, max_user, max_item, n_anchor=10, pre_rank=5,
                  pre_learning_rate=2e-4, pre_lambda_val=10,
@@ -299,7 +302,7 @@ class Llorma():
 
         random_model_idx = random.randint(0, 1000000)
 
-        file_path = '{}/model-{}.ckpt'.format(self.result_path, random_model_idx)
+        file_path = '{}/pre-model-{}.ckpt'.format(self.result_path, random_model_idx)
 
         train_data = self.batch_manager.train_data
         u_vec = train_data[:, 0]
@@ -315,8 +318,8 @@ class Llorma():
                                pre_model['r']: r_vec})
 
             valid_rmse, _ = self._get_rmse_pre_model(pre_session, pre_model)
-
-            if valid_rmse < min_valid_rmse:
+            print('Pre-train step: {}, train_error:{}'.format(itr, valid_rmse))
+            if valid_rmse <= min_valid_rmse:
                 min_valid_rmse = valid_rmse
                 min_valid_iter = itr
                 saver.save(pre_session, file_path)
@@ -369,10 +372,14 @@ class Llorma():
         test_k = _get_local_k(local_models, kind='test')
 
         min_valid_rmse = float('Inf')
+        min_valid_iter = 0
 
         train_data = self.batch_manager.train_data
 
+        saver = tf.train.Saver()
         for itr in range(self.train_steps):
+            file_path = '{}/model-{}.ckpt'.format(self.result_path, itr)
+            print("Train step:{}".format(itr))
             for start_m in range(0, train_data.shape[0], self.batch_size):
                 end_m = min(start_m + self.batch_size, train_data.shape[0])
                 u_vec = train_data[start_m:end_m, 0]
@@ -388,13 +395,19 @@ class Llorma():
                         model['k']: k_vec,
                     })
 
-
-            if (itr+1) % 10 == 0:
-                valid_rmse, test_rmse = self._get_rmse_model(session, model,
+            valid_rmse, test_rmse = self._get_rmse_model(session, model,
                                                              valid_k, test_k)
-                if valid_rmse < min_valid_rmse:
-                    min_valid_rmse = valid_rmse
-                    final_test_rmse = test_rmse
+            print("Train step:{}, train error: {}, test error: {}".format(itr, test_rmse, valid_rmse))
+            if valid_rmse < min_valid_rmse:
+                min_valid_rmse = valid_rmse
+                min_valid_iter = itr
+                saver.save(session, file_path)
+                saver.restore(session, file_path)
+
+            if itr >= min_valid_iter + 100:
+                break
+
+
 
         self.session = session
         return(session, model)

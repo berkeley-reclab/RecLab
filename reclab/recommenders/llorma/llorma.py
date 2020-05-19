@@ -38,7 +38,8 @@ class Llorma(recommender.PredictRecommender):
         If True use stored pre-trained item/user latent factors
     results_path :
         Folder to save model outputs and checkpoints.
-
+    kernel_fun : callable
+        kernel function used for similarity,
     """
 
     def __init__(self,

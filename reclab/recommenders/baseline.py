@@ -26,12 +26,23 @@ class RandomRec(recommender.PredictRecommender):
     def name(self):  # noqa: D102
         return 'random'
 
+    @property
+    def dense_predictions(self):  # noqa: D102
+        if self._dense_predictions is None:
+            num_users = len(self._users)
+            num_items = len(self._items)
+            self._dense_predictions = np.random.uniform(low=self._range[0],
+                                                        high=self._range[1],
+                                                        size=[num_users, num_items])
+        return self._dense_predictions
+
     def _predict(self, user_item):  # noqa: D102
         # Random predictions for all pairs.
-        predictions = np.random.uniform(low=self._range[0],
-                                        high=self._range[1],
-                                        size=len(user_item))
-        return predictions
+        all_predictions = self.dense_predictions
+        predictions = []
+        for user_id, item_id, _ in user_item:
+            predictions.append(all_predictions[user_id, item_id])
+        return np.array(predictions)
 
 
 class PerfectRec(recommender.PredictRecommender):
@@ -44,18 +55,25 @@ class PerfectRec(recommender.PredictRecommender):
 
     """
 
-    def __init__(self, rating_function=0):
+    def __init__(self, dense_rating_function):
         """Create a perfect recommender."""
-        self._rating_function = rating_function
+        self._dense_rating_function = dense_rating_function
         super().__init__()
 
     @property
     def name(self):  # noqa: D102
         return 'perfect'
 
+    @property
+    def dense_predictions(self):  # noqa: D102
+        if self._dense_predictions is None:
+            self._dense_predictions = self._dense_rating_function()
+        return self._dense_predictions
+
     def _predict(self, user_item):  # noqa: D102
-        # Use provided functions to predict for all pairs
+        # Use provided function to predict for all pairs.
+        all_predictions = self.dense_predictions
         predictions = []
         for user_id, item_id, _ in user_item:
-            predictions.append(self._rating_function(user_id, item_id))
+            predictions.append(all_predictions[user_id, item_id])
         return np.array(predictions)

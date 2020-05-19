@@ -59,14 +59,14 @@ tuner = ModelTuner(starting_data,
 # Verify that the performance dependent hyperparameters lead to increased performance.
 print("More hidden neurons should lead to increased performance.")
 train_epoch = [200]
-hidden_neuron = np.linspace(1, 1000, 100, dtype=np.int).tolist()
+hidden_neuron = np.linspace(1, 1000, 10, dtype=np.int).tolist()
 tuner.evaluate_grid(hidden_neuron=hidden_neuron, train_epoch=train_epoch)
 
 # Hidden neuron set based on Autorec paper
 hidden_neuron = 500
 
 print("More iterations should lead to increased performance.")
-train_epoch = np.linspace(1, 1000, 100, dtype=np.int).tolist()
+train_epoch = np.linspace(1, 1000, 10, dtype=np.int).tolist()
 hidden_neurons = [hidden_neuron]
 tuner.evaluate_grid(hidden_neuron=hidden_neurons,
                     train_epoch=train_epoch)

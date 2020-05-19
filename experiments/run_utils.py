@@ -331,7 +331,6 @@ def compute_stats(arr, bound_zero=False, use_median=False):
         upper_bounds = centers + 2 * stds
         lower_bounds = centers - 2 * stds
     if bound_zero:
-        # print(lower_bounds)
         lower_bounds = np.maximum(lower_bounds, 0)
 
     return centers, lower_bounds, upper_bounds

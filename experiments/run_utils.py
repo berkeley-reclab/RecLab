@@ -149,7 +149,6 @@ def plot_ratings_mses_s3(labels,
 
     if num_init_ratings is not None and num_users is not None and rating_frequency is not None:
         x_vals = num_init_ratings + num_users * rating_frequency * np.arange(len_trial)
-
     else:
         x_vals = np.arange(len_trial)
 

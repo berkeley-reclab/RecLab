@@ -1022,7 +1022,6 @@ def s3_load_trial(bucket, dir_name, load_dense=True):
         dense_predictions = get_and_unserialize('dense_predictions')
         env_snapshots = get_and_unserialize('env_snapshots')
     else:
-        # rec_hyperparameters = None
         dense_ratings = None
         dense_predictions = None
         env_snapshots = None

@@ -41,9 +41,9 @@ overwrite = True
 
 # Experiment setup.
 if len(sys.argv) > 2:
-    trial_seeds = [int(sys.argv[2])]
+    trial_seeds = list(np.fromstring(sys.argv[2], sep=',').astype(int))
 else:
-    n_trials = 4
+    n_trials = 10
     trial_seeds = [i for i in range(n_trials)]
 len_trial = get_len_trial(ENV_PARAMS)
 

@@ -4,8 +4,17 @@ import math
 def get_len_trial(ENV_PARAMS):
     """Get length of trial based on the environment parameters.
     """
-    num_users = ENV_PARAMS['params']['num_users']
-    num_items = ENV_PARAMS['params']['num_items']
+    if 'num_users' in ENV_PARAMS['params'].keys():
+        num_users = ENV_PARAMS['params']['num_users']
+        num_items = ENV_PARAMS['params']['num_items']
+    elif 'name' in ENV_PARAMS['params']:
+        if ENV_PARAMS['params']['name'] == 'ml-100k':                
+            num_users = 943
+            num_items = 1682
+            if 'max_num_users' in ENV_PARAMS['optional_params'].keys():
+                num_users = min(num_users, ENV_PARAMS['optional_params']['max_num_users'])
+            if 'max_num_items' in ENV_PARAMS['optional_params'].keys():
+                num_items = min(num_items, ENV_PARAMS['optional_params']['max_num_items'])
     num_final_ratings = ENV_PARAMS['misc']['num_final_ratings']
     num_init_ratings = ENV_PARAMS['optional_params']['num_init_ratings']
     rating_frequency = ENV_PARAMS['optional_params']['rating_frequency']

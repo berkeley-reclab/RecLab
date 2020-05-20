@@ -24,8 +24,7 @@ num_init_ratings = TOPICS_STATIC['optional_params']['num_init_ratings']
 num_final_ratings = TOPICS_STATIC['misc']['num_final_ratings']
 rating_frequency = TOPICS_STATIC['optional_params']['rating_frequency']
 n_trials = 10
-len_trial = math.ceil((num_final_ratings - num_init_ratings) /
-                      (num_users * rating_frequency))
+len_trial = TOPICS_STATIC
 trial_seeds = [i for i in range(n_trials)]
 
 # Environment setup

@@ -19,13 +19,12 @@ data_dir = 'master'
 overwrite = True
 
 # Experiment setup.
-num_users = TOPICS_STATIC['params']['num_users']
-num_init_ratings = TOPICS_STATIC['optional_params']['num_init_ratings']
-num_final_ratings = TOPICS_STATIC['misc']['num_final_ratings']
-rating_frequency = TOPICS_STATIC['optional_params']['rating_frequency']
+num_users = TOPICS_DYNAMIC['params']['num_users']
+num_init_ratings = TOPICS_DYNAMIC['optional_params']['num_init_ratings']
+num_final_ratings = TOPICS_DYNAMIC['misc']['num_final_ratings']
+rating_frequency = TOPICS_DYNAMIC['optional_params']['rating_frequency']
 n_trials = 10
-len_trial = math.ceil((num_final_ratings - num_init_ratings) /
-                      (num_users * rating_frequency))
+len_trial = get_len_trial(TOPICS_DYNAMIC)
 trial_seeds = [i for i in range(n_trials)]
 
 # Environment setup
@@ -41,36 +40,36 @@ recommender_class = Cfnade
 starting_data = get_env_dataset(env)
 
 
-# # ====Step 6====
-# # Recommender tuning setup
-# n_fold = 5
+# ====Step 6====
+# Recommender tuning setup
+n_fold = 5
 
-# default_params = dict(num_users=num_users,
-#                       num_items=TOPICS_STATIC['params']['num_items'])
+default_params = dict(num_users=num_users,
+                      num_items=TOPICS_STATIC['params']['num_items'])
 
-# tuner = ModelTuner(starting_data,
-#                    default_params,
-#                    recommender_class,
-#                    n_fold=n_fold,
-#                    verbose=True,
-#                    bucket_name=bucket_name,
-#                    data_dir=data_dir,
-#                    environment_name=environment_name,
-#                    recommender_name=recommender_name,
-#                    overwrite=overwrite)
+tuner = ModelTuner(starting_data,
+                   default_params,
+                   recommender_class,
+                   n_fold=n_fold,
+                   verbose=True,
+                   bucket_name=bucket_name,
+                   data_dir=data_dir,
+                   environment_name=environment_name,
+                   recommender_name=recommender_name,
+                   overwrite=overwrite)
 
-# #Tuning is the same as the static case
+#Tuning is the same as the static case
 
-# # Verify that the performance dependent hyperparameters lead to increased performance.
-# print("More train epochs should lead to increased performance.")
-# train_epochs = [10, 15, 20] #results: 1.82, 1.868, 1.849
-# hidden_dims = [500]
-# learning_rates =[0.001]
-# batch_sizes = [512]
-# tuner.evaluate_grid(train_epoch=train_epochs,
-#                     hidden_dim=hidden_dims,
-#                     learning_rate = learning_rates,
-#                     batch_size = batch_sizes)
+# Verify that the performance dependent hyperparameters lead to increased performance.
+print("More train epochs should lead to increased performance.")
+train_epochs = [10, 15, 20, 30] #results: 1.824, 1.863, 1.843, 1.826
+hidden_dims = [500]
+learning_rates =[0.001]
+batch_sizes = [512]
+tuner.evaluate_grid(train_epoch=train_epochs,
+                    hidden_dim=hidden_dims,
+                    learning_rate = learning_rates,
+                    batch_size = batch_sizes)
 
 
 # # Set num of train epochs to tradeoff runtime and performance.
@@ -133,14 +132,14 @@ trial_seeds = [0]
 #trial_seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
 
-for i, seed in enumerate(trial_seeds):
-    run_env_experiment(
-            [env],
-            [recommender],
-            [seed],
-            len_trial,
-            environment_names=[environment_name],
-            recommender_names=[recommender_name],
-            bucket_name=bucket_name,
-            data_dir=data_dir,
-            overwrite=overwrite)
+# for i, seed in enumerate(trial_seeds):
+#     run_env_experiment(
+#             [env],
+#             [recommender],
+#             [seed],
+#             len_trial,
+#             environment_names=[environment_name],
+#             recommender_names=[recommender_name],
+#             bucket_name=bucket_name,
+#             data_dir=data_dir,
+#             overwrite=overwrite)

@@ -34,8 +34,11 @@ data_dir = 'master'
 overwrite = True
 
 # Experiment setup.
-n_trials = 10
-trial_seeds = [i for i in range(n_trials)]
+if len(sys.argv) > 2:
+    trial_seeds = [int(sys.argv[2])]
+else:
+    n_trials = 10
+    trial_seeds = [i for i in range(n_trials)]
 len_trial = get_len_trial(ENV_PARAMS)
 
 # Environment setup

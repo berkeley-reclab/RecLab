@@ -1039,5 +1039,6 @@ def put_dataframe(bucket, dir_name, name, dataframe):
 
     with io.BytesIO() as stream:
         stream.write(csv_str.encode('utf-8'))
+        stream.seek(0)
         file_name = os.path.join(dir_name, name + '.csv')
         bucket.upload_fileobj(Key=file_name, Fileobj=stream)

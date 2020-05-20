@@ -61,15 +61,15 @@ tuner = ModelTuner(starting_data,
 #Tuning is the same as the static case
 
 # Verify that the performance dependent hyperparameters lead to increased performance.
-print("More train epochs should lead to increased performance.")
-train_epochs = [10, 15, 20, 30] #results: 1.824, 1.863, 1.843, 1.826
-hidden_dims = [500]
-learning_rates =[0.001]
-batch_sizes = [512]
-tuner.evaluate_grid(train_epoch=train_epochs,
-                    hidden_dim=hidden_dims,
-                    learning_rate = learning_rates,
-                    batch_size = batch_sizes)
+# print("More train epochs should lead to increased performance.")
+# train_epochs = [10, 15, 20, 30] #results: 1.824, 1.863, 1.843, 1.826
+# hidden_dims = [500]
+# learning_rates =[0.001]
+# batch_sizes = [512]
+# tuner.evaluate_grid(train_epoch=train_epochs,
+#                     hidden_dim=hidden_dims,
+#                     learning_rate = learning_rates,
+#                     batch_size = batch_sizes)
 
 
 # # Set num of train epochs to tradeoff runtime and performance.
@@ -121,7 +121,7 @@ hidden_dim = 500
 
 # ====Step 7====
 recommender = recommender_class(num_users=num_users,
-                                num_items=TOPICS_STATIC['params']['num_items'], 
+                                num_items=TOPICS_DYNAMIC['params']['num_items'], 
                                 batch_size=batch_size,
                                 train_epoch=train_epoch,
                                 hidden_dim=hidden_dim, 
@@ -132,14 +132,14 @@ trial_seeds = [0]
 #trial_seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
 
-# for i, seed in enumerate(trial_seeds):
-#     run_env_experiment(
-#             [env],
-#             [recommender],
-#             [seed],
-#             len_trial,
-#             environment_names=[environment_name],
-#             recommender_names=[recommender_name],
-#             bucket_name=bucket_name,
-#             data_dir=data_dir,
-#             overwrite=overwrite)
+for i, seed in enumerate(trial_seeds):
+    run_env_experiment(
+            [env],
+            [recommender],
+            [seed],
+            len_trial,
+            environment_names=[environment_name],
+            recommender_names=[recommender_name],
+            bucket_name=bucket_name,
+            data_dir=data_dir,
+            overwrite=overwrite)

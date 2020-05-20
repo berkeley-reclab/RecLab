@@ -167,6 +167,7 @@ def plot_ratings_mses_s3(labels,
         plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
     plt.xlabel('# ratings')
     plt.ylabel('Mean Rating')
+    plt.ylim([1,5])
     plt.title(title[0])
     plt.legend()
 

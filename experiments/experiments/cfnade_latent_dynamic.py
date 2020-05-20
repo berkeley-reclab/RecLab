@@ -37,11 +37,26 @@ recommender_class = Cfnade
 
 # Tuning is the same as the static case
 
-# Set regularization to 5889.
-lam = 5889
+# Set parameters based on tuning
+
+train_epoch = 30
+batch_size = 128
+hidden_dim = 500
+learning_rate = 0.001
 
 # ====Step 7====
-recommender = recommender_class(lam=lam)
+recommender = recommender_class(num_users=num_users,
+                                num_items=LATENT_DYNAMIC['params']['num_items'], 
+                                batch_size=batch_size,
+                                train_epoch=train_epoch,
+                                hidden_dim=hidden_dim, 
+                                learning_rate=learning_rate)
+
+trial_seeds = [0]
+
+#trial_seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+
 for i, seed in enumerate(trial_seeds):
     run_env_experiment(
             [env],

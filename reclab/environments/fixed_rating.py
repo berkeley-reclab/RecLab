@@ -37,8 +37,8 @@ class FixedRating(environment.DictEnvironment):
         return ratings
 
     def _reset_state(self):  # noqa: D102
-        self._users = [np.zeros((0,))] * self._num_users
-        self._items = [np.zeros((0,))] * self._num_items
+        self._users = {user_id: np.zeros((0,)) for user_id in range(self._num_users)}
+        self._items = {item_id: np.zeros((0,)) for item_id in range(self._num_items)}
 
     def _rate_item(self, user_id, item_id):  # noqa: D102
         if item_id < self._num_items / 2:

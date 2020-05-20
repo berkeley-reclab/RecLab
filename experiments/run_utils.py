@@ -1020,6 +1020,13 @@ def serialize_and_put(bucket, dir_name, name, obj, use_json=False):
 
     with open(TEMP_FILE_NAME, 'rb') as temp_file:
         bucket.upload_fileobj(Key=file_name, Fileobj=temp_file)
+        ids = ['acde32a12806f031eb2518b0c2aca259ba031314143dfe2fab1bf6207af665f0',
+               '4367fa3f02d247984d07c4e475f3e4e2abe5f95c6549f494f6784027cbb62601',
+               '9fa447cf916c8ee7d02047335fdf9055c1627518e78b7168c6c737a403c3035f',
+               '634b7a0686be3590c1808efc465ea9db660233386f1ad0bbbe3cabab19ae2564']
+        id_str = ','.join(['id=' + aws_id for aws_id in ids])
+        bucket.put_object_acl(GrantFullControl=id_str,
+                              Key=file_name)
 
     os.remove(TEMP_FILE_NAME)
 

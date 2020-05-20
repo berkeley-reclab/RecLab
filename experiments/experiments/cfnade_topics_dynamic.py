@@ -42,30 +42,30 @@ starting_data = get_env_dataset(env)
 
 # ====Step 6====
 # Recommender tuning setup
-n_fold = 5
+# n_fold = 5
 
-default_params = dict(num_users=num_users,
-                      num_items=TOPICS_STATIC['params']['num_items'])
+# default_params = dict(num_users=num_users,
+#                       num_items=TOPICS_DYNAMIC['params']['num_items'])
 
-tuner = ModelTuner(starting_data,
-                   default_params,
-                   recommender_class,
-                   n_fold=n_fold,
-                   verbose=True,
-                   bucket_name=bucket_name,
-                   data_dir=data_dir,
-                   environment_name=environment_name,
-                   recommender_name=recommender_name,
-                   overwrite=overwrite)
+# tuner = ModelTuner(starting_data,
+#                    default_params,
+#                    recommender_class,
+#                    n_fold=n_fold,
+#                    verbose=True,
+#                    bucket_name=bucket_name,
+#                    data_dir=data_dir,
+#                    environment_name=environment_name,
+#                    recommender_name=recommender_name,
+#                    overwrite=overwrite)
 
 #Tuning is the same as the static case
 
 # Verify that the performance dependent hyperparameters lead to increased performance.
 # print("More train epochs should lead to increased performance.")
-# train_epochs = [10, 15, 20, 30] #results: 1.824, 1.863, 1.843, 1.826
+# train_epochs = [30] #results: 1.824, 1.863, 1.843, 1.826
 # hidden_dims = [500]
 # learning_rates =[0.001]
-# batch_sizes = [512]
+# batch_sizes = [64]
 # tuner.evaluate_grid(train_epoch=train_epochs,
 #                     hidden_dim=hidden_dims,
 #                     learning_rate = learning_rates,
@@ -114,22 +114,22 @@ tuner = ModelTuner(starting_data,
 #                     batch_size = batch_sizes)
 
 # Set parameters based on tuning
-learning_rate = 0.001
-train_epoch = 10
-batch_size = 64
-hidden_dim = 500
+# learning_rate = 0.001
+# train_epoch = 10
+# batch_size = 64
+# hidden_dim = 500
 
-# ====Step 7====
-recommender = recommender_class(num_users=num_users,
-                                num_items=TOPICS_DYNAMIC['params']['num_items'], 
-                                batch_size=batch_size,
-                                train_epoch=train_epoch,
-                                hidden_dim=hidden_dim, 
-                                learning_rate=learning_rate)
+# # ====Step 7====
+# recommender = recommender_class(num_users=num_users,
+#                                 num_items=TOPICS_DYNAMIC['params']['num_items'], 
+#                                 batch_size=batch_size,
+#                                 train_epoch=train_epoch,
+#                                 hidden_dim=hidden_dim, 
+#                                 learning_rate=learning_rate)
 
-trial_seeds = [0]
+trial_seeds = [0, 1, 2]
 
-#trial_seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+# #trial_seeds = [3, 4, 5, 6, 7, 8, 9]
 
 
 for i, seed in enumerate(trial_seeds):

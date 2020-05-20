@@ -41,81 +41,84 @@ recommender_class = Cfnade
 starting_data = get_env_dataset(env)
 
 
-# ====Step 6====
-# Recommender tuning setup
-n_fold = 5
+# # ====Step 6====
+# # Recommender tuning setup
+# n_fold = 5
 
-default_params = dict(num_users=num_users,
-                      num_items=TOPICS_STATIC['params']['num_items'])
+# default_params = dict(num_users=num_users,
+#                       num_items=TOPICS_STATIC['params']['num_items'])
 
-tuner = ModelTuner(starting_data,
-                   default_params,
-                   recommender_class,
-                   n_fold=n_fold,
-                   verbose=True,
-                   bucket_name=bucket_name,
-                   data_dir=data_dir,
-                   environment_name=environment_name,
-                   recommender_name=recommender_name,
-                   overwrite=overwrite)
+# tuner = ModelTuner(starting_data,
+#                    default_params,
+#                    recommender_class,
+#                    n_fold=n_fold,
+#                    verbose=True,
+#                    bucket_name=bucket_name,
+#                    data_dir=data_dir,
+#                    environment_name=environment_name,
+#                    recommender_name=recommender_name,
+#                    overwrite=overwrite)
 
-#Tuning is the same as the static case
+# #Tuning is the same as the static case
 
-# Verify that the performance dependent hyperparameters lead to increased performance.
-print("More train epochs should lead to increased performance.")
-train_epochs = [10, 15, 20] #results: 1.82, 1.868, 1.849
-hidden_dims = [500]
-learning_rates =[0.001]
-batch_sizes = [512]
-tuner.evaluate_grid(train_epoch=train_epochs,
-                    hidden_dim=hidden_dims,
-                    learning_rate = learning_rates,
-                    batch_size = batch_sizes)
+# # Verify that the performance dependent hyperparameters lead to increased performance.
+# print("More train epochs should lead to increased performance.")
+# train_epochs = [10, 15, 20] #results: 1.82, 1.868, 1.849
+# hidden_dims = [500]
+# learning_rates =[0.001]
+# batch_sizes = [512]
+# tuner.evaluate_grid(train_epoch=train_epochs,
+#                     hidden_dim=hidden_dims,
+#                     learning_rate = learning_rates,
+#                     batch_size = batch_sizes)
 
 
-# Set num of train epochs to tradeoff runtime and performance.
-train_epoch = 30
+# # Set num of train epochs to tradeoff runtime and performance.
+# train_epoch = 10
 
-print("Smaller batch size should lead to increased performance.")
-train_epochs = [30]
-hidden_dims = [500]
-learning_rates =[0.001]
-batch_sizes = [64, 128, 256, 512] #results: 1.598; 1.624; 1.720; 1.825
-tuner.evaluate_grid(train_epoch=train_epochs,
-                    hidden_dim=hidden_dims,
-                    learning_rate = learning_rates,
-                    batch_size = batch_sizes)
+# print("Smaller batch size should lead to increased performance.")
+# train_epochs = [30]
+# hidden_dims = [500]
+# learning_rates =[0.001]
+# batch_sizes = [64, 128, 256, 512] #results: 1.598; 1.624; 1.720; 1.825
+# tuner.evaluate_grid(train_epoch=train_epochs,
+#                     hidden_dim=hidden_dims,
+#                     learning_rate = learning_rates,
+#                     batch_size = batch_sizes)
 
-# Set batch size to tradeoff runtime and performance.
-batch_size = 64
+# # Set batch size to tradeoff runtime and performance.
+# batch_size = 64
 
-print("Larger hidden dim should lead to increased performance.")
-train_epochs = [30]
-hidden_dims = [100, 250, 500] #results: 1.823; 1.772; 1.720
-learning_rates =[0.001]
-batch_sizes = [256]
-tuner.evaluate_grid(train_epoch=train_epochs,
-                    hidden_dim=hidden_dims,
-                    learning_rate = learning_rates,
-                    batch_size = batch_sizes)
+# print("Larger hidden dim should lead to increased performance.")
+# train_epochs = [30]
+# hidden_dims = [100, 250, 500] #results: 1.823; 1.772; 1.720
+# learning_rates =[0.001]
+# batch_sizes = [256]
+# tuner.evaluate_grid(train_epoch=train_epochs,
+#                     hidden_dim=hidden_dims,
+#                     learning_rate = learning_rates,
+#                     batch_size = batch_sizes)
 
-# Set hidden dim to tradeoff runtime and performance.
-hidden_dim = 500
+# # Set hidden dim to tradeoff runtime and performance.
+# hidden_dim = 500
 
-# Tune the performance independent hyperparameters.
+# # Tune the performance independent hyperparameters.
 
-learning_rates = [0.0001, 0.001, 0.01] #results: 1.853; 1.786; lr > 0.01 gets nan
-train_epochs = [train_epoch]
-hidden_dims = [hidden_dim]
-batch_sizes = [batch_size]
+# learning_rates = [0.0001, 0.001, 0.01] #results: 1.853; 1.786; lr > 0.01 gets nan
+# train_epochs = [train_epoch]
+# hidden_dims = [hidden_dim]
+# batch_sizes = [batch_size]
 
-tuner.evaluate_grid(train_epoch=train_epochs,
-                    hidden_dim=hidden_dims,
-                    learning_rate = learning_rates,
-                    batch_size = batch_sizes)
+# tuner.evaluate_grid(train_epoch=train_epochs,
+#                     hidden_dim=hidden_dims,
+#                     learning_rate = learning_rates,
+#                     batch_size = batch_sizes)
 
 # Set parameters based on tuning
 learning_rate = 0.001
+train_epochs = 10
+batch_size = 64
+hidden_dim = 500
 
 # ====Step 7====
 recommender = recommender_class(num_users=num_users,

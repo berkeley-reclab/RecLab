@@ -19,7 +19,7 @@ overwrite = True
 
 
 # Experiment setup.
-num_users = LATENT_STATIC['params']['num_users']
+num_users = LATENT_DYNAMIC['params']['num_users']
 num_init_ratings = LATENT_DYNAMIC['optional_params']['num_init_ratings']
 num_final_ratings = LATENT_DYNAMIC['misc']['num_final_ratings']
 rating_frequency = LATENT_DYNAMIC['optional_params']['rating_frequency']

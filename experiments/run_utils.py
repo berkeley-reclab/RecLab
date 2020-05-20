@@ -142,27 +142,34 @@ def plot_ratings_mses_s3(labels,
     """
     bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
 
-    def squared_diff(ratings, predictions):
+    def arr_func(ratings, predictions):
         # Setting the predictions for a user/item that has no ratings in the training data to 0.
         predictions[0][predictions[0] > threshold] = 0
-        return (ratings[0] - predictions[0]) ** 2
+        return [ratings[0], (ratings[0] - predictions[0]) ** 2]
 
     if num_init_ratings is not None and num_users is not None and rating_frequency is not None:
         x_vals = num_init_ratings + num_users * rating_frequency * np.arange(len_trial)
     else:
         x_vals = np.arange(len_trial)
 
+    all_stats = {}
+    for label in labels:
+        all_stats[label] = compute_stats_s3(bucket=bucket,
+                                            data_dir_name=data_dir_name,
+                                            env_name=env_name,
+                                            rec_names=[label],
+                                            seeds=seeds,
+                                            bound_zero=True,
+                                            arr_func=arr_func,
+                                            load_dense=plot_dense)
+
     plt.figure(figsize=[9, 4])
     plt.subplot(1, 2, 1)
     for label in labels:
-        means, lower_bounds, upper_bounds = compute_stats_s3(bucket=bucket,
-                                                             data_dir_name=data_dir_name,
-                                                             env_name=env_name,
-                                                             rec_names=[label],
-                                                             seeds=seeds,
-                                                             use_ratings=True,
-                                                             bound_zero=True,
-                                                             load_dense=plot_dense)
+        means, lower_bounds, upper_bounds = all_stats[label]
+        means = means[0]
+        lower_bounds = lower_bounds[0]
+        upper_bounds = upper_bounds[0]
         plt.plot(x_vals, means, label=label)
         plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
     plt.xlabel('# ratings')
@@ -172,14 +179,10 @@ def plot_ratings_mses_s3(labels,
 
     plt.subplot(1, 2, 2)
     for label in labels:
-        mse, lower_bounds, upper_bounds = compute_stats_s3(bucket=bucket,
-                                                           data_dir_name=data_dir_name,
-                                                           env_name=env_name,
-                                                           rec_names=[label],
-                                                           seeds=seeds,
-                                                           arr_func=squared_diff,
-                                                           bound_zero=True,
-                                                           load_dense=plot_dense)
+        means, lower_bounds, upper_bounds = all_stats[label]
+        mse = means[1]
+        lower_bounds = lower_bounds[1]
+        upper_bounds = upper_bounds[1]
         # Transform the MSE into the RMSE and correct the associated intervals.
         rmse = np.sqrt(mse)
         lower_bounds = np.sqrt(lower_bounds)
@@ -287,7 +290,7 @@ def plot_regret_s3(labels,
     """
     bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
     def regret(ratings, predictions):
-        return np.cumsum(ratings[0] - ratings[1], axis=0)
+        return [np.cumsum(ratings[0] - ratings[1], axis=0)]
 
     if num_init_ratings is not None and num_users is not None:
         x_vals = num_init_ratings + num_users * np.arange(len_trial)
@@ -302,10 +305,11 @@ def plot_regret_s3(labels,
                                                                     rec_names=[perfect_name, label],
                                                                     seeds=seeds,
                                                                     arr_func=regret,
+                                                                    bound_zero=False,
                                                                     load_dense=plot_dense)
         # Plotting the regret over steps and correct the associated intervals.
-        plt.plot(x_vals, mean_regrets, label=label)
-        plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
+        plt.plot(x_vals, mean_regrets[0], label=label)
+        plt.fill_between(x_vals, lower_bounds[0], upper_bounds[0], alpha=0.1)
     plt.xlabel('# ratings')
     plt.ylabel('Regret')
     plt.legend()
@@ -351,40 +355,35 @@ def compute_stats_s3(bucket,
         assert len(rec_names) == 1
         def arr_func(ratings, predictions):
             if use_ratings:
-                return ratings[0]
+                return [ratings[0]]
             else:
-                return predictions[0]
+                return [predictions[0]]
 
-    def get_mean_func(preprocess_func):
-        def compute_means(**kwargs):
-            arr = preprocess_func(**kwargs)
-            means = arr.mean(axis=1)
-            return means, arr.shape[1]
-        return compute_means
+    def get_mean_square_func(preprocess_func):
+        def compute_means_square(**kwargs):
+            arrs = preprocess_func(**kwargs)
+            means = []
+            squares = []
+            for arr in arrs:
+                means.append(arr.mean(axis=1))
+                squares.append((arr ** 2).mean(axis=1))
+            return means, squares, arrs[0].shape[1]
+        return compute_means_square
 
     results = compute_across_trials_s3(bucket,
                                        data_dir_name,
                                        env_name,
                                        rec_names,
                                        seeds,
-                                       get_mean_func(arr_func),
+                                       get_mean_square_func(arr_func),
                                        load_dense=load_dense)
-    means, lengths = zip(*results)
+    means, squares, lengths = zip(*results)
     means = np.average(means, axis=0, weights=lengths)
-
-    diff_func = functional.compose(lambda x: (x - means[:, np.newaxis]) ** 2, arr_func)
-    results = compute_across_trials_s3(bucket,
-                                       data_dir_name,
-                                       env_name,
-                                       rec_names,
-                                       seeds,
-                                       get_mean_func(diff_func),
-                                       load_dense=load_dense)
-    variances, lengths = zip(*results)
-    variances = np.average(variances, axis=0, weights=lengths)
+    squares = np.average(squares, axis=0, weights=lengths)
+    variances = squares - means ** 2
 
     # Apply Bessel's correction.
-    num_samples = sum(lengths)
+    num_samples = np.sum(lengths)
     variances = variances * num_samples / (num_samples - 1)
 
     # Compute the standard error of each sample mean.

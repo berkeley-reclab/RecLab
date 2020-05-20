@@ -21,6 +21,12 @@ import tqdm.autonotebook
 INIT_SEED = 0
 # The name of the file temporarily created for uploads to S3.
 TEMP_FILE_NAME = 'temp.out'
+# The id of all users that will have access to the S3 objects.
+AWS_IDS = ['acde32a12806f031eb2518b0c2aca259ba031314143dfe2fab1bf6207af665f0',
+           '4367fa3f02d247984d07c4e475f3e4e2abe5f95c6549f494f6784027cbb62601',
+           '9fa447cf916c8ee7d02047335fdf9055c1627518e78b7168c6c737a403c3035f',
+           '634b7a0686be3590c1808efc465ea9db660233386f1ad0bbbe3cabab19ae2564']
+ID_STR = ','.join(['id=' + aws_id for aws_id in AWS_IDS])
 
 
 def plot_ratings_mses(ratings,
@@ -1019,14 +1025,8 @@ def serialize_and_put(bucket, dir_name, name, obj, use_json=False):
             file_name = file_name + '.pickle'
 
     with open(TEMP_FILE_NAME, 'rb') as temp_file:
-        bucket.upload_fileobj(Key=file_name, Fileobj=temp_file)
-        ids = ['acde32a12806f031eb2518b0c2aca259ba031314143dfe2fab1bf6207af665f0',
-               '4367fa3f02d247984d07c4e475f3e4e2abe5f95c6549f494f6784027cbb62601',
-               '9fa447cf916c8ee7d02047335fdf9055c1627518e78b7168c6c737a403c3035f',
-               '634b7a0686be3590c1808efc465ea9db660233386f1ad0bbbe3cabab19ae2564']
-        id_str = ','.join(['id=' + aws_id for aws_id in ids])
-        bucket.put_object_acl(GrantFullControl=id_str,
-                              Key=file_name)
+        bucket.upload_fileobj(Key=file_name, Fileobj=temp_file,
+                              ExtraArgs={'GrantFullControl': ID_STR})
 
     os.remove(TEMP_FILE_NAME)
 
@@ -1041,4 +1041,5 @@ def put_dataframe(bucket, dir_name, name, dataframe):
         stream.write(csv_str.encode('utf-8'))
         stream.seek(0)
         file_name = os.path.join(dir_name, name + '.csv')
-        bucket.upload_fileobj(Key=file_name, Fileobj=stream)
+        bucket.upload_fileobj(Key=file_name, Fileobj=stream,
+                              ExtraArgs={'GrantFullControl': ID_STR})

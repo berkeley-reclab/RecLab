@@ -5,11 +5,11 @@ import numpy as np
 
 sys.path.append('../')
 sys.path.append('../../')
-from env_defaults import TOPICS_STATIC
 from run_utils import get_env_dataset, run_env_experiment
 from run_utils import ModelTuner
 from run_utils import plot_ratings_mses_s3
 from reclab.environments import Topics
+from env_defaults import TOPICS_STATIC, get_len_trial, TOPICS_DYNAMIC
 from reclab.recommenders.cfnade import Cfnade
 
 # ====Step 4====
@@ -29,8 +29,8 @@ len_trial = math.ceil((num_final_ratings - num_init_ratings) /
 trial_seeds = [i for i in range(n_trials)]
 
 # Environment setup
-environment_name = TOPICS_STATIC['name']
-env = Topics(**TOPICS_STATIC['params'], **TOPICS_STATIC['optional_params'])
+environment_name = TOPICS_DYNAMIC['name']
+env = Topics(**TOPICS_DYNAMIC['params'], **TOPICS_DYNAMIC['optional_params'])
 
 # Recommender setup
 recommender_name = 'CFNade'
@@ -59,9 +59,11 @@ tuner = ModelTuner(starting_data,
                    recommender_name=recommender_name,
                    overwrite=overwrite)
 
-Verify that the performance dependent hyperparameters lead to increased performance.
+#Tuning is the same as the static case
+
+# Verify that the performance dependent hyperparameters lead to increased performance.
 print("More train epochs should lead to increased performance.")
-train_epochs = [10, 15, 20]
+train_epochs = [10, 15, 20] #results: 1.82, 1.868, 1.849
 hidden_dims = [500]
 learning_rates =[0.001]
 batch_sizes = [512]
@@ -70,6 +72,7 @@ tuner.evaluate_grid(train_epoch=train_epochs,
                     learning_rate = learning_rates,
                     batch_size = batch_sizes)
 
+
 # Set num of train epochs to tradeoff runtime and performance.
 train_epoch = 30
 
@@ -77,7 +80,7 @@ print("Smaller batch size should lead to increased performance.")
 train_epochs = [30]
 hidden_dims = [500]
 learning_rates =[0.001]
-batch_sizes = [64, 128, 256, 512]
+batch_sizes = [64, 128, 256, 512] #results: 1.598; 1.624; 1.720; 1.825
 tuner.evaluate_grid(train_epoch=train_epochs,
                     hidden_dim=hidden_dims,
                     learning_rate = learning_rates,
@@ -88,7 +91,7 @@ batch_size = 64
 
 print("Larger hidden dim should lead to increased performance.")
 train_epochs = [30]
-hidden_dims = [100, 250, 500]
+hidden_dims = [100, 250, 500] #results: 1.823; 1.772; 1.720
 learning_rates =[0.001]
 batch_sizes = [256]
 tuner.evaluate_grid(train_epoch=train_epochs,
@@ -100,29 +103,31 @@ tuner.evaluate_grid(train_epoch=train_epochs,
 hidden_dim = 500
 
 # Tune the performance independent hyperparameters.
-learning_rates = np.linspace(1e-4, 1e-3, 5).tolist()
+
+learning_rates = [0.0001, 0.001, 0.01] #results: 1.853; 1.786; lr > 0.01 gets nan
 train_epochs = [train_epoch]
 hidden_dims = [hidden_dim]
 batch_sizes = [batch_size]
 
-results = tuner.evaluate_grid(train_epoch=train_epochs,
+tuner.evaluate_grid(train_epoch=train_epochs,
                     hidden_dim=hidden_dims,
                     learning_rate = learning_rates,
                     batch_size = batch_sizes)
 
 # Set parameters based on tuning
-best_params = results[results['average_mse'] == results['average_mse'].min()]
-learning_rate = float(best_params['learning_rate'])
-
 learning_rate = 0.001
 
-# # ====Step 7====
+# ====Step 7====
 recommender = recommender_class(num_users=num_users,
                                 num_items=TOPICS_STATIC['params']['num_items'], 
                                 batch_size=batch_size,
                                 train_epoch=train_epoch,
                                 hidden_dim=hidden_dim, 
                                 learning_rate=learning_rate)
+
+trial_seeds = [0]
+
+#trial_seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
 
 for i, seed in enumerate(trial_seeds):

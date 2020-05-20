@@ -116,7 +116,7 @@ starting_data = get_env_dataset(env)
 
 # Set parameters based on tuning
 learning_rate = 0.001
-train_epochs = 10
+train_epoch = 10
 batch_size = 64
 hidden_dim = 500
 

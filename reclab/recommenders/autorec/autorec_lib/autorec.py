@@ -13,7 +13,7 @@ class AutoRec(torch.nn.Module):
 
         self.hidden_neuron = hidden_neuron
         self.random_seed = random_seed
-        self.dropout = dropout
+        self.dropout_p = dropout
         self.sigmoid = torch.nn.Sigmoid()
 
     def _loss(self, pred, test, mask, lambda_value=1):
@@ -24,7 +24,7 @@ class AutoRec(torch.nn.Module):
 
     def prepare_model(self):
         self.encoder = torch.nn.Linear(self.num_users, self.hidden_neuron, bias=True)
-        self.dropout = torch.nn.Dropout(p=self.dropout)
+        self.dropout = torch.nn.Dropout(p=self.dropout_p)
         self.decoder = torch.nn.Linear(self.hidden_neuron, self.num_users, bias=True)
 
     def forward(self, x):

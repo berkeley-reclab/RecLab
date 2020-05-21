@@ -24,7 +24,7 @@ class Autorec(recommender.PredictRecommender):
         self.num_items = num_items
         self.train_epoch = train_epoch
         self.batch_size = batch_size
-        self.num_batch = int(math.ceil(self.num_users / float(self.batch_size)))
+        self.num_batch = int(math.ceil(self.num_items / float(self.batch_size)))
         self.base_lr = base_lr
         self.optimizer_method = optimizer_method
         self.random_seed = random_seed

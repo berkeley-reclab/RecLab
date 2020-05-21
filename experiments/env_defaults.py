@@ -1,4 +1,4 @@
-""" Default parameters to experimental environments """
+"""Default parameters to experimental environments."""
 import math
 
 def get_len_trial(ENV_PARAMS):
@@ -70,6 +70,7 @@ LATENT_STATIC = {
         'memory_length': 0,
         'boredom_threshold': 0,
         'boredom_penalty': 0,
+        'affinity_change': 0,
     },
     'misc': {
         'num_final_ratings': 200000,
@@ -89,8 +90,9 @@ LATENT_DYNAMIC = {
         'num_init_ratings': 100000,
         'noise': 0.5,
         'memory_length': 5,
-        'boredom_threshold': 2,
-        'boredom_penalty': 1,
+        'boredom_threshold': 0.,
+        'boredom_penalty': 2,
+        'affinity_change': 0.2,
     },
     'misc': {
         'num_final_ratings': 200000,
@@ -232,9 +234,9 @@ LATENT_DYNAMIC_SMALL = {
         'num_init_ratings': 1000,
         'noise': 0.5,
         'memory_length': 5,
-        'boredom_threshold': 2,
-        'boredom_penalty': 1,
-    },
+        'boredom_threshold': 0.,
+        'boredom_penalty': 2,
+        'affinity_change': 0.2,    },
     'misc': {
         'num_final_ratings': 2000,
         'sampling': 'uniform',

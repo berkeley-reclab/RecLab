@@ -48,4 +48,4 @@ class AutoRec(torch.nn.Module):
                     Estimated_R[user,item] = 3
         idx = [tuple(users), tuple(items)]
         Estimated_R = Estimated_R.clamp(1, 5)
-        return Estimated_R.T[idx].detach().numpy()
+        return Estimated_R.T[idx].cpu().detach().numpy()

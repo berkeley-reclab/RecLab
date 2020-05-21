@@ -9,9 +9,9 @@ from .. import recommender
 
 class Autorec(recommender.PredictRecommender):
     def __init__(self, num_users, num_items,
-                 hidden_neuron, lambda_value,
-                 train_epoch, batch_size, optimizer_method,
-                 grad_clip, base_lr, lr_decay,
+                 hidden_neuron=500, lambda_value=1,
+                 train_epoch=1000, batch_size=1000, optimizer_method='RMSProp',
+                 grad_clip=False, base_lr=1e-3, lr_decay=0.99,
                  dropout=0.05, random_seed=0):
         """Create new Autorec recommender."""
         super().__init__()

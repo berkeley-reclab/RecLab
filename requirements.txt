@@ -11,4 +11,5 @@ pytest
 scipy
 sklearn
 tensorflow<=1.14
+torch
 wpyfm

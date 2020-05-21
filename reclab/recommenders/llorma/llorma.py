@@ -1,5 +1,6 @@
 """Tensorflow implementation of AutoRec recommender."""
 import numpy as np
+import tensorflow as tf
 
 from .llorma_lib import llorma_g
 from .. import recommender

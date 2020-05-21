@@ -114,22 +114,22 @@ starting_data = get_env_dataset(env)
 #                     batch_size = batch_sizes)
 
 # Set parameters based on tuning
-# learning_rate = 0.001
-# train_epoch = 10
-# batch_size = 64
-# hidden_dim = 500
+learning_rate = 0.001
+train_epoch = 10
+batch_size = 64
+hidden_dim = 500
 
-# # ====Step 7====
-# recommender = recommender_class(num_users=num_users,
-#                                 num_items=TOPICS_DYNAMIC['params']['num_items'], 
-#                                 batch_size=batch_size,
-#                                 train_epoch=train_epoch,
-#                                 hidden_dim=hidden_dim, 
-#                                 learning_rate=learning_rate)
+# ====Step 7====
+recommender = recommender_class(num_users=num_users,
+                                 num_items=TOPICS_DYNAMIC['params']['num_items'], 
+                                 batch_size=batch_size,
+                                 train_epoch=train_epoch,
+                                 hidden_dim=hidden_dim, 
+                                 learning_rate=learning_rate)
 
-trial_seeds = [0, 1, 2]
+#trial_seeds = [0]
 
-# #trial_seeds = [3, 4, 5, 6, 7, 8, 9]
+trial_seeds = [1,2, 3, 4, 5, 6, 7, 8, 9]
 
 
 for i, seed in enumerate(trial_seeds):

@@ -9,7 +9,7 @@ from run_utils import get_env_dataset, run_env_experiment
 from run_utils import ModelTuner
 from reclab.environments import Topics, LatentFactorBehavior
 from env_defaults import TOPICS_STATIC, TOPICS_DYNAMIC, LATENT_STATIC, LATENT_DYNAMIC, get_len_trial
-from reclab.recommenders import RandomRec
+from reclab.recommenders import PerfectRec
 
 env_name = str(sys.argv[1])
 if env_name == 'topics_static':
@@ -34,28 +34,34 @@ data_dir = 'master'
 overwrite = True
 
 # Experiment setup.
-n_trials = 10
-trial_seeds = [i for i in range(n_trials)]
+if len(sys.argv) > 2:
+    trial_seeds = [int(sys.argv[2])]
+else:
+    n_trials = 10
+    trial_seeds = [i for i in range(n_trials)]
 len_trial = get_len_trial(ENV_PARAMS)
-print(len_trial)
+
 # Environment setup
 environment_name = ENV_PARAMS['name']
 env = EnvObj(**ENV_PARAMS['params'], **ENV_PARAMS['optional_params'])
 
 # Recommender setup
-recommender_name = 'RandomRec'
-recommender_class = RandomRec
+recommender_name = 'PerfectRec'
+recommender_class = PerfectRec
+
+def rating_func():
+    ratings = env.dense_ratings
+    return ratings
 
 
 # ====Step 5====
 # Skipping, since nothing to tune
 
-
 # ====Step 6====
 # Skipping, since nothing to tune
 
 # ====Step 7====
-recommender = recommender_class()
+recommender = recommender_class(rating_func)
 for i, seed in enumerate(trial_seeds):
     run_env_experiment(
             [env],

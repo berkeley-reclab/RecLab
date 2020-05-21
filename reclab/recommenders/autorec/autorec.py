@@ -32,6 +32,7 @@ class Autorec(recommender.PredictRecommender):
         self.lr_decay = lr_decay
         self.grad_clip = grad_clip
         np.random.seed(self.random_seed)
+        self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
     def train_model(self, data):
         """
@@ -48,6 +49,7 @@ class Autorec(recommender.PredictRecommender):
 
         scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=self.lr_decay)
 
+        self.model.to(self.device)
         for epoch in range(self.train_epoch):
             self.train(data, optimizer, scheduler)
 
@@ -60,10 +62,11 @@ class Autorec(recommender.PredictRecommender):
             elif i < self.num_batch - 1:
                 batch_set_idx = random_perm_doc_idx[i * self.batch_size : (i+1) * self.batch_size]
 
-            output = self.model.forward(data[batch_set_idx, :])
-            loss = self.model._loss(output, data[batch_set_idx, :],
-                             self.mask_R[batch_set_idx, :],
-                             lambda_value=self.lambda_value)
+            batch = data[batch_set_idx, :].to(self.device)
+            output = self.model.forward(batch)
+            mask = self.mask_R[batch_set_idx, :].to(self.device)
+            loss = self.model._loss(output, batch,
+                             mask, lambda_value=self.lambda_value)
 
             loss.backward()
             if self.grad_clip:
@@ -77,7 +80,7 @@ class Autorec(recommender.PredictRecommender):
         return 'autorec'
 
     def _predict(self, user_item):
-        return self.model.predict(user_item, self.R)
+        return self.model.predict(user_item, self.R.to(self.device))
 
     def reset(self, users=None, items=None, ratings=None):  # noqa: D102
         self.model.prepare_model()

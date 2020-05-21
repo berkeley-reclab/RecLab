@@ -15,7 +15,7 @@ class Autorec(recommender.PredictRecommender):
                  dropout=0.05, random_seed=0):
         """Create new Autorec recommender."""
         super().__init__()
-        self.model = AutoRec(num_users, num_items,
+        self.model = autorec.AutoRec(num_users, num_items,
                              seen_users=set(), seen_items=set(),
                              hidden_neuron=hidden_neuron,
                              dropout=dropout, random_seed=random_seed)

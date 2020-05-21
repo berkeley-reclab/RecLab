@@ -21,6 +21,12 @@ import tqdm.autonotebook
 INIT_SEED = 0
 # The name of the file temporarily created for uploads to S3.
 TEMP_FILE_NAME = 'temp.out'
+# The id of all users that will have access to the S3 objects.
+AWS_IDS = ['acde32a12806f031eb2518b0c2aca259ba031314143dfe2fab1bf6207af665f0',
+           '4367fa3f02d247984d07c4e475f3e4e2abe5f95c6549f494f6784027cbb62601',
+           '9fa447cf916c8ee7d02047335fdf9055c1627518e78b7168c6c737a403c3035f',
+           '634b7a0686be3590c1808efc465ea9db660233386f1ad0bbbe3cabab19ae2564']
+ID_STR = ','.join(['id=' + aws_id for aws_id in AWS_IDS])
 
 
 def plot_ratings_mses(ratings,
@@ -31,7 +37,6 @@ def plot_ratings_mses(ratings,
                       threshold=10,
                       title=['', '']):
     """Plot the performance results for multiple recommenders.
-
     Parameters
     ----------
     ratings : np.ndarray
@@ -56,7 +61,6 @@ def plot_ratings_mses(ratings,
     threshold: float
         The threshold filtering on the predictions, predictions larger than it will be set to 0.
         default is 10
-
     """
     if num_init_ratings is not None:
         x_vals = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])
@@ -112,7 +116,6 @@ def plot_ratings_mses_s3(labels,
                          threshold=10,
                          title=['', '']):
     """Plot the performance results for multiple recommenders using data stored in S3.
-
     Parameters
     ----------
     labels : list of str
@@ -138,7 +141,6 @@ def plot_ratings_mses_s3(labels,
     threshold: float
         The threshold filtering on the predictions, predictions larger than it will be set to 0.
         default is 10
-
     """
     bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
 
@@ -203,7 +205,6 @@ def plot_regret(ratings,
                 perfect_ratings=None,
                 num_init_ratings=None):
     """Plot the regrets for multiple recommenders comparing to the perfect recommender.
-
     Parameters
     ----------
     ratings : np.ndarray
@@ -219,7 +220,6 @@ def plot_regret(ratings,
     num_init_ratings : int
         The number of ratings initially available to recommenders. If set to None
         the function will plot with an x-axis based on round number.
-
     """
     if perfect_ratings is None:
         if 'perfect' in labels:
@@ -262,7 +262,6 @@ def plot_regret_s3(labels,
                    num_users=None,
                    num_init_ratings=None):
     """Plot the regret for multiple recommenders using data stored in S3.
-
     Parameters
     ----------
     labels : list of str
@@ -287,7 +286,6 @@ def plot_regret_s3(labels,
     num_init_ratings : int
         The number of ratings initially available to recommenders. If set to None
         the function will plot with an x-axis based on the timestep.
-
     """
     bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
     def regret(ratings, predictions):
@@ -401,11 +399,9 @@ def compute_stats_s3(bucket,
 
 def get_env_dataset(environment):
     """Get the initial ratings of an environment.
-
     The intent of this function is to create an original dataset from which a recommender's
     hyperparameters can be tuned. The returned dataset will be identical to the original data
     available to each recommender when calling run_env_experiment.
-
     """
     environment.seed((INIT_SEED, 0))
     return environment.reset()
@@ -421,7 +417,6 @@ def run_env_experiment(environments,
                        data_dir=None,
                        overwrite=False):
     """Run repeated trials for a given list of recommenders on a list of environments.
-
     Parameters
     ----------
     environments : Environment
@@ -446,7 +441,6 @@ def run_env_experiment(environments,
         if bucket_name is also None.
     overwrite : bool
         Whether to re-run the experiment even if a matching S3 file is found.
-
     Returns
     -------
     ratings : np.ndarray
@@ -469,7 +463,6 @@ def run_env_experiment(environments,
         corresponds to the dense predictions array across all user-item pairs during
         the l-th step of the k-th trial for the j-th recommender on the i-th environment.
         predictions[i, j, k, l] corresponds to the prediction that the j-th recommender
-
     """
     bucket = None
     if bucket_name is not None:
@@ -530,7 +523,6 @@ def run_trial(env,
               dir_name=None,
               overwrite=False):
     """Logic for running each trial.
-
     Parameters
     ----------
     env : Environment
@@ -548,7 +540,6 @@ def run_trial(env,
         The S3 directory to save the trial results into. Can be None if bucket is also None.
     overwrite : bool
         Whether to re-run the experiment and overwrite the trial's saved data in S3.
-
     Returns
     -------
     ratings : np.ndarray
@@ -566,7 +557,6 @@ def run_trial(env,
     dense_predictions : np.ndarray
         The array of all dense predictions across each step. dense_predictions[i] is the
         array of all predictions on round i for each user-item pair.
-
     """
     if not overwrite and s3_dir_exists(bucket, dir_name):
         print('Loading past results from S3 at directory:', dir_name)
@@ -644,7 +634,6 @@ def run_trial(env,
 
 def compute_experiment_density(len_trial, environment, threshold=4):
     """Compute the rating density for the proposed experiment.
-
     Parameters
     ----------
     len_trial : int
@@ -653,7 +642,6 @@ def compute_experiment_density(len_trial, environment, threshold=4):
         The environment to consider.
     threshold : int
         The threshold for a rating to be considered "good".
-
     Returns
     -------
     initial_density : float
@@ -662,7 +650,6 @@ def compute_experiment_density(len_trial, environment, threshold=4):
         The final rating matrix density.
     good_item_density : float
         The underlying density of good items in the environment.
-
     """
     # Initialize environment
     get_env_dataset(environment)
@@ -681,10 +668,8 @@ def compute_experiment_density(len_trial, environment, threshold=4):
 
 class ModelTuner:
     """The tuner allows for easy tuning.
-
     Provides functionality for n-fold cross validation to
     assess the performance of various model parameters.
-
     Parameters
     ----------
     data : triple of iterables
@@ -711,7 +696,6 @@ class ModelTuner:
         if bucket_name is also None.
     overwrite : bool
         Whether to overwrite tuning logs in S3 if they already exist.
-
     """
 
     def __init__(self,
@@ -908,7 +892,6 @@ def compute_across_trials_s3(bucket,
                              func,
                              load_dense=False):
     """Apply func to all the trials of an experiment and return a list of func's return values.
-
     This function loads one trial at a time to prevent memory issues.
     """
     results = []
@@ -1043,7 +1026,8 @@ def serialize_and_put(bucket, dir_name, name, obj, use_json=False):
             file_name = file_name + '.pickle'
 
     with open(TEMP_FILE_NAME, 'rb') as temp_file:
-        bucket.upload_fileobj(Key=file_name, Fileobj=temp_file)
+        bucket.upload_fileobj(Key=file_name, Fileobj=temp_file,
+                              ExtraArgs={'GrantFullControl': ID_STR})
 
     os.remove(TEMP_FILE_NAME)
 
@@ -1056,5 +1040,7 @@ def put_dataframe(bucket, dir_name, name, dataframe):
 
     with io.BytesIO() as stream:
         stream.write(csv_str.encode('utf-8'))
+        stream.seek(0)
         file_name = os.path.join(dir_name, name + '.csv')
-        bucket.upload_fileobj(Key=file_name, Fileobj=stream)
+        bucket.upload_fileobj(Key=file_name, Fileobj=stream,
+                              ExtraArgs={'GrantFullControl': ID_STR})

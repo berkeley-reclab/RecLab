@@ -10,6 +10,10 @@ class Llorma(recommender.PredictRecommender):
 
     Parameters
     ---------
+    max_user : int
+        Maximum number of users in the environment
+    max_item  : int
+        Maximum number of items in the environment
     n_anchor : int
         Number of local model to build in the train phase
     pre_rank : int
@@ -34,29 +38,33 @@ class Llorma(recommender.PredictRecommender):
         If True use stored pre-trained item/user latent factors
     results_path :
         Folder to save model outputs and checkpoints.
-
+    kernel_fun : callable
+        kernel function used for similarity,
     """
 
     def __init__(self,
+                 max_user,
+                 max_item,
                  n_anchor=10,
                  pre_rank=5,
-                 pre_learning_rate=2e-4,
+                 pre_learning_rate=1e-3,
                  pre_lambda_val=10,
-                 pre_train_steps=100,
+                 pre_train_steps=10,
                  rank=10,
                  learning_rate=1e-2,
                  lambda_val=1e-3,
-                 train_steps=1000,
+                 train_steps=10,
                  batch_size=128,
-                 use_cache=False,
-                 result_path='results'):
+                 use_cache=True,
+                 result_path='results',
+                 kernel_fun=None):
         """Create new Local Low-Rank Matrix Approximation (LLORMA) recommender."""
         super().__init__()
 
-        self.model = llorma_g.Llorma(n_anchor, pre_rank,
+        self.model = llorma_g.Llorma(max_user, max_item, n_anchor, pre_rank,
                                      pre_learning_rate, pre_lambda_val, pre_train_steps,
                                      rank, learning_rate, lambda_val, train_steps,
-                                     batch_size, use_cache, result_path)
+                                     batch_size, use_cache, result_path, kernel_fun)
         self._hyperparameters.update(locals())
 
         # We only want the function arguments so remove class related objects.
@@ -82,6 +90,15 @@ class Llorma(recommender.PredictRecommender):
         unseen_estimate = np.mean(seen_estimate)
         estimate = np.ones(len(users))*unseen_estimate
         estimate[is_seen_id] = seen_estimate
+        print("Low: {:.3f}, Mean: {:.3f}, High: {:.3f}".format(np.quantile(seen_estimate, 0.25),
+                                                               np.quantile(seen_estimate, 0.5),
+                                                               np.quantile(seen_estimate, 0.75)))
+        #users = np.repeat(range(100), 170)
+        #items = np.tile(range(170), 100)
+        #user_item = np.column_stack((users, items))
+        #rating = self.model.predict(user_item)
+        #rating=rating.reshape(100, 170)
+        #np.savetxt("fixed_env_predictions.csv", rating, delimiter=',')
         return estimate
 
     def update(self, users=None, items=None, ratings=None):  # noqa: D102

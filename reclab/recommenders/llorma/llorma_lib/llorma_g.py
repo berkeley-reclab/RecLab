@@ -4,9 +4,10 @@ Code modified from https://github.com/JoonyoungYi/LLORMA-tensorflow
 """
 import os
 import random
+import warnings
+
 import numpy as np
 import tensorflow as tf
-import warnings
 
 from .anchor import AnchorManager
 from .train_utils import get_train_op, init_latent_mat, init_session
@@ -17,6 +18,10 @@ class Llorma():
 
     Parameters
     ----------
+    max_user : int
+        Maximum number of users in the environment
+    max_item  : int
+        Maximum number of items in the environment
     n_anchor : int, optional
         number of anchor-points, by default 10
     pre_rank : int, optional
@@ -50,14 +55,19 @@ class Llorma():
     result_path : str, optional
         directory name where model data will be saved,
         by default 'results'
+    kernel_fun : callable, optional
+        kernel function used for similarity,
+        by_default None
     """
-    def __init__(self, n_anchor=10, pre_rank=5,
+    def __init__(self, max_user, max_item, n_anchor=10, pre_rank=5,
                  pre_learning_rate=2e-4, pre_lambda_val=10,
                  pre_train_steps=100, rank=10, learning_rate=1e-2,
                  lambda_val=1e-3, train_steps=1000, batch_size=1024,
-                 use_cache=True, result_path='results'):
+                 use_cache=True, result_path='results', kernel_fun=None):
         """ Initialize a LLORMA recommender
         """
+        self.max_user = max_user
+        self.max_item = max_item
         self.n_anchor = n_anchor
         self.pre_rank = pre_rank
         self.pre_learning_rate = pre_learning_rate
@@ -70,11 +80,14 @@ class Llorma():
         self.batch_size = batch_size
         self.use_cache = use_cache
         self.result_path = result_path
+        self.kernel_fun = kernel_fun
         self.user_latent_init = None
         self.item_latent_init = None
         self.batch_manager = None
         self.anchor_manager = None
         self.session = None
+        self.model = None
+        self.pre_model = None
         self.model = None
 
     def reset_data(self, train_data, valid_data, test_data):
@@ -113,11 +126,11 @@ class Llorma():
         i_var = tf.placeholder(tf.int64, [None], name='i')
         r_var = tf.placeholder(tf.float64, [None], name='r')
 
-        p_factor = init_latent_mat(self.batch_manager.n_user,
+        p_factor = init_latent_mat(self.max_user,
                                    self.pre_rank,
                                    self.batch_manager.mu,
                                    self.batch_manager.std)
-        q_factor = init_latent_mat(self.batch_manager.n_item,
+        q_factor = init_latent_mat(self.max_item,
                                    self.pre_rank,
                                    self.batch_manager.mu,
                                    self.batch_manager.std)
@@ -160,12 +173,12 @@ class Llorma():
         # init weights
         all_p_factors, all_q_factors, r_hats = [], [], []
         for _ in range(self.n_anchor):
-            p_factor = init_latent_mat(self.batch_manager.n_user,
+            p_factor = init_latent_mat(self.max_user,
                                        self.rank,
                                        self.batch_manager.mu,
                                        self.batch_manager.std)
 
-            q_factor = init_latent_mat(self.batch_manager.n_item,
+            q_factor = init_latent_mat(self.max_item,
                                        self.rank,
                                        self.batch_manager.mu,
                                        self.batch_manager.std)
@@ -272,24 +285,24 @@ class Llorma():
     def pre_train(self):  # noqa: R0914
         """Pre-train a Matrix Factorization model for the full data
         """
-        if self.use_cache:
-            try:
-                self.user_latent_init = np.load('{}/pre_train_p.npy'.format(self.result_path))
-                self.item_latent_init = np.load('{}/pre_train_q.npy'.format(self.result_path))
-            except FileNotFoundError:
-                print('>> There is no cached p and q factors.')
 
-        pre_model = self.init_pre_model()
+        if self.use_cache:
+            # check if the pre-train factor are already initialized from a previous iteration
+            if (self.user_latent_init is not None) and (self.item_latent_init is not None):
+                return
+
+        if self.pre_model is None:
+            self.pre_model = self.init_pre_model()
+        pre_model = self.pre_model
 
         pre_session = tf.Session()
         pre_session.run(tf.global_variables_initializer())
 
         min_valid_rmse = float('Inf')
-        final_test_rmse = float('Inf')
 
         random_model_idx = random.randint(0, 1000000)
 
-        file_path = '{}/model-{}.ckpt'.format(self.result_path, random_model_idx)
+        file_path = '{}/pre-model-{}.ckpt'.format(self.result_path, random_model_idx)
 
         train_data = self.batch_manager.train_data
         u_vec = train_data[:, 0]
@@ -299,26 +312,20 @@ class Llorma():
         saver = tf.train.Saver()
         for itr in range(self.pre_train_steps):
             for train_op in pre_model['train_ops']:
-                _, _, train_rmse = pre_session.run(
-                    (train_op, pre_model['loss'], pre_model['rmse']),
+                pre_session.run((train_op, pre_model['loss'], pre_model['rmse']),
                     feed_dict={pre_model['u']: u_vec,
                                pre_model['i']: i_vec,
                                pre_model['r']: r_vec})
 
-            valid_rmse, test_rmse = self._get_rmse_pre_model(pre_session, pre_model)
-
-            if valid_rmse < min_valid_rmse:
+            valid_rmse, _ = self._get_rmse_pre_model(pre_session, pre_model)
+            print('Pre-train step: {}, train_error:{}'.format(itr, valid_rmse))
+            if valid_rmse <= min_valid_rmse:
                 min_valid_rmse = valid_rmse
                 min_valid_iter = itr
-                final_test_rmse = test_rmse
                 saver.save(pre_session, file_path)
 
             if itr >= min_valid_iter + 100:
                 break
-
-            print('>> ITER:', '{:3d}'.format(itr),
-                  '{:3f}, {:3f} {:3f} / {:3f}'.format(
-                      train_rmse, valid_rmse, test_rmse, final_test_rmse))
 
         saver.restore(pre_session, file_path)
         p_factor, q_factor = pre_session.run(
@@ -342,13 +349,17 @@ class Llorma():
     def train(self):  # noqa: R0914
         """ Train the LLORMA recommender
         """
+        if not self.model:
+            self.model = self.init_model()
+        model = self.model
+
         self.pre_train()
-        model = self.init_model()
 
         self.anchor_manager = AnchorManager(self.n_anchor,
                                             self.batch_manager,
                                             self.user_latent_init,
-                                            self.item_latent_init)
+                                            self.item_latent_init,
+                                            self.kernel_fun)
         session = init_session()
 
         local_models = [
@@ -361,12 +372,14 @@ class Llorma():
         test_k = _get_local_k(local_models, kind='test')
 
         min_valid_rmse = float('Inf')
-        final_test_rmse = float('Inf')
+        min_valid_iter = 0
 
-        batch_rmses = []
         train_data = self.batch_manager.train_data
 
+        saver = tf.train.Saver()
         for itr in range(self.train_steps):
+            file_path = '{}/model-{}.ckpt'.format(self.result_path, itr)
+            print("Train step:{}".format(itr))
             for start_m in range(0, train_data.shape[0], self.batch_size):
                 end_m = min(start_m + self.batch_size, train_data.shape[0])
                 u_vec = train_data[start_m:end_m, 0]
@@ -381,25 +394,22 @@ class Llorma():
                         model['r']: r_vec,
                         model['k']: k_vec,
                     })
-                batch_rmses.append(results[0])
 
-                if start_m % (self.batch_size * 100) == 0:
-                    print('  - ', results[:1])
-
-            if itr % 10 == 0:
-                valid_rmse, test_rmse = self._get_rmse_model(session, model,
+            valid_rmse, test_rmse = self._get_rmse_model(session, model,
                                                              valid_k, test_k)
-                if valid_rmse < min_valid_rmse:
-                    min_valid_rmse = valid_rmse
-                    final_test_rmse = test_rmse
+            print("Train step:{}, train error: {}, test error: {}".format(itr, test_rmse, valid_rmse))
+            if valid_rmse < min_valid_rmse:
+                min_valid_rmse = valid_rmse
+                min_valid_iter = itr
+                saver.save(session, file_path)
+                saver.restore(session, file_path)
 
-                batch_rmse = sum(batch_rmses) / len(batch_rmses)
-                batch_rmses = []
-                print('  - ITER{:4d}:'.format(itr),
-                      '{:.5f}, {:.5f} {:.5f} / {:.5f}'.format(
-                          batch_rmse, valid_rmse, test_rmse, final_test_rmse))
+            if itr >= min_valid_iter + 100:
+                break
+
+
+
         self.session = session
-        self.model = model
         return(session, model)
 
     def predict(self, user_items):
@@ -415,6 +425,7 @@ class Llorma():
         np.ndarray, shape (N,)
             Predicted ratings
         """
+
         session = self.session
         model = self.model
 
@@ -463,7 +474,7 @@ class LocalModel:  # noqa: R0903
         self.anchor_idx = anchor_idx
         self.anchor_manager = anchor_manager
 
-        print('>> update k in anchor_idx [{}].'.format(anchor_idx))
+        #print('>> update k in anchor_idx [{}].'.format(anchor_idx))
         self.train_k = anchor_manager.get_train_k(anchor_idx)
         self.valid_k = anchor_manager.get_valid_k(anchor_idx)
         self.test_k = anchor_manager.get_test_k(anchor_idx)

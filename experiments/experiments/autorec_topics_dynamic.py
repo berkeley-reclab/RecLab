@@ -5,7 +5,7 @@ import numpy as np
 
 sys.path.append('../')
 sys.path.append('../../')
-from env_defaults import TOPICS_STATIC
+from env_defaults import TOPICS_DYNAMIC
 from run_utils import get_env_dataset, run_env_experiment
 from run_utils import ModelTuner
 from reclab.environments import Topics
@@ -18,18 +18,18 @@ data_dir = 'master'
 overwrite = True
 
 # Experiment setup.
-num_users = TOPICS_STATIC['params']['num_users']
-num_init_ratings = TOPICS_STATIC['optional_params']['num_init_ratings']
-num_final_ratings = TOPICS_STATIC['misc']['num_final_ratings']
-rating_frequency = TOPICS_STATIC['optional_params']['rating_frequency']
+num_users = TOPICS_DYNAMIC['params']['num_users']
+num_init_ratings = TOPICS_DYNAMIC['optional_params']['num_init_ratings']
+num_final_ratings = TOPICS_DYNAMIC['misc']['num_final_ratings']
+rating_frequency = TOPICS_DYNAMIC['optional_params']['rating_frequency']
 n_trials = 10
 len_trial = math.ceil((num_final_ratings - num_init_ratings) /
                       (num_users * rating_frequency))
 trial_seeds = [i for i in range(n_trials)]
 
 # Environment setup
-environment_name = TOPICS_STATIC['name']
-env = Topics(**TOPICS_STATIC['params'], **TOPICS_STATIC['optional_params'])
+environment_name = TOPICS_DYNAMIC['name']
+env = Topics(**TOPICS_DYNAMIC['params'], **TOPICS_DYNAMIC['optional_params'])
 
 # Recommender setup
 recommender_name = 'Autorec'
@@ -44,7 +44,7 @@ starting_data = get_env_dataset(env)
 # Recommender tuning setup
 n_fold = 5
 default_params = dict(num_users=num_users,
-                      num_items=TOPICS_STATIC['params']['num_items'])
+                      num_items=TOPICS_DYNAMIC['params']['num_items'])
 tuner = ModelTuner(starting_data,
                    default_params,
                    recommender_class,

@@ -11,7 +11,7 @@ from run_utils import ModelTuner
 from reclab.environments import Topics
 from reclab.recommenders import LibFM
 
-assert len(sys.argv) == 3,
+assert len(sys.argv) >= 3,
 strategy = sys.argv[1]
 lowdata = bool(sys.argv[2])
 
@@ -34,10 +34,14 @@ num_users = TOPICS_STATIC['params']['num_users']
 num_init_ratings = TOPICS_STATIC['optional_params']['num_init_ratings']
 num_final_ratings = TOPICS_STATIC['misc']['num_final_ratings']
 rating_frequency = TOPICS_STATIC['optional_params']['rating_frequency']
-n_trials = 10
 len_trial = math.ceil((num_final_ratings - num_init_ratings) /
                       (num_users * rating_frequency))
-trial_seeds = [i for i in range(n_trials)]
+
+if len(sys.argv) > 3:
+    trial_seeds = list(np.fromstring(sys.argv[2], sep=',').astype(int))
+else:
+    n_trials = 10
+    trial_seeds = [i for i in range(n_trials)]
 
 # Environment setup
 environment_name = TOPICS_STATIC['name']

@@ -8,6 +8,34 @@ from .autorec_lib import autorec
 from .. import recommender
 
 class Autorec(recommender.PredictRecommender):
+    """Autorec recommender.
+    Parameters
+    ---------
+    num_users : int
+        Number of users in the environment.
+    num_items : int
+        Number of items in the environment.
+    hidden_neuron : int
+        Output dimension of hidden layer.
+    lambda_value : float
+        Coefficient for regularization while training layers.
+    train_epoch : int
+        Number of epochs to train for each call.
+    batch_size : int
+        Batch size during initial training phase.
+    optimizer_method : str
+        Optimizer for training model; either Adam or RMSProp.
+    grad_clip : bool
+        Set to true to clip gradients to [-5, 5].
+    base_lr : float
+        Base learning rate for optimizer.
+    lr_decay : float
+        Rate for decaying learning rate during training.
+    dropout : float
+        Probability to initialize dropout layer. Set to 0 for no dropout.
+    random_seed : int
+        Random seed to reproduce results.
+    """
     def __init__(self, num_users, num_items,
                  hidden_neuron=500, lambda_value=1,
                  train_epoch=1000, batch_size=1000, optimizer_method='RMSProp',
@@ -35,9 +63,7 @@ class Autorec(recommender.PredictRecommender):
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
     def train_model(self, data):
-        """
-        Trains for all epochs in train_epoch
-        """
+        """Train for all epochs in train_epoch."""
         self.model.train()
         if self.optimizer_method == "Adam":
             optimizer = torch.optim.Adam(self.model.parameters(), lr=self.base_lr)
@@ -54,7 +80,7 @@ class Autorec(recommender.PredictRecommender):
             self.train(data, optimizer, scheduler)
 
     def train(self, data, optimizer, scheduler):
-        """Trains for a single epoch"""
+        """Train for a single epoch."""
         random_perm_doc_idx = np.random.permutation(self.num_items)
         for i in range(self.num_batch):
             if i == self.num_batch - 1:

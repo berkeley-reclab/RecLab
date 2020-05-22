@@ -48,7 +48,7 @@ env = Topics(**TOPICS_STATIC['params'], **TOPICS_STATIC['optional_params'])
 # Recommender setup
 recommender_name = 'LibFM (SGD)'
 if strategy != 'greedy':
-  strategy += ' ' + strategy
+  recommender_name += ' ' + strategy
 recommender_class = LibFM
 
 

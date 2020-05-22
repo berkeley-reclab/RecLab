@@ -64,6 +64,7 @@ default_params = dict(num_user_features=0,
 recommender = recommender_class(num_iter=num_iter,
                                 num_two_way_factors=num_two_way_factors,
                                 init_stdev=init_stdev,
+                                strategy=strategy,
                                 **default_params)
 for i, seed in enumerate(trial_seeds):
     run_env_experiment(

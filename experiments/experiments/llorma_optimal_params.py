@@ -1,4 +1,4 @@
-TOPICS_STATIC_SMALL = {
+OPT_TOPICS_SMALL = {
                 'batch_size': 128,
                 'lambda_val': 0.01,
                 'learning_rate': 0.02,
@@ -12,7 +12,7 @@ TOPICS_STATIC_SMALL = {
                 'train_steps': 100,
                 'use_cache': False}
 
-TOPICS_STATIC = {
+OPT_TOPICS = {
                 'result_path': 'results_static',
                 'n_anchor': 10,
                 'pre_rank': 10,
@@ -23,5 +23,5 @@ TOPICS_STATIC = {
                 'learning_rate': 2e-2,
                 'lambda_val': 1e-4,
                 'train_steps': 50,
-                'batch_size': 1000
+                'batch_size': 1000,
                 'use_cache': False}

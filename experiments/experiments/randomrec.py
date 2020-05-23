@@ -7,8 +7,8 @@ sys.path.append('../')
 sys.path.append('../../')
 from run_utils import get_env_dataset, run_env_experiment
 from run_utils import ModelTuner
-from reclab.environments import Topics, LatentFactorBehavior
-from env_defaults import TOPICS_STATIC, TOPICS_DYNAMIC, LATENT_STATIC, LATENT_DYNAMIC, get_len_trial
+from reclab.environments import Topics, LatentFactorBehavior, DatasetLatentFactor
+from env_defaults import *
 from reclab.recommenders import RandomRec
 
 env_name = str(sys.argv[1])
@@ -24,6 +24,12 @@ elif env_name == 'latent_static':
 elif env_name == 'latent_dynamic':
     ENV_PARAMS = LATENT_DYNAMIC
     EnvObj = LatentFactorBehavior
+elif env_name == 'ml_100k':
+    ENV_PARAMS = ML_100K
+    EnvObj = DatasetLatentFactor
+elif env_name == 'ml_100k_lowdata':
+    ENV_PARAMS = ML_100K_LOWDATA
+    EnvObj = DatasetLatentFactor
 else:
     assert False, "environment not implemented!"
 
@@ -35,7 +41,7 @@ overwrite = True
 
 # Experiment setup.
 if len(sys.argv) > 2:
-    trial_seeds = [int(sys.argv[2])]
+    trial_seeds = list(np.fromstring(sys.argv[2], sep=',').astype(int))
 else:
     n_trials = 10
     trial_seeds = [i for i in range(n_trials)]

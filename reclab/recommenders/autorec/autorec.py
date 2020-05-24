@@ -43,6 +43,12 @@ class Autorec(recommender.PredictRecommender):
                  dropout=0.05, random_seed=0):
         """Create new Autorec recommender."""
         super().__init__()
+
+        # We only want the function arguments so remove class related objects.
+        self._hyperparameters.update(locals())
+        del self._hyperparameters['self']
+        del self._hyperparameters['__class__']
+
         self.model = autorec.AutoRec(num_users, num_items,
                              seen_users=set(), seen_items=set(),
                              hidden_neuron=hidden_neuron,
@@ -73,7 +79,7 @@ class Autorec(recommender.PredictRecommender):
         else:
             raise ValueError("Optimizer Key ERROR")
 
-        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=self.lr_decay)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=1e-2)
 
         self.model.to(self.device)
         for epoch in range(self.train_epoch):

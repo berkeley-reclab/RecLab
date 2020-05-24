@@ -15,8 +15,6 @@ assert len(sys.argv) >= 3
 strategy = sys.argv[1]
 lowdata = bool(sys.argv[2])
 
-TOPICS_STATIC['name'] += '_' + strategy
-
 # ====Step 4====
 # S3 storage parameters
 bucket_name = 'recsys-eval'
@@ -49,6 +47,8 @@ env = Topics(**TOPICS_STATIC['params'], **TOPICS_STATIC['optional_params'])
 
 # Recommender setup
 recommender_name = 'LibFM (MCMC)'
+if strategy != 'greedy':
+  recommender_name += ' ' + strategy
 recommender_class = LibFM
 
 

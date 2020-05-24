@@ -286,13 +286,16 @@ class Llorma():
         """Pre-train a Matrix Factorization model for the full data
         """
 
-        if self.use_cache:
-            # check if the pre-train factor are already initialized from a previous iteration
-            if (self.user_latent_init is not None) and (self.item_latent_init is not None):
-                return
+        # if self.use_cache:
+        #     # check if the pre-train factor are already initialized from a previous iteration
+        #     if (self.user_latent_init is not None) and (self.item_latent_init is not None):
+        #         return
 
-        if self.pre_model is None:
-            self.pre_model = self.init_pre_model()
+        # if self.pre_model is None:
+        #     self.pre_model = self.init_pre_model()
+
+        tf.reset_default_graph()
+        self.pre_model = self.init_pre_model()
         pre_model = self.pre_model
 
         pre_session = tf.Session()
@@ -309,25 +312,22 @@ class Llorma():
         i_vec = train_data[:, 1]
         r_vec = train_data[:, 2]
 
-        saver = tf.train.Saver()
+        #saver = tf.train.Saver()
         for itr in range(self.pre_train_steps):
             for train_op in pre_model['train_ops']:
                 pre_session.run((train_op, pre_model['loss'], pre_model['rmse']),
                     feed_dict={pre_model['u']: u_vec,
                                pre_model['i']: i_vec,
                                pre_model['r']: r_vec})
+            if (itr+1)%10==0:
+                valid_rmse, _ = self._get_rmse_pre_model(pre_session, pre_model)
+                print('Pre-train step: {}, train_error:{}'.format(itr+1, valid_rmse))
+                # if valid_rmse <= min_valid_rmse:
+                #     min_valid_rmse = valid_rmse
+                #     min_valid_iter = itr
+                # #saver.save(pre_session, file_path)
 
-            valid_rmse, _ = self._get_rmse_pre_model(pre_session, pre_model)
-            print('Pre-train step: {}, train_error:{}'.format(itr, valid_rmse))
-            if valid_rmse <= min_valid_rmse:
-                min_valid_rmse = valid_rmse
-                min_valid_iter = itr
-                saver.save(pre_session, file_path)
-
-            if itr >= min_valid_iter + 100:
-                break
-
-        saver.restore(pre_session, file_path)
+        #saver.restore(pre_session, file_path)
         p_factor, q_factor = pre_session.run(
             (pre_model['p'], pre_model['q']),
             feed_dict={
@@ -349,11 +349,13 @@ class Llorma():
     def train(self):  # noqa: R0914
         """ Train the LLORMA recommender
         """
-        if not self.model:
-            self.model = self.init_model()
-        model = self.model
 
         self.pre_train()
+        #tf.reset_default_graph()
+        self.model = self.init_model()
+        model = self.model
+
+
 
         self.anchor_manager = AnchorManager(self.n_anchor,
                                             self.batch_manager,
@@ -376,10 +378,9 @@ class Llorma():
 
         train_data = self.batch_manager.train_data
 
-        saver = tf.train.Saver()
+        #saver = tf.train.Saver()
         for itr in range(self.train_steps):
             file_path = '{}/model-{}.ckpt'.format(self.result_path, itr)
-            print("Train step:{}".format(itr))
             for start_m in range(0, train_data.shape[0], self.batch_size):
                 end_m = min(start_m + self.batch_size, train_data.shape[0])
                 u_vec = train_data[start_m:end_m, 0]
@@ -395,17 +396,19 @@ class Llorma():
                         model['k']: k_vec,
                     })
 
-            valid_rmse, test_rmse = self._get_rmse_model(session, model,
-                                                             valid_k, test_k)
-            print("Train step:{}, train error: {}, test error: {}".format(itr, test_rmse, valid_rmse))
-            if valid_rmse < min_valid_rmse:
-                min_valid_rmse = valid_rmse
-                min_valid_iter = itr
-                saver.save(session, file_path)
-                saver.restore(session, file_path)
 
-            if itr >= min_valid_iter + 100:
-                break
+            if (itr+1)%10==0:
+                valid_rmse, test_rmse = self._get_rmse_model(session, model,
+                                                             valid_k, test_k)
+                print("Train step:{}, train error: {}, test error: {}".format(itr+1, test_rmse, valid_rmse))
+                # if valid_rmse < min_valid_rmse:
+                #     min_valid_rmse = valid_rmse
+                #     min_valid_iter = itr
+                #     #saver.save(session, file_path)
+                #     #saver.restore(session, file_path)
+
+                # if itr >= min_valid_iter + 100:
+                #     break
 
 
 

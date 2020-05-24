@@ -13,7 +13,7 @@ from reclab.recommenders import LibFM
 
 assert len(sys.argv) >= 3
 strategy = sys.argv[1]
-lowdata = bool(sys.argv[2])
+lowdata = sys.argv[2] in ['1', 'True', 'true']
 
 # ====Step 4====
 # S3 storage parameters

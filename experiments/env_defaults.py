@@ -1,11 +1,25 @@
 """Default parameters to experimental environments."""
 import math
 
+def get_num_users_items(ENV_PARAMS):
+    """Get num user/items based on the environment parameters.
+    """
+    if 'num_users' in ENV_PARAMS['params'].keys():
+        num_users = ENV_PARAMS['params']['num_users']
+        num_items = ENV_PARAMS['params']['num_items']
+    elif 'name' in ENV_PARAMS['params']:
+        if ENV_PARAMS['params']['name'] == 'ml-100k':                
+            num_users, num_items = ENV_PARAMS['misc']['dataset_size'] 
+            if 'max_num_users' in ENV_PARAMS['optional_params'].keys():
+                num_users = min(num_users, ENV_PARAMS['optional_params']['max_num_users'])
+            if 'max_num_items' in ENV_PARAMS['optional_params'].keys():
+                num_items = min(num_items, ENV_PARAMS['optional_params']['max_num_items'])
+    return num_users, num_items
+
 def get_len_trial(ENV_PARAMS):
     """Get length of trial based on the environment parameters.
     """
-    num_users = ENV_PARAMS['params']['num_users']
-    num_items = ENV_PARAMS['params']['num_items']
+    num_users, num_items = get_num_users_items(ENV_PARAMS)
     num_final_ratings = ENV_PARAMS['misc']['num_final_ratings']
     num_init_ratings = ENV_PARAMS['optional_params']['num_init_ratings']
     rating_frequency = ENV_PARAMS['optional_params']['rating_frequency']
@@ -154,6 +168,28 @@ ML_100K = {
     'misc': {
         'num_final_ratings': 200000,
         'sampling': 'uniform',
+        'dataset_size': (943, 1682),
+    },
+}
+
+ML_100K_LOWDATA = {
+    'name': 'ml_100k_lowdata',
+    'params': {
+        'name': 'ml-100k',
+    },
+    'optional_params': {
+        'latent_dim': 100,
+        'rating_frequency': 0.2,
+        'num_init_ratings': 1000,
+        'memory_length': 0,
+        'noise': 0.5,
+        'boredom_threshold': 0,
+        'boredom_penalty': 0,
+    },
+    'misc': {
+        'num_final_ratings': 101000,
+        'sampling': 'uniform',
+        'dataset_size': (943, 1682),
     },
 }
 
@@ -313,5 +349,6 @@ ML_100K_SMALL = {
     'misc': {
         'num_final_ratings': 2000,
         'sampling': 'uniform',
+        'dataset_size': (943, 1682),
     },
 }

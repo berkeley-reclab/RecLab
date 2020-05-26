@@ -67,35 +67,30 @@ tuner.evaluate_grid(hidden_neuron=hidden_neurons,
                     train_epoch=train_epoch)
 
 # Set number of iterations to tradeoff runtime and performance.
-train_epoch = 1000
+train_epoch = 200
 
 # Tune the performance independent hyperparameters.
 train_epochs = [train_epoch]
 hidden_neurons = [hidden_neuron]
 lambda_values = np.linspace(0, 10, 5).tolist()
 lrs = np.linspace(1e-4, 1e-2, 5).tolist()
-dropouts = np.linspace(0, 0.1, 5).tolist()
 
 results = tuner.evaluate_grid(train_epoch=train_epochs,
                     hidden_neuron=hidden_neurons,
                     lambda_value=lambda_values,
-                    base_lr=lrs,
-                    dropout=dropouts)
+                    base_lr=lrs)
 
 # Set parameters based on tuning
 best_params = results[results['average_metric'] == results['average_metric'].min()]
 lambda_value = float(best_params['lambda_value'])
 lr = float(best_params['base_lr'])
-dropout = float(best_params['dropout'])
 
 # ====Step 7====
 recommender = recommender_class(train_epoch=train_epoch,
                                 hidden_neuron=hidden_neuron,
                                 lambda_value=lambda_value,
-                                dropout=dropout,
                                 base_lr=lr,
                                 lr_decay=0.999,
-                                optimizer_method='Adam'
                                 **default_params)
 for i, seed in enumerate(trial_seeds):
     run_env_experiment(

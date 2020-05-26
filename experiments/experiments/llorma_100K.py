@@ -17,7 +17,7 @@ from reclab.environments.latent_factors  import DatasetLatentFactor
 #=====
 
 i = 0
-
+js = [0,1]
 #=====
 
 # S3 storage parameters
@@ -36,7 +36,7 @@ environment_name = ENV_DICT['name']
 env = DatasetLatentFactor(**ENV_DICT['params'], **ENV_DICT['optional_params'])
 
 # Recommender setup
-recommender_name = ['Llorma-{}-{}'.format(i,j) for j in range(4)]
+recommender_name = ['Llorma-{}-{}'.format(i,j) for j in js]
 recommender_class = Llorma
 
 print(LEARNING_RATE[0])
@@ -45,7 +45,7 @@ recommenders = [recommender_class(max_user=LATENT_STATIC['params']['num_users'],
                                   max_item=LATENT_STATIC['params']['num_items'],
                                   learning_rate=LEARNING_RATE[i],
                                   lambda_val=LAMBDA_VAL[j],
-                                  **OPT_100K) for j in range(4)]
+                                  **OPT_100K) for j in js]
 
 for j, recommender in enumerate(recommenders):
     run_env_experiment(

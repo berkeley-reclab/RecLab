@@ -17,13 +17,13 @@ from reclab.recommenders import Llorma
 
 # S3 storage parameters
 bucket_name = 'recsys-eval'
-data_dir = 'Mihaela'
+data_dir = 'master'
 overwrite = True
 
 
 ENV_DICT = LATENT_STATIC
 len_trial = get_len_trial(ENV_DICT)
-trial_seed = [0]
+trial_seeds = [0]
 
 # Environment setup
 environment_name = ENV_DICT['name']
@@ -32,25 +32,22 @@ env = LatentFactorBehavior(**ENV_DICT['params'], **ENV_DICT['optional_params'])
 
 i = 0
 # Recommender setup
-recommender_name = ['Llorma-{}-0'.format(i),'Llorma-{}-1'.format(i),'Llorma-{}-2'.format(i),'Llorma-{}-3'.format(i)]
+recommender_name = 'Llorma'
 recommender_class = Llorma
 
-learning_rate = LEARNING_RATE[i]
-recommenders = [recommender_class(max_user=ENV_DICT['params']['num_users'],
+recommender = recommender_class(max_user=ENV_DICT['params']['num_users'],
                                  max_item=ENV_DICT['params']['num_items'],
-                                 learning_rate = learning_rate,
-                                 lambda_val = LAMBDA_VAL[j],
                                  **OPT_LATENT,
                                 ) for j in range(len(LAMBDA_VAL))]
 
-for i, recommender in enumerate(recommenders):
+for i, seed in enumerate(trial_seeds):
     run_env_experiment(
             [env],
             [recommender],
-            trial_seed,
+            [seed],
             len_trial,
             environment_names=[environment_name],
-            recommender_names=[recommender_name[i]],
+            recommender_names=recommender_name,
             bucket_name=bucket_name,
             data_dir=data_dir,
             overwrite=overwrite)

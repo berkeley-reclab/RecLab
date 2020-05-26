@@ -9,7 +9,7 @@ sys.path.append('experiments')
 sys.path.append('.')
 sys.path.append('experiments/experiments')
 from env_defaults import LATENT_STATIC, get_len_trial
-from llorma_optimal_params import OPT_LATENT, LEARNING_RATE, LAMBDA_VAL
+from llorma_optimal_params import OPT_LATENT
 from run_utils import get_env_dataset, run_env_experiment
 from reclab.environments import LatentFactorBehavior
 from reclab.recommenders import Llorma

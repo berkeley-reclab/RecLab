@@ -45,7 +45,7 @@ for i, seed in enumerate(trial_seeds):
             [seed],
             len_trial,
             environment_names=[environment_name],
-            recommender_names=recommender_name,
+            recommender_names=[recommender_name],
             bucket_name=bucket_name,
             data_dir=data_dir,
             overwrite=overwrite)

@@ -120,6 +120,7 @@ class Autorec(recommender.PredictRecommender):
 
     def update(self, users=None, items=None, ratings=None):  # noqa: D102
         super().update(users, items, ratings)
+        self.model.prepare_model()
         for user_item in ratings:
             self.model.seen_users.add(user_item[0])
             self.model.seen_items.add(user_item[1])

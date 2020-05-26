@@ -9,20 +9,16 @@ sys.path.append('experiments')
 sys.path.append('.')
 sys.path.append('experiments/experiments')
 from env_defaults import LATENT_STATIC, ML_100K,  get_len_trial
-from llorma_optimal_params import OPT_100K, LAMBDA_VAL, LEARNING_RATE
+from reclab.environments.latent_factors  import DatasetLatentFactor
+from llorma_optimal_params import OPT_100K
 from run_utils import get_env_dataset, run_env_experiment
 from reclab.recommenders import Llorma
-from reclab.environments.latent_factors  import DatasetLatentFactor
 
-#=====
 
-i = 0
-js = [0,1]
-#=====
 
 # S3 storage parameters
 bucket_name = 'recsys-eval'
-data_dir = 'Mihaela'
+data_dir = 'master'
 overwrite = True
 
 
@@ -36,25 +32,21 @@ environment_name = ENV_DICT['name']
 env = DatasetLatentFactor(**ENV_DICT['params'], **ENV_DICT['optional_params'])
 
 # Recommender setup
-recommender_name = ['Llorma-{}-{}'.format(i,j) for j in js]
+recommender_name = 'Llorma'
 recommender_class = Llorma
 
-print(LEARNING_RATE[0])
-
-recommenders = [recommender_class(max_user=LATENT_STATIC['params']['num_users'],
+recommender = recommender_class(max_user=LATENT_STATIC['params']['num_users'],
                                   max_item=LATENT_STATIC['params']['num_items'],
-                                  learning_rate=LEARNING_RATE[i],
-                                  lambda_val=LAMBDA_VAL[j],
-                                  **OPT_100K) for j in js]
+                                  **OPT_100K)
 
-for j, recommender in enumerate(recommenders):
+for i, seed in enumerate(trial_seeds):
     run_env_experiment(
             [env],
             [recommender],
-            [0],
+            [seed],
             len_trial,
             environment_names=[environment_name],
-            recommender_names=[recommender_name[j]],
+            recommender_names=[recommender_name],
             bucket_name=bucket_name,
             data_dir=data_dir,
             overwrite=overwrite)

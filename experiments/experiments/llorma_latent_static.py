@@ -30,15 +30,13 @@ environment_name = ENV_DICT['name']
 # env = LatentFactorBehavior(**ENV_DICT['params'], **ENV_DICT['optional_params'])
 env = LatentFactorBehavior(**ENV_DICT['params'], **ENV_DICT['optional_params'])
 
-i = 0
 # Recommender setup
 recommender_name = 'Llorma'
 recommender_class = Llorma
 
 recommender = recommender_class(max_user=ENV_DICT['params']['num_users'],
                                  max_item=ENV_DICT['params']['num_items'],
-                                 **OPT_LATENT,
-                                ) for j in range(len(LAMBDA_VAL))]
+                                 **OPT_LATENT)
 
 for i, seed in enumerate(trial_seeds):
     run_env_experiment(

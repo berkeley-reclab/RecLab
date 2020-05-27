@@ -202,12 +202,15 @@ class LibFM(recommender.PredictRecommender):
     def model_parameters(self):
         """Train a libfm model and get the resulting model's parameters.
 
-        The factorization machine model predicts a rating by
-        r(x) = b_0 + w^T x + v^T V x
+        The degree-2 factorization machine model predicts a rating by
+
+        r(x) = b_0 + w^T x + Ind(j = i) Ind(k = u) V_j^T V_k
+
         where b_0 is the global bias, w is the weights, and
-        V is the pairwise interactions.
-        Here, x are the features of the user, item, rating,
-        including one-hot encoding of their identity.
+        V is the pairwise interactions with dimension k * (m+n)
+        V_j is the j^th row of V
+        x is defined as the concatenation of two one-hot encodings e_i and e_u,
+        and w^T x correpond to the user and item biases.
 
         Returns
         -------

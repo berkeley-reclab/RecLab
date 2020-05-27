@@ -28,6 +28,46 @@ AWS_IDS = ['acde32a12806f031eb2518b0c2aca259ba031314143dfe2fab1bf6207af665f0',
            '634b7a0686be3590c1808efc465ea9db660233386f1ad0bbbe3cabab19ae2564']
 ID_STR = ','.join(['id=' + aws_id for aws_id in AWS_IDS])
 
+def plot_novelty_s3(bucket, dir_name, num_users, num_items, label):
+    def get_and_unserialize(bucket, dir_name):
+        file_name = os.path.join(dir_name)
+        with open(TEMP_FILE_NAME, 'wb') as temp_file:
+            bucket.download_fileobj(Key=file_name, Fileobj=temp_file)
+        with open(TEMP_FILE_NAME, 'rb') as temp_file:
+            obj = pickle.load(temp_file)
+        os.remove(TEMP_FILE_NAME)
+        return obj
+
+    recommendations = get_and_unserialize(bucket, dir_name + '/recommendations.pickle')
+    online_users = get_and_unserialize(bucket, dir_name + '/online_users.pickle')
+    envs = get_and_unserialize(bucket, dir_name + '/env_snapshots.pickle')
+    _, _, init_ratings = envs[0].reset()
+
+    seen = dict()
+    novelty = []
+    for i in range(num_items):
+        seen[i] = set()
+
+    for user, item in init_ratings.keys():
+        seen[item].add(user)
+
+    for i in range(recommendations.shape[0]):
+        novelty_t = 0
+        for item, user in zip(recommendations[i], list(online_users[i].keys())):
+            # if an item has never been before, set an arbitrary p_i
+            if len(seen[item]) == 0:
+                p_i = 1 / num_users
+            else:
+                p_i = len(seen[item]) / num_users
+            novelty_t += -1 * np.log2(p_i)
+            novelty_t /= recommendations.shape[1]
+
+        novelty.append(novelty_t)
+        for item, user in zip(recommendations[i], list(online_users[i].keys())):
+            seen[item].add(user)
+
+    plt.plot(novelty, label=label)
+    return novelty
 
 def plot_ratings_mses(ratings,
                       predictions,

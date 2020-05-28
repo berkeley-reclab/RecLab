@@ -91,12 +91,12 @@ def compute_novelty(recommendations, online_users, env):
         for item, user in zip(recommendations[i], list(online_users[i].keys())):
             # if an item has never been before, set an arbitrary p_i
             if len(seen[item]) == 0:
-                p_i = (1/num_users)
+                p_i = (1 / num_users)
             else:
                 p_i = len(seen[item]) / num_users
             novelty_t += -1 * np.log2(p_i)
             # normalize novelty to between 0 and 1
-            novelty_t /= (recommendations.shape[1] * (-1 * np.log2(1 / num_users)))
+            novelty_t /= (recommendations.shape[1])# * (-1 * np.log2(1 / num_users)))
         novelty.append(novelty_t)
         for item, user in zip(recommendations[i], list(online_users[i].keys())):
             seen[item].add(user)

@@ -73,7 +73,7 @@ train_epoch = 200
 train_epochs = [train_epoch]
 hidden_neurons = [hidden_neuron]
 lambda_values = np.linspace(0, 10, 5).tolist()
-lrs = np.linspace(1e-4, 1e-2, 5).tolist()
+lrs = np.linspace(1e-5, 1e-3, 5).tolist()
 
 results = tuner.evaluate_grid(train_epoch=train_epochs,
                     hidden_neuron=hidden_neurons,
@@ -90,7 +90,6 @@ recommender = recommender_class(train_epoch=train_epoch,
                                 hidden_neuron=hidden_neuron,
                                 lambda_value=lambda_value,
                                 base_lr=lr,
-                                lr_decay=0.999,
                                 **default_params)
 for i, seed in enumerate(trial_seeds):
     run_env_experiment(

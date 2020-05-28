@@ -39,7 +39,7 @@ class Autorec(recommender.PredictRecommender):
     def __init__(self, num_users, num_items,
                  hidden_neuron=500, lambda_value=1,
                  train_epoch=1000, batch_size=1000, optimizer_method='RMSProp',
-                 grad_clip=False, base_lr=1e-3, lr_decay=0.99,
+                 grad_clip=False, base_lr=1e-3, lr_decay=1e-2,
                  dropout=0.05, random_seed=0):
         """Create new Autorec recommender."""
         super().__init__()
@@ -79,7 +79,7 @@ class Autorec(recommender.PredictRecommender):
         else:
             raise ValueError("Optimizer Key ERROR")
 
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=1e-2)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=self.lr_decay)
 
         self.model.to(self.device)
         for epoch in range(self.train_epoch):

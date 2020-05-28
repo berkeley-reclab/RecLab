@@ -56,12 +56,14 @@ DEFAULT_PARAMS = dict(num_user_features=0,
 
 recommender = recommender_class(**DEFAULT_PARAMS)
 
-ratings, preds, dense_ratings, dense_preds = run_env_experiment([env],
-                                                                [recommender],
-                                                                trial_seeds,
-                                                                len_trial,
-                                                                environment_names=[environment_name],
-                                                                recommender_names=[recommender_name],
-                                                                bucket_name=bucket_name,
-                                                                data_dir=data_dir,
-                                                                overwrite=overwrite)
+for i, seed in enumerate(trial_seeds):
+    run_env_experiment(
+            [env],
+            [recommender],
+            [seed],
+            len_trial,
+            environment_names=[environment_name],
+            recommender_names=[recommender_name],
+            bucket_name=bucket_name,
+            data_dir=data_dir,
+            overwrite=overwrite)

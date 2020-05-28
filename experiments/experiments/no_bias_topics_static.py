@@ -26,7 +26,7 @@ num_init_ratings = ENV_DICT['optional_params']['num_init_ratings']
 num_final_ratings = ENV_DICT['misc']['num_final_ratings']
 rating_frequency = ENV_DICT['optional_params']['rating_frequency']
 
-trial_seeds = [0]
+trial_seeds = [0,1,2]
 len_trial = get_len_trial(ENV_DICT)
 
 # Environment setup
@@ -56,12 +56,14 @@ DEFAULT_PARAMS = dict(num_user_features=0,
 
 recommender = recommender_class(**DEFAULT_PARAMS)
 
-ratings, preds, dense_ratings, dense_preds = run_env_experiment([env],
-                                                                [recommender],
-                                                                trial_seeds,
-                                                                len_trial,
-                                                                environment_names=[environment_name],
-                                                                recommender_names=[recommender_name],
-                                                                bucket_name=bucket_name,
-                                                                data_dir=data_dir,
-                                                                overwrite=overwrite)
+for i, seed in enumerate(trial_seeds):
+    run_env_experiment(
+            [env],
+            [recommender],
+            [seed],
+            len_trial,
+            environment_names=[environment_name],
+            recommender_names=[recommender_name],
+            bucket_name=bucket_name,
+            data_dir=data_dir,
+            overwrite=overwrite)

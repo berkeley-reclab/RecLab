@@ -8,6 +8,7 @@ import json
 import os
 import pickle
 import subprocess
+import sys
 
 import boto3
 import functional
@@ -15,6 +16,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tqdm.autonotebook
+
+sys.path.append('../')
+sys.path.append('../../')
+from reclab.environments import Topics, LatentFactorBehavior
 
 
 # The random seed that defines the initial state of each environment.
@@ -38,7 +43,7 @@ def plot_novelty_s3(bucket_name,
     bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
 
     def get_and_unserialize(bucket, dir_name):
-        file_name = os.path.join(dir_name)
+        file_name=dir_name
         with open(TEMP_FILE_NAME, 'wb') as temp_file:
             bucket.download_fileobj(Key=file_name, Fileobj=temp_file)
         with open(TEMP_FILE_NAME, 'rb') as temp_file:
@@ -54,14 +59,16 @@ def plot_novelty_s3(bucket_name,
             recommendations = get_and_unserialize(bucket, os.path.join(dir_name, 'recommendations.pickle'))
             online_users = get_and_unserialize(bucket, os.path.join(dir_name, 'online_users.pickle'))
             env = get_and_unserialize(bucket, os.path.join(dir_name, 'env_snapshots.pickle'))[0]
+            # since some experiments were run before the user sampling PR
+            env._user_dist_choice = 'uniform'
             novelty.append(compute_novelty(recommendations, online_users, env))
         novelty = np.array(novelty).mean(axis=0)
         results.append(novelty)
 
-    for i in range(len(labels)):
+    for i in range(len(rec_names)):
         x_vals = [num_init_ratings + (i * recommendations.shape[1])
                   for i in range(recommendations.shape[0])]
-        plt.plot(x_vals, novelty[i], label=label[i])
+        plt.plot(x_vals, results[i], label=labels[i])
     plt.xlabel('# of ratings')
     plt.ylabel('Novelty')
     plt.legend()
@@ -78,16 +85,18 @@ def compute_novelty(recommendations, online_users, env):
         seen[i] = set()
     for user, item in init_ratings.keys():
         seen[item].add(user)
+
     for i in range(recommendations.shape[0]):
         novelty_t = 0
         for item, user in zip(recommendations[i], list(online_users[i].keys())):
             # if an item has never been before, set an arbitrary p_i
             if len(seen[item]) == 0:
-                p_i = 1 / num_users
+                p_i = (1/num_users)
             else:
                 p_i = len(seen[item]) / num_users
             novelty_t += -1 * np.log2(p_i)
-            novelty_t /= recommendations.shape[1]
+            # normalize novelty to between 0 and 1
+            novelty_t /= (recommendations.shape[1] * (-1 * np.log2(1 / num_users)))
         novelty.append(novelty_t)
         for item, user in zip(recommendations[i], list(online_users[i].keys())):
             seen[item].add(user)

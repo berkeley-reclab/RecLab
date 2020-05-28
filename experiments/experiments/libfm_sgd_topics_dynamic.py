@@ -5,7 +5,7 @@ import numpy as np
 
 sys.path.append('../')
 sys.path.append('../../')
-from env_defaults import TOPICS_DYNAMIC
+from env_defaults import *
 from run_utils import get_env_dataset, run_env_experiment
 from run_utils import ModelTuner
 from reclab.environments import Topics
@@ -18,13 +18,8 @@ data_dir = 'master'
 overwrite = True
 
 # Experiment setup.
-num_users = TOPICS_DYNAMIC['params']['num_users']
-num_init_ratings = TOPICS_DYNAMIC['optional_params']['num_init_ratings']
-num_final_ratings = TOPICS_DYNAMIC['misc']['num_final_ratings']
-rating_frequency = TOPICS_DYNAMIC['optional_params']['rating_frequency']
 n_trials = 10
-len_trial = math.ceil((num_final_ratings - num_init_ratings) /
-                      (num_users * rating_frequency))
+len_trial = get_len_trial(TOPICS_DYNAMIC)
 trial_seeds = [i for i in range(n_trials)]
 
 # Environment setup
@@ -43,11 +38,12 @@ starting_data = get_env_dataset(env)
 # ====Step 6====
 # Recommender tuning setup
 n_fold = 5
+num_users, num_items = get_num_users_items(TOPICS_DYNAMIC)
 default_params = dict(num_user_features=0,
                       num_item_features=0,
                       num_rating_features=0,
                       max_num_users=num_users,
-                      max_num_items=TOPICS_DYNAMIC['params']['num_items'],
+                      max_num_items=num_items,
                       method='sgd')
 tuner = ModelTuner(starting_data,
                    default_params,
@@ -98,7 +94,7 @@ results = tuner.evaluate_grid(num_two_way_factors=num_two_ways,
 
 # Set parameters based on tuning
 init_stdev = 1.0
-best_params = results[results['average_mse'] == results['average_mse'].min()]
+best_params = results[results['average_metric'] == results['average_metric'].min()]
 reg = float(best_params['reg'])
 lr = float(best_params['learning_rate'])
 
@@ -106,6 +102,8 @@ lr = float(best_params['learning_rate'])
 recommender = recommender_class(num_iter=num_iter,
                                 num_two_way_factors=num_two_way_factors,
                                 init_stdev=init_stdev,
+                                reg=reg,
+                                learning_rate=lr,
                                 **default_params)
 for i, seed in enumerate(trial_seeds):
     run_env_experiment(

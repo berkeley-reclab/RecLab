@@ -17,9 +17,9 @@ class AutoRec(torch.nn.Module):
         self.sigmoid = torch.nn.Sigmoid()
 
     def _loss(self, pred, test, mask, lambda_value=1):
-        mse = torch.nn.MSELoss()(pred * mask, test)
-        reg_value_enc = torch.mul(lambda_value / 2, torch.square(list(self.encoder.parameters())[1].norm(p='fro')))
-        reg_value_dec = torch.mul(lambda_value / 2, torch.square(list(self.decoder.parameters())[1].norm(p='fro')))
+        mse = (((pred * mask) - test) ** 2).sum()
+        reg_value_enc = torch.mul(lambda_value / 2, list(self.encoder.parameters())[0].norm(p='fro') ** 2)
+        reg_value_dec = torch.mul(lambda_value / 2, list(self.decoder.parameters())[0].norm(p='fro') ** 2)
         return torch.add(mse, torch.add(reg_value_enc, reg_value_dec))
 
     def prepare_model(self):
@@ -42,10 +42,10 @@ class AutoRec(torch.nn.Module):
         user_idx = set(users)
         item_idx = set(items)
         Estimated_R = self.forward(test_data)
-        for user in range(test_data.shape[0]):
-            for item in range(test_data.shape[1]):
+        for item in range(test_data.shape[0]):
+            for user in range(test_data.shape[1]):
                 if user not in self.seen_users and item not in self.seen_items:
-                    Estimated_R[user,item] = 3
+                    Estimated_R[item, user] = 3
         idx = [tuple(users), tuple(items)]
         Estimated_R = Estimated_R.clamp(1, 5)
         return Estimated_R.T[idx].cpu().detach().numpy()

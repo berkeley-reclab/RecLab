@@ -14,8 +14,18 @@ import functional
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import tqdm.autonotebook
 
+
+sns.set(style="ticks")
+plt.rc('font', family='serif')
+plt.rc('font', serif='Times New Roman')
+
+bigfont = 18
+medfont = 14
+smallfont = 12
+sns.set_style('ticks', {'font.family':'serif', 'font.serif':'Times New Roman'})
 
 # The random seed that defines the initial state of each environment.
 INIT_SEED = 0
@@ -69,15 +79,17 @@ def plot_ratings_mses(ratings,
 
     # Setting the predictions for a user/item that has no ratings in the training data to 0.
     predictions[predictions > threshold] = 0
+    rgblist = sns.color_palette(n_colors=len(labels))
 
     plt.figure(figsize=[9, 4])
     plt.subplot(1, 2, 1)
-    for recommender_ratings, label in zip(ratings, labels):
+    for recommender_ratings, label, rgb in zip(ratings, labels, rgblist):
         means, lower_bounds, upper_bounds = compute_stats(recommender_ratings,
                                                           bound_zero=True,
                                                           use_median=use_median)
-        plt.plot(x_vals, means, label=label)
-        plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
+        plt.plot(x_vals, means, label=label, color=rgb)
+        plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.25,
+                         color=rgb)
     plt.xlabel('# ratings')
     plt.ylabel('Mean Rating')
     plt.title(title[0])
@@ -85,7 +97,7 @@ def plot_ratings_mses(ratings,
 
     plt.subplot(1, 2, 2)
     squared_diffs = (ratings - predictions) ** 2
-    for recommender_squared_diffs, label in zip(squared_diffs, labels):
+    for recommender_squared_diffs, label, rgb in zip(squared_diffs, labels, rgblist):
         mse, lower_bounds, upper_bounds = compute_stats(recommender_squared_diffs,
                                                         bound_zero=True,
                                                         use_median=use_median)
@@ -93,8 +105,8 @@ def plot_ratings_mses(ratings,
         rmse = np.sqrt(mse)
         lower_bounds = np.sqrt(lower_bounds)
         upper_bounds = np.sqrt(upper_bounds)
-        plt.plot(x_vals, rmse, label=label)
-        plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
+        plt.plot(x_vals, rmse, label=label, color=rgb)
+        plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.25, color=rgb)
     plt.xlabel('# ratings')
     plt.ylabel('RMSE')
     plt.title(title[1])
@@ -103,7 +115,8 @@ def plot_ratings_mses(ratings,
     plt.show()
 
 
-def plot_ratings_mses_s3(labels,
+def plot_ratings_mses_s3(rec_names,
+                         labels,
                          len_trial,
                          bucket_name,
                          data_dir_name,
@@ -142,6 +155,7 @@ def plot_ratings_mses_s3(labels,
         The threshold filtering on the predictions, predictions larger than it will be set to 0.
         default is 10
     """
+    rgblist = sns.color_palette('muted', n_colors=len(labels))
     bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
 
     def arr_func(ratings, predictions):
@@ -155,32 +169,36 @@ def plot_ratings_mses_s3(labels,
         x_vals = np.arange(len_trial)
 
     all_stats = {}
-    for label in labels:
+    for label, rec_name in zip(labels, rec_names):
         all_stats[label] = compute_stats_s3(bucket=bucket,
                                             data_dir_name=data_dir_name,
                                             env_name=env_name,
-                                            rec_names=[label],
+                                            rec_names=[rec_name],
                                             seeds=seeds,
                                             bound_zero=True,
                                             arr_func=arr_func,
                                             load_dense=plot_dense)
 
-    plt.figure(figsize=[9, 4])
+    plt.figure(figsize=[16, 6])
     plt.subplot(1, 2, 1)
-    for label in labels:
+    for label, rgb in zip(labels, rgblist):
         means, lower_bounds, upper_bounds = all_stats[label]
         means = means[0]
         lower_bounds = lower_bounds[0]
         upper_bounds = upper_bounds[0]
-        plt.plot(x_vals, means, label=label)
-        plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
-    plt.xlabel('# ratings')
-    plt.ylabel('Mean Rating')
+        plt.plot(x_vals, means, label=label, color=rgb)
+        plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.25, color=rgb)
+    plt.xticks(fontsize=bigfont)
+    plt.yticks(fontsize=bigfont)
+    plt.grid(True, linestyle='--', which='major', color='grey', alpha=.25)
+    plt.xlabel('Number of Ratings', fontsize=bigfont)
+    plt.ylabel('Mean Rating', fontsize=bigfont)
+    plt.ylim(bottom=2.75)
     plt.title(title[0])
-    plt.legend()
+    plt.legend(fontsize=smallfont, markerscale=1, framealpha=1, frameon=False)
 
     plt.subplot(1, 2, 2)
-    for label in labels:
+    for label, rgb in zip(labels, rgblist):
         means, lower_bounds, upper_bounds = all_stats[label]
         mse = means[1]
         lower_bounds = lower_bounds[1]
@@ -189,14 +207,16 @@ def plot_ratings_mses_s3(labels,
         rmse = np.sqrt(mse)
         lower_bounds = np.sqrt(lower_bounds)
         upper_bounds = np.sqrt(upper_bounds)
-        plt.plot(x_vals, rmse, label=label)
-        plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
-    plt.xlabel('# ratings')
-    plt.ylabel('RMSE')
+        plt.plot(x_vals, rmse, label=label, color=rgb)
+        plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.25, color=rgb)
+    plt.xticks(fontsize=bigfont)
+    plt.yticks(fontsize=bigfont)
+    plt.ylim(top=1.8)
+    plt.grid(True, linestyle='--', which='major', color='grey', alpha=.25)
+    plt.xlabel('Number of Ratings', fontsize=bigfont)
+    plt.ylabel('RMSE', fontsize=bigfont)
     plt.title(title[1])
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+    plt.legend(fontsize=smallfont, markerscale=1, framealpha=1, frameon=False)
 
 
 def plot_regret(ratings,
@@ -376,6 +396,7 @@ def compute_stats_s3(bucket,
                                        get_mean_square_func(arr_func),
                                        load_dense=load_dense)
     means, squares, lengths = zip(*results)
+    stds = np.std(means, axis=0, ddof=1)
     means = np.average(means, axis=0, weights=lengths)
     squares = np.average(squares, axis=0, weights=lengths)
     variances = squares - means ** 2
@@ -385,7 +406,8 @@ def compute_stats_s3(bucket,
     variances = variances * num_samples / (num_samples - 1)
 
     # Compute the standard error of each sample mean.
-    stds = np.sqrt(variances / (num_samples - 1))
+    # stds = np.sqrt(variances / (100 - 1))
+    stds /= np.sqrt(len(seeds) - 1)
 
     # Compute the 95% confidence intervals using the CLT.
     upper_bounds = means + 2 * stds
@@ -797,10 +819,24 @@ class ModelTuner:
                         if rank <= cutoff:
                             dcg += relevance / np.log2(rank+1)
                     return dcg
-                cutoff = int(len(true_ratings) / 5)
-                idcg = get_dcg(get_ranks(true_ratings), true_ratings, cutoff=cutoff)
-                dcg = get_dcg(get_ranks(predicted_ratings), true_ratings, cutoff=cutoff)
-                ndcg = dcg / idcg
+                user_preds = collections.defaultdict(list)
+                user_true = collections.defaultdict(list)
+                for (user, _, _), pred, true in zip(ratings_to_predict, predicted_ratings, true_ratings):
+                    user_preds[user].append(pred)
+                    user_true[user].append(true)
+                cutoff = 20 # int(len(true_ratings) / 5)
+                idcgs = []
+                dcgs = []
+                ndcgs = []
+                for user in user_preds:
+                    pred = user_preds[user]
+                    true = user_true[user]
+                    idcg = get_dcg(get_ranks(true), true, cutoff=cutoff)
+                    dcg = get_dcg(get_ranks(pred), true, cutoff=cutoff)
+                    dcgs.append(dcg)
+                    ndcgs.append(dcg / idcg)
+                dcg = np.mean(dcgs)
+                ndcg = np.mean(ndcgs)
                 if self.verbose:
                     print('dcg={}, ndcg={}'.format(dcg, ndcg))
                 metrics.append(ndcg)

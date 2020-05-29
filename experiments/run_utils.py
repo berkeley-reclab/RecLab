@@ -51,6 +51,16 @@ def plot_novelty_s3(bucket_name,
         os.remove(TEMP_FILE_NAME)
         return obj
 
+    def compute_stats(novelty):
+        means = novelty.mean(axis=0)
+        variances = novelty.var(axis=0)
+        num_samples = len(seeds)
+        variances = variances * num_samples / (num_samples - 1)
+        stds = np.sqrt(variances / (num_samples - 1))
+        upper_bounds = means + 2 * stds
+        lower_bounds = np.maximum(means - 2 * stds, 0)
+        return means, upper_bounds, lower_bounds
+
     results = []
     for rec_name in rec_names:
         novelty = []
@@ -62,13 +72,16 @@ def plot_novelty_s3(bucket_name,
             # since some experiments were run before the user sampling PR
             env._user_dist_choice = 'uniform'
             novelty.append(compute_novelty(recommendations, online_users, env))
-        novelty = np.array(novelty).mean(axis=0)
+        novelty = list(compute_stats(np.array(novelty)))
         results.append(novelty)
 
     for i in range(len(rec_names)):
         x_vals = [num_init_ratings + (i * recommendations.shape[1])
                   for i in range(recommendations.shape[0])]
         plt.plot(x_vals, results[i], label=labels[i])
+        plt.plot(x_vals, results[i][0]
+        plt.fill_between(x_vals, results[i][2], results[i][1], alpha=0.1)
+
     plt.xlabel('# of ratings')
     plt.ylabel('Novelty')
     plt.legend()
@@ -175,6 +188,80 @@ def plot_ratings_mses(ratings,
     plt.tight_layout()
     plt.show()
 
+def plot_coverage_s3(labels,
+                         len_trial,
+                         bucket_name,
+                         data_dir_name,
+                         env_name,
+                         seeds,
+                         num_users=None,
+                         rating_frequency=None,
+                         num_init_ratings=None,
+                         threshold=10,
+                         title=['', '']):
+    """Plot the performance results for multiple recommenders using data stored in S3.
+    Parameters
+    ----------
+    labels : list of str
+        The name of each recommender.
+    len_trial : int
+        The length of each trial.
+    bucket_name : str
+        The bucket in which the experiment data is saved.
+    data_dir_name : str
+        The name of the directory in which the experiment data is saved.
+    env_name : str
+        The name of the environment for which we are plotting the results.
+    seeds : list of int
+        The trial seeds across which we are averaging results.
+    plot_dense : bool
+        Whether to plot performance numbers using dense ratings and predictions.
+    num_users : int
+        The number of users. If set to None the function will plot with an x-axis
+        based on the timestep
+    num_init_ratings : int
+        The number of ratings initially available to recommenders. If set to None
+        the function will plot with an x-axis based on the timestep.
+    threshold: float
+        The threshold filtering on the predictions, predictions larger than it will be set to 0.
+        default is 10
+    """
+    bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
+
+    def arr_func(ratings, predictions):
+        # Setting the predictions for a user/item that has no ratings in the training data to 0.
+        predictions[0][predictions[0] > threshold] = 0
+        return [ratings[0], (ratings[0] - predictions[0]) ** 2]
+
+    if num_init_ratings is not None and num_users is not None and rating_frequency is not None:
+        x_vals = num_init_ratings + num_users * rating_frequency * np.arange(len_trial)
+    else:
+        x_vals = np.arange(len_trial)
+
+    all_stats = {}
+    for label in labels:
+        all_stats[label] = compute_stats_s3(bucket=bucket,
+                                            data_dir_name=data_dir_name,
+                                            env_name=env_name,
+                                            rec_names=[label],
+                                            seeds=seeds,
+                                            bound_zero=True,
+                                            arr_func=arr_func,
+                                            load_dense=plot_dense)
+
+    plt.figure(figsize=[9, 4])
+    plt.subplot(1, 2, 1)
+    for label in labels:
+        means, lower_bounds, upper_bounds = all_stats[label]
+        means = means[0]
+        lower_bounds = lower_bounds[0]
+        upper_bounds = upper_bounds[0]
+        plt.plot(x_vals, means, label=label)
+        plt.fill_between(x_vals, lower_bounds, upper_bounds, alpha=0.1)
+    plt.xlabel('# ratings')
+    plt.ylabel('Mean Rating')
+    plt.title(title[0])
+    plt.legend()
 
 def plot_ratings_mses_s3(labels,
                          len_trial,

@@ -440,6 +440,11 @@ def run_env_experiment(environments,
         if bucket_name is also None.
     overwrite : bool
         Whether to re-run the experiment even if a matching S3 file is found.
+    shift: bool
+        Whether or not to apply a shift.
+    shift_step: int
+        The step to apply the shift.
+
     Returns
     -------
     ratings : np.ndarray
@@ -539,6 +544,11 @@ def run_trial(env,
         The S3 directory to save the trial results into. Can be None if bucket is also None.
     overwrite : bool
         Whether to re-run the experiment and overwrite the trial's saved data in S3.
+    shift: bool
+        Whether or not to apply a shift.
+    shift_step: int
+        The step to apply the shift.
+
     Returns
     -------
     ratings : np.ndarray

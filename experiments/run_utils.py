@@ -587,7 +587,7 @@ def run_trial(env,
         dense_ratings = np.clip(env.dense_ratings.flatten(), 1, 5)
         if shift == True and step == shift_step:
             print('Applying preference shift at step ', step)
-            items, users, ratings, _ = env.shift(recommendations)
+            items, users, ratings, _ = env._shift(recommendations)
         else:
             items, users, ratings, _ = env.step(recommendations)
         items, users, ratings, _ = env.step(recommendations)

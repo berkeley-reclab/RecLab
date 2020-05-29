@@ -112,3 +112,75 @@ class Topics(environment.DictEnvironment):
                                               for user_id in range(self._num_users))
         self._items = collections.OrderedDict((item_id, np.zeros(0))
                                               for item_id in range(self._num_items))
+
+    def _shift(self, recommendations, shift_fraction=0.4, soft_shift=0.0):
+        """Run one timestep of the environment with a shift in the user preference.
+
+        Parameters
+        ----------
+        recommendations : np.ndarray
+            The recommendations made to each user. recommendations[i] corresponds to the
+            item id recommended to the i-th online user. This array must have the same size as
+            the ordered dict returned by online_users.
+
+        shift_fraction: float
+            The fraction of users that will have a preference shift
+
+        soft_shift:
+            Make the new preference as a linear combination of the old and the shifted preference
+            soft_shift is the fraction of the old preference
+
+        Returns
+        -------
+        users : OrderedDict
+            The new users where the key represents the user id and the value represents
+            the visible features associated with the user.
+        items : OrderedDict
+            The new items where the key represents the item id and the value represents
+            the visible features associated with the item.
+        ratings : dict
+            The new ratings where the key is a double whose first element is the user id
+            and the second element is the item id. The value represents the features associated
+            with the setting in which the rating was made.
+        info : dict
+            Extra information for debugging and evaluation. info["users"] will return the dict
+            of visible user states, info["items"] will return the dict of visible item states, and
+            info["ratings"] gets the dict of all ratings.
+
+        """
+        assert len(recommendations) == len(self._online_users)
+        new_users, new_items = self._update_state()
+        # Old dense ratings are now invalid so set it to None and lazily recompute.
+        self._dense_ratings = None
+
+        #apply the preference shift to a fraction of users
+        shifted_users = self._init_random.choice(self._num_users, int(self._num_users*shift_fraction))
+
+        for shifted_user in shifted_users:
+            new_preference = self._init_random.uniform(low=0.5, high=5.5,
+                                                           size=(1, self._num_topics))
+            self._user_preferences[shifted_user] = soft_shift * self._user_preferences[shifted_user] + (1-soft_shift) * new_preference
+
+        # Get online users to rate the recommended items.
+        ratings = {}
+        for user_id, item_id in zip(self._online_users, recommendations):
+            ratings[user_id, item_id] = (self._rate_item(user_id, item_id),
+                                         self._rating_context(user_id))
+            self._user_histories[user_id].append(item_id)
+            if len(self._user_histories[user_id]) == self._memory_length + 1:
+                self._user_histories[user_id].pop(0)
+            assert len(self._user_histories[user_id]) <= self._memory_length
+
+        self._ratings.update(ratings)
+
+        # Update the online users.
+        self._online_users = self._select_online_users()
+
+        # Create the info dict.
+        info = {'users': self._users,
+                'items': self._items,
+                'ratings': self._ratings}
+
+        self._timestep += 1
+        return new_users, new_items, ratings, info
+

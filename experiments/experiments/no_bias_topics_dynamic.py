@@ -9,7 +9,6 @@ sys.path.append('experiments')
 sys.path.append('.')
 sys.path.append('experiments/experiments')
 from env_defaults import TOPICS_DYNAMIC, get_len_trial
-from llorma_optimal_params import OPT_TOPICS
 from run_utils import get_env_dataset, run_env_experiment
 from reclab.environments import Topics
 from reclab.recommenders import LibFM

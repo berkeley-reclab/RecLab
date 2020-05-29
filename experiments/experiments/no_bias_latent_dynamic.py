@@ -8,17 +8,17 @@ sys.path.append('../../')
 sys.path.append('experiments')
 sys.path.append('.')
 sys.path.append('experiments/experiments')
-from env_defaults import TOPICS_STATIC, get_len_trial
+from env_defaults import LATENT_DYNAMIC, get_len_trial
 from run_utils import get_env_dataset, run_env_experiment
-from reclab.environments import Topics
+from reclab.environments import LatentFactorBehavior
 from reclab.recommenders import LibFM
 
 bucket_name = 'recsys-eval'
 data_dir = 'master'
 overwrite = True
 
-ENV_DICT = TOPICS_STATIC
-ENV = Topics
+ENV_DICT = LATENT_DYNAMIC
+ENV = LatentFactorBehavior
 # Experiment setup.
 num_users = ENV_DICT['params']['num_users']
 num_init_ratings = ENV_DICT['optional_params']['num_init_ratings']
@@ -48,8 +48,8 @@ DEFAULT_PARAMS = dict(num_user_features=0,
                       num_two_way_factors = 20,
                       num_iter = 100,
                       init_stdev = 1,
-                      reg = 0,
-                      learning_rate = 0.03,
+                      reg = 0.1,
+                      learning_rate = 0.01,
                       )
 
 

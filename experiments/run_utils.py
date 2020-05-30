@@ -186,6 +186,33 @@ def plot_ratings_mses(ratings,
     plt.tight_layout()
     plt.show()
 
+def get_coverage_s3(rec_names,
+                         len_trial,
+                         bucket_name,
+                         data_dir,
+                         env_name,
+                         seeds,
+                         num_init_ratings=None):
+    bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
+    def get_and_unserialize(bucket, dir_name):
+        file_name = os.path.join(dir_name)
+        with open(TEMP_FILE_NAME, 'wb') as temp_file:
+            bucket.download_fileobj(Key=file_name, Fileobj=temp_file)
+        with open(TEMP_FILE_NAME, 'rb') as temp_file:
+            obj = pickle.load(temp_file)
+        os.remove(TEMP_FILE_NAME)
+        return obj
+
+    results = []
+    for rec_name in rec_names:
+        coverage = []
+        for seed in seeds:
+            dir_name = s3_experiment_dir_name(data_dir, env_name, rec_name, seed)
+            recommendations = get_and_unserialize(bucket, os.path.join(dir_name, 'recommendations.pickle'))
+            rec_coverage = np.mean([len(set(rec)) for rec in recommendations])
+            coverage.append(rec_coverage)
+        results.append(coverage)
+    return results
 def plot_coverage_s3(rec_names,
                          len_trial,
                          bucket_name,

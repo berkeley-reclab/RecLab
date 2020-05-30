@@ -226,6 +226,43 @@ def plot_coverage_s3(rec_names,
     plt.show()
     return results
 
+def plot_coverage_vs_ratings(rec_names,
+                         len_trial,
+                         bucket_name,
+                         data_dir,
+                         env_name,
+                         seeds,
+                         num_init_ratings=None):
+
+    rating_stats = plot_ratings_mses_s3(rec_names, len_trial, bucket_name, data_dir, env_name, seeds, num_init_ratings, title=[[''], ['']])
+    coverage_stats = plot_coverage_s3(rec_names, len_trial, bucket_name, data_dir, env_name, seeds, num_init_ratings)
+
+    mean_rmses = []
+    mean_ratings = []
+    coverage = []
+    
+    for i in range(len(res)):
+        mean_rmse = rating_stats[rec_names[i]][0][1].mean()
+        mean_rating = ratings_stats[rec_names[i]][0][0].mean()
+        cov = np.mean(coverage_stats[i])
+        coverage.append(cov)
+        mean_rmses.append(mean_rmse)
+        mean_ratings.append(mean_rating)
+
+    plt.figure(figsize=[9, 4])
+    plt.subplot(1, 2, 1)
+    plt.scatter(mean_rmses, coverage)
+    for i in range(len(rec_names)):
+        plt.annotate(rec_names[i], (mean_rmses[i], coverage[i]))
+    plt.title('Coverage vs mean RMSE')
+    
+    plt.subplot(1, 2, 2)
+    plt.scatter(coverage, mean_ratings)
+    for i in range(len(rec_names)):
+        plt.annotate(rec_names[i], (mean_ratings[i], coverage[i]))
+    plt.title('Coverage vs mean ratings')
+
+
 def plot_ratings_mses_s3(labels,
                          len_trial,
                          bucket_name,

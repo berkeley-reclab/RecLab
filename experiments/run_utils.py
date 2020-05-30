@@ -75,11 +75,11 @@ def plot_novelty_s3(bucket_name,
         novelty = list(compute_stats(np.array(novelty)))
         results.append(novelty)
 
+    plt.figure(figsize=(18, 6))
     for i in range(len(rec_names)):
         x_vals = [num_init_ratings + (i * recommendations.shape[1])
                   for i in range(recommendations.shape[0])]
-        plt.plot(x_vals, results[i], label=labels[i])
-        plt.plot(x_vals, results[i][0]
+        plt.plot(x_vals, results[i][0], label=labels[i])
         plt.fill_between(x_vals, results[i][2], results[i][1], alpha=0.1)
 
     plt.xlabel('# of ratings')
@@ -87,6 +87,7 @@ def plot_novelty_s3(bucket_name,
     plt.legend()
     plt.tight_layout()
     plt.show()
+    return results
 
 def compute_novelty(recommendations, online_users, env):
     _, _, init_ratings = env.reset()
@@ -96,9 +97,6 @@ def compute_novelty(recommendations, online_users, env):
     novelty = []
     for i in range(num_items):
         seen[i] = set()
-    for user, item in init_ratings.keys():
-        seen[item].add(user)
-
     for i in range(recommendations.shape[0]):
         novelty_t = 0
         for item, user in zip(recommendations[i], list(online_users[i].keys())):
@@ -188,10 +186,10 @@ def plot_ratings_mses(ratings,
     plt.tight_layout()
     plt.show()
 
-def plot_coverage_s3(labels,
+def plot_coverage_s3(rec_names,
                          len_trial,
                          bucket_name,
-                         data_dir_name,
+                         data_dir,
                          env_name,
                          seeds,
                          num_init_ratings=None):
@@ -213,19 +211,20 @@ def plot_coverage_s3(labels,
             recommendations = get_and_unserialize(bucket, os.path.join(dir_name, 'recommendations.pickle'))
             coverage.append([len(set(rec)) for rec in recommendations])
         coverage = list(compute_stats(np.array(coverage)))
-        results.append(novelty)
+        results.append(coverage)
 
+    plt.figure(figsize=(18, 6))
     for i in range(len(rec_names)):
         x_vals = [num_init_ratings + (i * recommendations.shape[1])
                   for i in range(recommendations.shape[0])]
-        plt.plot(x_vals, results[i], label=labels[i])
-        plt.plot(x_vals, results[i][0]
+        plt.plot(x_vals, results[i][0], label=rec_names[i])
         plt.fill_between(x_vals, results[i][2], results[i][1], alpha=0.1)
     plt.xlabel('Number of ratings')
     plt.ylabel('Number of distinct recommended items')
     plt.legend()
     plt.tight_layout()
     plt.show()
+    return results
 
 def plot_ratings_mses_s3(labels,
                          len_trial,
@@ -321,6 +320,7 @@ def plot_ratings_mses_s3(labels,
     plt.legend()
     plt.tight_layout()
     plt.show()
+    return all_stats
 
 
 def plot_regret(ratings,

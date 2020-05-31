@@ -217,6 +217,7 @@ def plot_ratings_mses_s3(rec_names,
     plt.ylabel('RMSE', fontsize=bigfont)
     plt.title(title[1])
     plt.legend(fontsize=smallfont, markerscale=1, framealpha=1, frameon=False)
+    return all_stats
 
 
 def plot_regret(ratings,

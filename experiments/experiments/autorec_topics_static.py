@@ -5,7 +5,7 @@ import numpy as np
 
 sys.path.append('../')
 sys.path.append('../../')
-from env_defaults import TOPICS_STATIC
+from env_defaults import *
 from run_utils import get_env_dataset, run_env_experiment
 from run_utils import ModelTuner
 from reclab.environments import Topics
@@ -18,13 +18,8 @@ data_dir = 'master'
 overwrite = True
 
 # Experiment setup.
-num_users = TOPICS_STATIC['params']['num_users']
-num_init_ratings = TOPICS_STATIC['optional_params']['num_init_ratings']
-num_final_ratings = TOPICS_STATIC['misc']['num_final_ratings']
-rating_frequency = TOPICS_STATIC['optional_params']['rating_frequency']
 n_trials = 10
-len_trial = math.ceil((num_final_ratings - num_init_ratings) /
-                      (num_users * rating_frequency))
+len_trial = get_len_trial(TOPICS_STATIC)
 trial_seeds = [i for i in range(n_trials)]
 
 # Environment setup
@@ -43,8 +38,9 @@ starting_data = get_env_dataset(env)
 # ====Step 6====
 # Recommender tuning setup
 n_fold = 5
+num_users, num_items = get_num_users_items(TOPICS_STATIC)
 default_params = dict(num_users=num_users,
-                      num_items=TOPICS_STATIC['params']['num_items'])
+                      num_items=num_items)
 tuner = ModelTuner(starting_data,
                    default_params,
                    recommender_class,
@@ -72,32 +68,28 @@ tuner.evaluate_grid(hidden_neuron=hidden_neurons,
                     train_epoch=train_epoch)
 
 # Set number of iterations to tradeoff runtime and performance.
-train_epoch = 1000
+train_epoch = 200
 
 # Tune the performance independent hyperparameters.
 train_epochs = [train_epoch]
 hidden_neurons = [hidden_neuron]
-lambda_values = np.linspace(0, 10, 10).tolist()
-lrs = np.linspace(1e-4, 1e-2, 10).tolist()
-dropouts = np.linspace(0, 0.1, 5).tolist()
+lambda_values = np.linspace(0, 10, 5).tolist()
+lrs = np.linspace(1e-4, 1e-2, 5).tolist()
 
 results = tuner.evaluate_grid(train_epoch=train_epochs,
                     hidden_neuron=hidden_neurons,
                     lambda_value=lambda_values,
-                    base_lr=lrs,
-                    dropout=dropouts)
+                    base_lr=lrs)
 
 # Set parameters based on tuning
-best_params = results[results['average_mse'] == results['average_mse'].min()]
+best_params = results[results['average_metric'] == results['average_metric'].min()]
 lambda_value = float(best_params['lambda_value'])
 lr = float(best_params['base_lr'])
-dropout = float(best_params['dropout'])
 
 # ====Step 7====
-recommender = recommender_class(train_epoch=train_epoch,
+recommender = recommender_class(train_epoch=1000,
                                 hidden_neuron=hidden_neuron,
                                 lambda_value=lambda_value,
-                                dropout=dropout,
                                 base_lr=lr,
                                 **default_params)
 for i, seed in enumerate(trial_seeds):

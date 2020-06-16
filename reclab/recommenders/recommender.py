@@ -123,7 +123,7 @@ class PredictRecommender(Recommender):
         self._outer_to_inner_iid = {}
         self._inner_to_outer_iid = []
         # The sampling strategy to use.
-        self._strategy = strategy        
+        self._strategy = strategy
         # A dict of all the recommender's hyperparameters.
         self._hyperparameters = {'strategy': strategy}
         # The cached dense predictions, reset to None each time update is called.

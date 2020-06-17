@@ -196,8 +196,9 @@ def plot_ratings_mses_s3(labels,
     plt.title(title[1])
     plt.legend()
     plt.tight_layout()
+    plt.grid()
     plt.show()
-
+    return all_stats
 
 def plot_regret(ratings,
                 labels,

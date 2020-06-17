@@ -8,7 +8,6 @@ import json
 import os
 import pickle
 import subprocess
-import sys
 
 import boto3
 import functional
@@ -35,16 +34,26 @@ def plot_novelty_s3(bucket_name,
                     seeds,
                     num_init_ratings,
                     labels):
+    """Plot novelty for multiple recommenders using data from S3
+    Parameters
+    ----------
+    bucket_name : str
+        The bucket in which the experiment data is saved.
+    data_dir: str
+        The name of the directory in which the experiment data is saved.
+    env_name : str
+        The name of the environment for which we are plotting the results.
+    rec_names : str
+        The names of the recommenders for computing novelty.
+    seeds : list of int
+        The trial seeds across which we are averaging results.
+    num_init_ratings : int
+        The number of ratings initially available to recommenders. If set to None
+        the function will plot with an x-axis based on the timestep.
+    labels : list of str
+        The name of each recommender.
+    """
     bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
-
-    def get_and_unserialize(bucket, dir_name):
-        file_name=dir_name
-        with open(TEMP_FILE_NAME, 'wb') as temp_file:
-            bucket.download_fileobj(Key=file_name, Fileobj=temp_file)
-        with open(TEMP_FILE_NAME, 'rb') as temp_file:
-            obj = pickle.load(temp_file)
-        os.remove(TEMP_FILE_NAME)
-        return obj
 
     def compute_stats(novelty):
         means = novelty.mean(axis=0)
@@ -85,6 +94,16 @@ def plot_novelty_s3(bucket_name,
     return results
 
 def compute_novelty(recommendations, online_users, env):
+    """Compute novelty based on a list of recommendations and users.
+    Parameters
+    ---------
+    recommendations : np.ndarray
+        The array of recommendations for a single trial run for a single recommender.
+    online users : list of dictionaries
+        The list of online users at each timestep.
+    env : Environment object
+        Saved environment from experiment for retrieving number of items and users.
+    """
     num_users = env._num_users
     num_items = env._num_items
     seen = dict()
@@ -181,6 +200,7 @@ def plot_ratings_mses(ratings,
     plt.show()
 
 def get_and_unserialize(bucket, dir_name):
+    """Retrieve object from S3 with bucket and dir_name."""
     file_name = os.path.join(dir_name)
     with open(TEMP_FILE_NAME, 'wb') as temp_file:
         bucket.download_fileobj(Key=file_name, Fileobj=temp_file)
@@ -196,6 +216,25 @@ def get_coverage_s3(rec_names,
                          env_name,
                          seeds,
                          num_init_ratings=None):
+    """Compute coverage based on data stored in S3.
+    Parameters
+    ----------
+    rec_names : str
+        The names of the recommenders for computing novelty.
+    len_trial : int
+        The number of timesteps per trial.
+    bucket_name : str
+        The bucket in which the experiment data is saved.
+    data_dir: str
+        The name of the directory in which the experiment data is saved.
+    env_name : str
+        The name of the environment for which we are plotting the results.
+    seeds : list of int
+        The trial seeds across which we are averaging results.
+    num_init_ratings : int
+        The number of ratings initially available to recommenders. If set to None
+        the function will plot with an x-axis based on the timestep.
+    """
     bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
 
     results = []
@@ -216,6 +255,25 @@ def plot_coverage_s3(rec_names,
                          env_name,
                          seeds,
                          num_init_ratings=None):
+    """Plot coverage based on list of recommenders and data from S3.
+    Parameters
+    ----------
+    rec_names : str
+        The names of the recommenders for computing novelty.
+    len_trial : int
+        The number of timesteps per trial.
+    bucket_name : str
+        The bucket in which the experiment data is saved.
+    data_dir: str
+        The name of the directory in which the experiment data is saved.
+    env_name : str
+        The name of the environment for which we are plotting the results.
+    seeds : list of int
+        The trial seeds across which we are averaging results.
+    num_init_ratings : int
+        The number of ratings initially available to recommenders. If set to None
+        the function will plot with an x-axis based on the timestep.
+    """
     bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
     results = []
     for rec_name in rec_names:
@@ -247,7 +305,25 @@ def plot_coverage_vs_ratings(rec_names,
                          env_name,
                          seeds,
                          num_init_ratings=None):
-
+    """Plot scatterplot of coverage and ratings from data stored in S3.
+    Parameters
+    ----------
+    rec_names : str
+        The names of the recommenders for computing novelty.
+    len_trial : int
+        The number of timesteps per trial.
+    bucket_name : str
+        The bucket in which the experiment data is saved.
+    data_dir: str
+        The name of the directory in which the experiment data is saved.
+    env_name : str
+        The name of the environment for which we are plotting the results.
+    seeds : list of int
+        The trial seeds across which we are averaging results.
+    num_init_ratings : int
+        The number of ratings initially available to recommenders. If set to None
+        the function will plot with an x-axis based on the timestep.
+    """
     rating_stats = plot_ratings_mses_s3(rec_names, len_trial, bucket_name, data_dir, env_name, seeds, num_init_ratings=num_init_ratings, title=[[''], ['']])
     coverage_stats = plot_coverage_s3(rec_names, len_trial, bucket_name, data_dir, env_name, seeds, num_init_ratings)
 

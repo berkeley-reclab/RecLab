@@ -525,7 +525,7 @@ def run_trial(env,
               trial_seed,
               bucket=None,
               dir_name=None,
-              overwrite=False, shift=False, shift_step=None):
+              overwrite=False, shift=False, shift_step=None, shift_fraction=0.4, soft_shift=0.0):
     """Logic for running each trial.
     Parameters
     ----------
@@ -597,9 +597,8 @@ def run_trial(env,
         dense_ratings = np.clip(env.dense_ratings.flatten(), 1, 5)
         if shift == True and step == shift_step:
             print('Applying preference shift at step ', step)
-            items, users, ratings, _ = env._shift(recommendations)
-        else:
-            items, users, ratings, _ = env.step(recommendations)
+            env.shift(shift_fraction=shift_fraction, soft_shift=soft_shift)
+        
         items, users, ratings, _ = env.step(recommendations)
         rec.update(users, items, ratings)
 

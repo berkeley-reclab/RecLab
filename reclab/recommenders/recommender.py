@@ -345,6 +345,7 @@ class PredictRecommender(Recommender):
         assert len(item_ids) == len(predictions)
         num_items = len(item_ids)
         strategy_name = self._strategy.split(',')[0]
+        # TODO: clean up this method of parameter specification
         if len(self._strategy.split(',')) > 1:
             strategy_param = self._strategy.split(',')[1]
         else:

@@ -17,11 +17,6 @@ import numpy as np
 import pandas as pd
 import tqdm.autonotebook
 
-sys.path.append('../')
-sys.path.append('../../')
-from reclab.environments import Topics, LatentFactorBehavior
-
-
 # The random seed that defines the initial state of each environment.
 INIT_SEED = 0
 # The name of the file temporarily created for uploads to S3.
@@ -90,7 +85,6 @@ def plot_novelty_s3(bucket_name,
     return results
 
 def compute_novelty(recommendations, online_users, env):
-    _, _, init_ratings = env.reset()
     num_users = env._num_users
     num_items = env._num_items
     seen = dict()
@@ -107,7 +101,7 @@ def compute_novelty(recommendations, online_users, env):
                 p_i = len(seen[item]) / num_users
             novelty_t += -1 * np.log2(p_i)
             # normalize novelty to between 0 and 1
-            novelty_t /= (recommendations.shape[1])# * (-1 * np.log2(1 / num_users)))
+            novelty_t /= (recommendations.shape[1])
         novelty.append(novelty_t)
         for item, user in zip(recommendations[i], list(online_users[i].keys())):
             seen[item].add(user)
@@ -186,6 +180,15 @@ def plot_ratings_mses(ratings,
     plt.tight_layout()
     plt.show()
 
+def get_and_unserialize(bucket, dir_name):
+    file_name = os.path.join(dir_name)
+    with open(TEMP_FILE_NAME, 'wb') as temp_file:
+        bucket.download_fileobj(Key=file_name, Fileobj=temp_file)
+    with open(TEMP_FILE_NAME, 'rb') as temp_file:
+        obj = pickle.load(temp_file)
+    os.remove(TEMP_FILE_NAME)
+    return obj
+
 def get_coverage_s3(rec_names,
                          len_trial,
                          bucket_name,
@@ -194,14 +197,6 @@ def get_coverage_s3(rec_names,
                          seeds,
                          num_init_ratings=None):
     bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
-    def get_and_unserialize(bucket, dir_name):
-        file_name = os.path.join(dir_name)
-        with open(TEMP_FILE_NAME, 'wb') as temp_file:
-            bucket.download_fileobj(Key=file_name, Fileobj=temp_file)
-        with open(TEMP_FILE_NAME, 'rb') as temp_file:
-            obj = pickle.load(temp_file)
-        os.remove(TEMP_FILE_NAME)
-        return obj
 
     results = []
     for rec_name in rec_names:
@@ -213,6 +208,7 @@ def get_coverage_s3(rec_names,
             coverage.append(rec_coverage)
         results.append(coverage)
     return results
+
 def plot_coverage_s3(rec_names,
                          len_trial,
                          bucket_name,
@@ -221,15 +217,6 @@ def plot_coverage_s3(rec_names,
                          seeds,
                          num_init_ratings=None):
     bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
-    def get_and_unserialize(bucket, dir_name):
-        file_name = os.path.join(dir_name)
-        with open(TEMP_FILE_NAME, 'wb') as temp_file:
-            bucket.download_fileobj(Key=file_name, Fileobj=temp_file)
-        with open(TEMP_FILE_NAME, 'rb') as temp_file:
-            obj = pickle.load(temp_file)
-        os.remove(TEMP_FILE_NAME)
-        return obj
-
     results = []
     for rec_name in rec_names:
         coverage = []
@@ -288,7 +275,6 @@ def plot_coverage_vs_ratings(rec_names,
     for i in range(len(rec_names)):
         plt.annotate(rec_names[i], (mean_ratings[i], coverage[i]))
     plt.title('Coverage vs mean ratings')
-
 
 def plot_ratings_mses_s3(labels,
                          len_trial,

@@ -222,8 +222,10 @@ class DatasetLatentFactor(LatentFactorBehavior):
             # these parameters are the result of tuning
             reg = 0.1
             learn_rate = 0.005
+            # reg = 0.138950
+            # learn_rate = 0.01000
             self.train_params = dict(bias_reg=reg, one_way_reg=reg, two_way_reg=reg,
-                                     learning_rate=learn_rate, num_iter=100)
+                                     learning_rate=learn_rate, num_iter=100) #, use_one_way=False)
         elif name == 'ml-10m':
             self.datapath = os.path.expanduser(os.path.join(datapath, 'ml-10M100K'))
             latent_dim = 128 if latent_dim is None else latent_dim
@@ -291,6 +293,8 @@ def generate_latent_factors_from_data(dataset_name, datapath, params, random,
         print('Training latent factor model with parameters: {}'.format(params))
 
         global_bias, weights, pairwise_interactions = recommender.model_parameters()
+        if len(weights) == 0:
+            weights = np.zeros(pairwise_interactions.shape[0])
 
         # TODO: this logic is only correct if there are no additional user/item/rating features
         # Note that we discard the original data's user_ids and item_ids at this step

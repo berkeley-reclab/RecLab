@@ -445,9 +445,9 @@ def plot_ratings_mses_s3(labels,
     plt.title(title[1])
     plt.legend()
     plt.tight_layout()
+    plt.grid()
     plt.show()
     return all_stats
-
 
 def plot_regret(ratings,
                 labels,
@@ -664,7 +664,7 @@ def run_env_experiment(environments,
                        recommender_names=None,
                        bucket_name='recsys-eval',
                        data_dir=None,
-                       overwrite=False):
+                       overwrite=False, shift=False, shift_step=None):
     """Run repeated trials for a given list of recommenders on a list of environments.
     Parameters
     ----------
@@ -690,6 +690,11 @@ def run_env_experiment(environments,
         if bucket_name is also None.
     overwrite : bool
         Whether to re-run the experiment even if a matching S3 file is found.
+    shift: bool
+        Whether or not to apply a shift.
+    shift_step: int
+        The step to apply the shift.
+
     Returns
     -------
     ratings : np.ndarray
@@ -749,7 +754,7 @@ def run_env_experiment(environments,
                 print('Running trial with seed:', seed)
                 dir_name = s3_experiment_dir_name(data_dir, env_name, rec_name, seed)
                 ratings, predictions, dense_ratings, dense_predictions = run_trial(
-                    environment, recommender, len_trial, seed, bucket, dir_name, overwrite)
+                    environment, recommender, len_trial, seed, bucket, dir_name, overwrite, shift, shift_step)
                 all_ratings[-1][-1].append(ratings)
                 all_predictions[-1][-1].append(predictions)
                 all_dense_ratings[-1][-1].append(dense_ratings)
@@ -770,7 +775,7 @@ def run_trial(env,
               trial_seed,
               bucket=None,
               dir_name=None,
-              overwrite=False):
+              overwrite=False, shift=False, shift_step=None, shift_fraction=0.4, soft_shift=0.0):
     """Logic for running each trial.
     Parameters
     ----------
@@ -789,6 +794,11 @@ def run_trial(env,
         The S3 directory to save the trial results into. Can be None if bucket is also None.
     overwrite : bool
         Whether to re-run the experiment and overwrite the trial's saved data in S3.
+    shift: bool
+        Whether or not to apply a shift.
+    shift_step: int
+        The step to apply the shift.
+
     Returns
     -------
     ratings : np.ndarray
@@ -828,13 +838,17 @@ def run_trial(env,
     all_env_snapshots[-1]._ratings = None
 
     # Now recommend items to users.
-    for _ in tqdm.autonotebook.tqdm(range(len_trial)):
+    for step in tqdm.autonotebook.tqdm(range(len_trial)):
         online_users = env.online_users()
         dense_predictions = rec.dense_predictions.flatten()
         recommendations, predictions = rec.recommend(online_users, num_recommendations=1)
 
         recommendations = recommendations.flatten()
         dense_ratings = np.clip(env.dense_ratings.flatten(), 1, 5)
+        if shift == True and step == shift_step:
+            print('Applying preference shift at step ', step)
+            env.shift(shift_fraction=shift_fraction, soft_shift=soft_shift)
+        
         items, users, ratings, _ = env.step(recommendations)
         rec.update(users, items, ratings)
 
@@ -879,7 +893,6 @@ def run_trial(env,
 
     # TODO: We might want to return the env snapshots too.
     return all_ratings, all_predictions, all_dense_ratings, all_dense_predictions
-
 
 def compute_experiment_density(len_trial, environment, threshold=4):
     """Compute the rating density for the proposed experiment.

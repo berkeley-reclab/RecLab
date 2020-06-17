@@ -129,7 +129,7 @@ class PredictRecommender(Recommender):
         # The cached dense predictions, reset to None each time update is called.
         self._dense_predictions = None
         # Check that the strategy is of valid type.
-        assert self._strategy in ['greedy', 'eps_greedy', 'thompson']
+        assert self._strategy.split(',')[0] in ['greedy', 'eps_greedy', 'thompson']
 
     @property
     def hyperparameters(self):
@@ -344,10 +344,19 @@ class PredictRecommender(Recommender):
         """
         assert len(item_ids) == len(predictions)
         num_items = len(item_ids)
-        if self._strategy == 'greedy':
+        strategy_name = self._strategy.split(',')[0]
+        # TODO: clean up this method of parameter specification
+        if len(self._strategy.split(',')) > 1:
+            strategy_param = self._strategy.split(',')[1]
+        else:
+            strategy_param = None
+        if strategy_name == 'greedy':
             selected_indices = np.argsort(predictions)[-num_recommendations:]
-        elif self._strategy == 'eps_greedy':
-            eps = 0.1
+        elif strategy_name == 'eps_greedy':
+            if strategy_param is None:
+                eps = 0.1
+            else:
+                eps = float(strategy_param)
             num_explore = np.random.binomial(num_recommendations, eps)
             num_exploit = num_recommendations - num_explore
             if num_exploit > 0:
@@ -357,9 +366,12 @@ class PredictRecommender(Recommender):
             explore_indices = np.random.choice([x for x in range(0, num_items)
                                                 if x not in exploit_indices], num_explore)
             selected_indices = np.concatenate((exploit_indices, explore_indices))
-        elif self._strategy == 'thompson':
-            # artificial parameter to boost the probability of the more likely items
-            power = np.ceil(np.log(len(predictions)))
+        elif strategy_name == 'thompson':
+            if strategy_param is None:
+                # artificial parameter to boost the probability of the more likely items
+                power = np.ceil(np.log(len(predictions)))
+            else:
+                power = int(float(strategy_param))
             selection_probs = np.power(predictions/sum(predictions), power)
             selection_probs = selection_probs/sum(selection_probs)
             selected_indices = np.random.choice(range(0, num_items),

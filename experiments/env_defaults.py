@@ -193,6 +193,26 @@ ML_100K_LOWDATA = {
     },
 }
 
+ML_100K_LOWDATA = {
+    'name': 'ml_100k_lowdata',
+    'params': {
+        'name': 'ml-100k',
+    },
+    'optional_params': {
+        'latent_dim': 100,
+        'rating_frequency': 0.2,
+        'num_init_ratings': 1000,
+        'memory_length': 0,
+        'noise': 0.5,
+        'boredom_threshold': 0,
+        'boredom_penalty': 0,
+    },
+    'misc': {
+        'num_final_ratings': 101000,
+        'sampling': 'uniform',
+    },
+}
+
 TOPICS_STATIC_SMALL = {
     'name': 'topics_static_small',
     'params': {

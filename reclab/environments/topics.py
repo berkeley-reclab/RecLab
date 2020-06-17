@@ -112,3 +112,29 @@ class Topics(environment.DictEnvironment):
                                               for user_id in range(self._num_users))
         self._items = collections.OrderedDict((item_id, np.zeros(0))
                                               for item_id in range(self._num_items))
+
+    def shift(self, shift_fraction=0.4, soft_shift=0.0):
+        """Run one timestep of the environment with a shift in the user preference.
+
+        Parameters
+        ----------
+
+        shift_fraction: float
+            The fraction of users that will have a preference shift
+
+        soft_shift:
+            Make the new preference as a linear combination of the old and the shifted preference
+            soft_shift is the fraction of the old preference
+
+        """
+
+        #apply the preference shift to a fraction of users
+        shifted_users = self._init_random.choice(self._num_users, int(self._num_users*shift_fraction))
+
+        for shifted_user in shifted_users:
+            new_preference = self._init_random.uniform(low=0.5, high=5.5,
+                                                           size=(1, self._num_topics))
+            self._user_preferences[shifted_user] = soft_shift * self._user_preferences[shifted_user] + (1-soft_shift) * new_preference
+
+        return
+

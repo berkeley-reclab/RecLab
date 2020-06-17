@@ -39,10 +39,16 @@ class Autorec(recommender.PredictRecommender):
     def __init__(self, num_users, num_items,
                  hidden_neuron=500, lambda_value=1,
                  train_epoch=1000, batch_size=1000, optimizer_method='RMSProp',
-                 grad_clip=False, base_lr=1e-3, lr_decay=0.99,
+                 grad_clip=False, base_lr=1e-3, lr_decay=1e-2,
                  dropout=0.05, random_seed=0):
         """Create new Autorec recommender."""
         super().__init__()
+
+        # We only want the function arguments so remove class related objects.
+        self._hyperparameters.update(locals())
+        del self._hyperparameters['self']
+        del self._hyperparameters['__class__']
+
         self.model = autorec.AutoRec(num_users, num_items,
                              seen_users=set(), seen_items=set(),
                              hidden_neuron=hidden_neuron,
@@ -73,7 +79,7 @@ class Autorec(recommender.PredictRecommender):
         else:
             raise ValueError("Optimizer Key ERROR")
 
-        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=self.lr_decay)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=self.lr_decay)
 
         self.model.to(self.device)
         for epoch in range(self.train_epoch):
@@ -106,6 +112,7 @@ class Autorec(recommender.PredictRecommender):
         return 'autorec'
 
     def _predict(self, user_item):
+        self.model = self.model.eval()
         return self.model.predict(user_item, self.R.to(self.device))
 
     def reset(self, users=None, items=None, ratings=None):  # noqa: D102
@@ -114,6 +121,8 @@ class Autorec(recommender.PredictRecommender):
 
     def update(self, users=None, items=None, ratings=None):  # noqa: D102
         super().update(users, items, ratings)
+        self.model.prepare_model()
+        self.model = self.model.train()
         for user_item in ratings:
             self.model.seen_users.add(user_item[0])
             self.model.seen_items.add(user_item[1])

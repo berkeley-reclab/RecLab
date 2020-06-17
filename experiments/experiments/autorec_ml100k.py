@@ -8,7 +8,7 @@ sys.path.append('../../')
 from env_defaults import *
 from run_utils import get_env_dataset, run_env_experiment
 from run_utils import ModelTuner
-from reclab.environments import Topics
+from reclab.environments import DatasetLatentFactor
 from reclab.recommenders import Autorec
 
 # ====Step 4====
@@ -19,12 +19,12 @@ overwrite = True
 
 # Experiment setup.
 n_trials = 10
-len_trial = get_len_trial(TOPICS_DYNAMIC)
+len_trial = get_len_trial(ML_100K)
 trial_seeds = [i for i in range(n_trials)]
 
 # Environment setup
-environment_name = TOPICS_DYNAMIC['name']
-env = Topics(**TOPICS_DYNAMIC['params'], **TOPICS_DYNAMIC['optional_params'])
+environment_name = ML_100K['name']
+env = DatasetLatentFactor(**ML_100K['params'], **ML_100K['optional_params'])
 
 # Recommender setup
 recommender_name = 'Autorec'
@@ -38,9 +38,8 @@ starting_data = get_env_dataset(env)
 # ====Step 6====
 # Recommender tuning setup
 n_fold = 5
-num_users, num_items = get_num_users_items(TOPICS_DYNAMIC)
-default_params = dict(num_users=num_users,
-                      num_items=num_items)
+num_users, num_items = get_num_users_items(ML_100K)
+default_params = dict(num_users=num_users, num_items=num_items)
 tuner = ModelTuner(starting_data,
                    default_params,
                    recommender_class,
@@ -74,7 +73,7 @@ train_epoch = 200
 train_epochs = [train_epoch]
 hidden_neurons = [hidden_neuron]
 lambda_values = np.linspace(0, 10, 5).tolist()
-lrs = np.linspace(1e-4, 1e-2, 5).tolist()
+lrs = np.linspace(1e-5, 1e-3, 5).tolist()
 
 results = tuner.evaluate_grid(train_epoch=train_epochs,
                     hidden_neuron=hidden_neurons,
@@ -87,7 +86,7 @@ lambda_value = float(best_params['lambda_value'])
 lr = float(best_params['base_lr'])
 
 # ====Step 7====
-recommender = recommender_class(train_epoch=1000,
+recommender = recommender_class(train_epoch=train_epoch,
                                 hidden_neuron=hidden_neuron,
                                 lambda_value=lambda_value,
                                 base_lr=lr,

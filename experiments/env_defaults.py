@@ -1,28 +1,26 @@
 """Default parameters to experimental environments."""
 import math
 
-def get_num_users_items(ENV_PARAMS):
-    """Get num user/items based on the environment parameters.
-    """
-    if 'num_users' in ENV_PARAMS['params'].keys():
-        num_users = ENV_PARAMS['params']['num_users']
-        num_items = ENV_PARAMS['params']['num_items']
-    elif 'name' in ENV_PARAMS['params']:
-        if ENV_PARAMS['params']['name'] == 'ml-100k':                
-            num_users, num_items = ENV_PARAMS['misc']['dataset_size'] 
-            if 'max_num_users' in ENV_PARAMS['optional_params'].keys():
-                num_users = min(num_users, ENV_PARAMS['optional_params']['max_num_users'])
-            if 'max_num_items' in ENV_PARAMS['optional_params'].keys():
-                num_items = min(num_items, ENV_PARAMS['optional_params']['max_num_items'])
+def get_num_users_items(env_params):
+    """Get the number of users/items based on the environment parameters."""
+    if 'num_users' in env_params['params'].keys():
+        num_users = env_params['params']['num_users']
+        num_items = env_params['params']['num_items']
+    elif 'name' in env_params['params']:
+        if env_params['params']['name'] == 'ml-100k':
+            num_users, num_items = env_params['misc']['dataset_size']
+            if 'max_num_users' in env_params['optional_params'].keys():
+                num_users = min(num_users, env_params['optional_params']['max_num_users'])
+            if 'max_num_items' in env_params['optional_params'].keys():
+                num_items = min(num_items, env_params['optional_params']['max_num_items'])
     return num_users, num_items
 
-def get_len_trial(ENV_PARAMS):
-    """Get length of trial based on the environment parameters.
-    """
-    num_users, num_items = get_num_users_items(ENV_PARAMS)
-    num_final_ratings = ENV_PARAMS['misc']['num_final_ratings']
-    num_init_ratings = ENV_PARAMS['optional_params']['num_init_ratings']
-    rating_frequency = ENV_PARAMS['optional_params']['rating_frequency']
+def get_len_trial(env_params):
+    """Get the length of the trial based on the environment parameters."""
+    num_users, _ = get_num_users_items(env_params)
+    num_final_ratings = env_params['misc']['num_final_ratings']
+    num_init_ratings = env_params['optional_params']['num_init_ratings']
+    rating_frequency = env_params['optional_params']['rating_frequency']
     len_trial = math.ceil((num_final_ratings - num_init_ratings) /
                           (num_users * rating_frequency))
     return len_trial

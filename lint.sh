@@ -5,5 +5,5 @@ pylint --rcfile=.pylintrc tests -f parseable -r n --load-plugins pylint_quotes
 pycodestyle tests --max-line-length=100
 pydocstyle tests
 pylint --rcfile=.pylintrc experiments -f parseable -r n --load-plugins pylint_quotes
-pycodestyle experiments --max-line-length=100
-pydocstyle experiments
+pycodestyle experiments --max-line-length=100 --exclude=experiments/experiments
+pydocstyle experiments --match-dir="^(?!experiments/experiments).*"

@@ -100,7 +100,8 @@ class Topics(environment.DictEnvironment):
         preference = self._user_preferences[user_id, topic]
         if preference <= 5:
             self._user_preferences[user_id, topic] += self._topic_change
-            self._user_preferences[user_id, np.arange(self._num_topics) != topic] -= (
+            not_topic = np.arange(self._num_topics) != topic
+            self._user_preferences[user_id, not_topic] -= (
                 self._topic_change / (self._num_topics - 1))
         return rating
 
@@ -118,23 +119,20 @@ class Topics(environment.DictEnvironment):
 
         Parameters
         ----------
-
         shift_fraction: float
             The fraction of users that will have a preference shift
-
         soft_shift:
             Make the new preference as a linear combination of the old and the shifted preference
             soft_shift is the fraction of the old preference
 
         """
-
-        #apply the preference shift to a fraction of users
-        shifted_users = self._init_random.choice(self._num_users, int(self._num_users*shift_fraction))
+        # Apply the preference shift to a fraction of users.
+        shifted_users = self._init_random.choice(self._num_users,
+                                                 int(self._num_users * shift_fraction))
 
         for shifted_user in shifted_users:
             new_preference = self._init_random.uniform(low=0.5, high=5.5,
-                                                           size=(1, self._num_topics))
-            self._user_preferences[shifted_user] = soft_shift * self._user_preferences[shifted_user] + (1-soft_shift) * new_preference
-
-        return
-
+                                                       size=(1, self._num_topics))
+            self._user_preferences[shifted_user] = (
+                soft_shift * self._user_preferences[shifted_user] +
+                (1 - soft_shift) * new_preference)

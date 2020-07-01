@@ -16,7 +16,7 @@ class AutoRec(torch.nn.Module):
         self.dropout_p = dropout
         self.sigmoid = torch.nn.Sigmoid()
 
-    def _loss(self, pred, test, mask, lambda_value=1):
+    def loss(self, pred, test, mask, lambda_value=1):
         mse = (((pred * mask) - test) ** 2).sum()
         reg_value_enc = torch.mul(lambda_value / 2, list(self.encoder.parameters())[0].norm(p='fro') ** 2)
         reg_value_dec = torch.mul(lambda_value / 2, list(self.decoder.parameters())[0].norm(p='fro') ** 2)

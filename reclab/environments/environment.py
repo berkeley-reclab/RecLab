@@ -9,6 +9,7 @@ import collections
 import numpy as np
 from scipy.stats import norm, lognorm, pareto
 
+
 class Environment(abc.ABC):
     """The interface all environments must implement."""
 
@@ -163,6 +164,7 @@ class DictEnvironment(Environment):
         self._ratings = None
         self._dense_ratings = None
         self._online_users = None
+        self._user_prob = None
         self._user_histories = collections.defaultdict(list)
         self._memory_length = memory_length
 
@@ -461,8 +463,8 @@ class DictEnvironment(Environment):
             user_dist = np.ones(num_users) / num_users
         elif dist_choice == 'norm':
             idx = np.random.permutation(num_users)
-            user_dist = np.array([norm.pdf(idx[i], scale=num_users / 7,
-                                  loc=num_users / 2) for i in range(num_users)])
+            user_dist = np.array([norm.pdf(idx[i], scale=num_users / 7, loc=num_users / 2)
+                                  for i in range(num_users)])
             user_dist = user_dist / sum(user_dist)
             user_dist = np.clip(user_dist, 0, 1)
         elif dist_choice == 'lognorm':
@@ -473,7 +475,8 @@ class DictEnvironment(Environment):
             user_dist = np.clip(user_dist, 0, 1)
         elif dist_choice == 'pareto':
             idx = np.random.permutation(num_users)
-            user_dist = np.array([pareto.pdf(idx[i], 1, scale=num_users / 1e4, loc=-1) for i in range(num_users)])
+            user_dist = np.array([pareto.pdf(idx[i], 1, scale=num_users / 1e4, loc=-1)
+                                  for i in range(num_users)])
             user_dist = user_dist / sum(user_dist)
             user_dist = np.clip(user_dist, 0, 1)
         else:

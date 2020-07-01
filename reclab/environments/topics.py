@@ -46,12 +46,31 @@ class Topics(environment.DictEnvironment):
     user_dist_choice : str
         The choice of user distribution for selecting online users. By default, the subset of
         online users is chosen from a uniform distribution. Currently supports normal and lognormal.
+    shift_steps : int
+        The number of timesteps to wait between each user preference shift.
+    shift_frequency : float
+        The proportion of users whose preference we wish to change during a preference shift.
+    shift_weight : float
+        The weight to assign to a user's new preferences after a preference shift.
+        User's old preferences get assigned a weight of 1 - shift_weight.
 
     """
 
-    def __init__(self, num_topics, num_users, num_items, rating_frequency=1.0,
-                 num_init_ratings=0, noise=0.0, topic_change=0.0, memory_length=0,
-                 boredom_threshold=0, boredom_penalty=0.0, user_dist_choice='uniform'):
+    def __init__(self,
+                 num_topics,
+                 num_users,
+                 num_items,
+                 rating_frequency=1.0,
+                 num_init_ratings=0,
+                 noise=0.0,
+                 topic_change=0.0,
+                 memory_length=0,
+                 boredom_threshold=0,
+                 boredom_penalty=0.0,
+                 user_dist_choice='uniform',
+                 shift_steps=1,
+                 shift_frequency=0.0,
+                 shift_weight=0.0):
         """Create a Topics environment."""
         super().__init__(rating_frequency, num_init_ratings, memory_length, user_dist_choice)
         self._num_topics = num_topics
@@ -63,6 +82,9 @@ class Topics(environment.DictEnvironment):
         self._item_topics = None
         self._boredom_threshold = boredom_threshold
         self._boredom_penalty = boredom_penalty
+        self._shift_steps = shift_steps
+        self._shift_frequency = shift_frequency
+        self._shift_weight = shift_weight
 
     @property
     def name(self):  # noqa: D102
@@ -114,25 +136,16 @@ class Topics(environment.DictEnvironment):
         self._items = collections.OrderedDict((item_id, np.zeros(0))
                                               for item_id in range(self._num_items))
 
-    def shift(self, shift_fraction=0.4, soft_shift=0.0):
-        """Run one timestep of the environment with a shift in the user preference.
+    def _update_state(self):  # noqa: D102
+        if self._timestep % self._shift_steps == 0:
+            # Apply the preference shift to a fraction of users.
+            shifted_users = self._dynamics_random.choice(
+                self._num_users, int(self._num_users * self._shift_frequency))
 
-        Parameters
-        ----------
-        shift_fraction: float
-            The fraction of users that will have a preference shift
-        soft_shift:
-            Make the new preference as a linear combination of the old and the shifted preference
-            soft_shift is the fraction of the old preference
+            new_preferences = self._init_random.uniform(low=0.5, high=5.5,
+                                                        size=(len(shifted_users), self._num_topics))
+            self._user_preferences[shifted_users] = (
+                self._shift_weight * self._user_preferences[shifted_users] +
+                (1 - self._shift_weight) * new_preferences)
 
-        """
-        # Apply the preference shift to a fraction of users.
-        shifted_users = self._init_random.choice(self._num_users,
-                                                 int(self._num_users * shift_fraction))
-
-        for shifted_user in shifted_users:
-            new_preference = self._init_random.uniform(low=0.5, high=5.5,
-                                                       size=(1, self._num_topics))
-            self._user_preferences[shifted_user] = (
-                soft_shift * self._user_preferences[shifted_user] +
-                (1 - soft_shift) * new_preference)
+        return collections.OrderedDict(), collections.OrderedDict()

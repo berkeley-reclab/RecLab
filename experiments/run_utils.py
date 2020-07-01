@@ -703,7 +703,7 @@ def run_env_experiment(environments,
                        recommender_names=None,
                        bucket_name='recsys-eval',
                        data_dir=None,
-                       overwrite=False, shift=False, shift_step=None):
+                       overwrite=False):
     """Run repeated trials for a given list of recommenders on a list of environments.
 
     Parameters
@@ -730,10 +730,6 @@ def run_env_experiment(environments,
         if bucket_name is also None.
     overwrite : bool
         Whether to re-run the experiment even if a matching S3 file is found.
-    shift: bool
-        Whether or not to apply a shift.
-    shift_step: int
-        The step to apply the shift.
 
     Returns
     -------
@@ -794,9 +790,13 @@ def run_env_experiment(environments,
             for seed in trial_seeds:
                 print('Running trial with seed:', seed)
                 dir_name = s3_experiment_dir_name(data_dir, env_name, rec_name, seed)
-                ratings, predictions, dense_ratings, dense_predictions = run_trial(
-                    environment, recommender, len_trial, seed, bucket,
-                    dir_name, overwrite, shift, shift_step)
+                ratings, predictions, dense_ratings, dense_predictions = run_trial(environment,
+                                                                                   recommender,
+                                                                                   len_trial,
+                                                                                   seed,
+                                                                                   bucket,
+                                                                                   dir_name,
+                                                                                   overwrite)
                 all_ratings[-1][-1].append(ratings)
                 all_predictions[-1][-1].append(predictions)
                 all_dense_ratings[-1][-1].append(dense_ratings)
@@ -817,11 +817,7 @@ def run_trial(env,
               trial_seed,
               bucket=None,
               dir_name=None,
-              overwrite=False,
-              shift=False,
-              shift_step=None,
-              shift_fraction=0.4,
-              soft_shift=0.0):
+              overwrite=False):
     """Logic for running each trial.
 
     Parameters
@@ -841,10 +837,6 @@ def run_trial(env,
         The S3 directory to save the trial results into. Can be None if bucket is also None.
     overwrite : bool
         Whether to re-run the experiment and overwrite the trial's saved data in S3.
-    shift: bool
-        Whether or not to apply a shift.
-    shift_step: int
-        The step to apply the shift.
 
     Returns
     -------
@@ -893,10 +885,6 @@ def run_trial(env,
 
         recommendations = recommendations.flatten()
         dense_ratings = np.clip(env.dense_ratings.flatten(), 1, 5)
-        if shift and step == shift_step:
-            print('Applying preference shift at step ', step)
-            env.shift(shift_fraction=shift_fraction, soft_shift=soft_shift)
-
         items, users, ratings, _ = env.step(recommendations)
         rec.update(users, items, ratings)
 

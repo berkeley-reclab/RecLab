@@ -1,6 +1,7 @@
 """Default parameters to experimental environments."""
 import math
 
+
 def get_num_users_items(env_params):
     """Get the number of users/items based on the environment parameters."""
     if 'num_users' in env_params['params'].keys():
@@ -15,6 +16,7 @@ def get_num_users_items(env_params):
                 num_items = min(num_items, env_params['optional_params']['max_num_items'])
     return num_users, num_items
 
+
 def get_len_trial(env_params):
     """Get the length of the trial based on the environment parameters."""
     num_users, _ = get_num_users_items(env_params)
@@ -24,6 +26,7 @@ def get_len_trial(env_params):
     len_trial = math.ceil((num_final_ratings - num_init_ratings) /
                           (num_users * rating_frequency))
     return len_trial
+
 
 TOPICS_STATIC = {
     'name': 'topics_static',
@@ -290,7 +293,8 @@ LATENT_DYNAMIC_SMALL = {
         'memory_length': 5,
         'boredom_threshold': 0.,
         'boredom_penalty': 2,
-        'affinity_change': 0.2,    },
+        'affinity_change': 0.2,
+    },
     'misc': {
         'num_final_ratings': 2000,
         'sampling': 'uniform',

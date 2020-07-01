@@ -10,7 +10,6 @@ import pickle
 import subprocess
 
 import boto3
-import functional
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -27,6 +26,7 @@ AWS_IDS = ['acde32a12806f031eb2518b0c2aca259ba031314143dfe2fab1bf6207af665f0',
            '634b7a0686be3590c1808efc465ea9db660233386f1ad0bbbe3cabab19ae2564']
 ID_STR = ','.join(['id=' + aws_id for aws_id in AWS_IDS])
 
+
 def plot_novelty_s3(bucket_name,
                     data_dir,
                     env_name,
@@ -34,7 +34,8 @@ def plot_novelty_s3(bucket_name,
                     seeds,
                     num_init_ratings,
                     labels):
-    """Plot novelty for multiple recommenders using data from S3
+    """Plot novelty for multiple recommenders using data from S3.
+
     Parameters
     ----------
     bucket_name : str
@@ -52,6 +53,7 @@ def plot_novelty_s3(bucket_name,
         the function will plot with an x-axis based on the timestep.
     labels : list of str
         The name of each recommender.
+
     """
     bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
 
@@ -70,10 +72,12 @@ def plot_novelty_s3(bucket_name,
         novelty = []
         for seed in seeds:
             dir_name = s3_experiment_dir_name(data_dir, env_name, rec_name, seed)
-            recommendations = get_and_unserialize(bucket, os.path.join(dir_name, 'recommendations.pickle'))
-            online_users = get_and_unserialize(bucket, os.path.join(dir_name, 'online_users.pickle'))
+            recommendations = get_and_unserialize(
+                bucket, os.path.join(dir_name, 'recommendations.pickle'))
+            online_users = get_and_unserialize(
+                bucket, os.path.join(dir_name, 'online_users.pickle'))
             env = get_and_unserialize(bucket, os.path.join(dir_name, 'env_snapshots.pickle'))[0]
-            # since some experiments were run before the user sampling PR
+            # Since some experiments were run before the user sampling PR.
             env._user_dist_choice = 'uniform'
             novelty.append(compute_novelty(recommendations, online_users, env))
         novelty = list(compute_stats(np.array(novelty)))
@@ -93,8 +97,10 @@ def plot_novelty_s3(bucket_name,
     plt.show()
     return results
 
+
 def compute_novelty(recommendations, online_users, env):
     """Compute novelty based on a list of recommendations and users.
+
     Parameters
     ---------
     recommendations : np.ndarray
@@ -103,6 +109,7 @@ def compute_novelty(recommendations, online_users, env):
         The list of online users at each timestep.
     env : Environment object
         Saved environment from experiment for retrieving number of items and users.
+
     """
     num_users = env._num_users
     num_items = env._num_items
@@ -126,6 +133,7 @@ def compute_novelty(recommendations, online_users, env):
             seen[item].add(user)
     return novelty
 
+
 def plot_ratings_mses(ratings,
                       predictions,
                       labels,
@@ -134,6 +142,7 @@ def plot_ratings_mses(ratings,
                       threshold=10,
                       title=['', '']):
     """Plot the performance results for multiple recommenders.
+
     Parameters
     ----------
     ratings : np.ndarray
@@ -158,6 +167,7 @@ def plot_ratings_mses(ratings,
     threshold: float
         The threshold filtering on the predictions, predictions larger than it will be set to 0.
         default is 10
+
     """
     if num_init_ratings is not None:
         x_vals = num_init_ratings + ratings.shape[3] * np.arange(ratings.shape[2])
@@ -199,6 +209,7 @@ def plot_ratings_mses(ratings,
     plt.tight_layout()
     plt.show()
 
+
 def get_and_unserialize(bucket, dir_name):
     """Retrieve object from S3 with bucket and dir_name."""
     file_name = os.path.join(dir_name)
@@ -209,20 +220,18 @@ def get_and_unserialize(bucket, dir_name):
     os.remove(TEMP_FILE_NAME)
     return obj
 
+
 def get_coverage_s3(rec_names,
-                         len_trial,
-                         bucket_name,
-                         data_dir,
-                         env_name,
-                         seeds,
-                         num_init_ratings=None):
+                    bucket_name,
+                    data_dir,
+                    env_name,
+                    seeds):
     """Compute coverage based on data stored in S3.
+
     Parameters
     ----------
     rec_names : str
         The names of the recommenders for computing novelty.
-    len_trial : int
-        The number of timesteps per trial.
     bucket_name : str
         The bucket in which the experiment data is saved.
     data_dir: str
@@ -231,9 +240,7 @@ def get_coverage_s3(rec_names,
         The name of the environment for which we are plotting the results.
     seeds : list of int
         The trial seeds across which we are averaging results.
-    num_init_ratings : int
-        The number of ratings initially available to recommenders. If set to None
-        the function will plot with an x-axis based on the timestep.
+
     """
     bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
 
@@ -242,20 +249,22 @@ def get_coverage_s3(rec_names,
         coverage = []
         for seed in seeds:
             dir_name = s3_experiment_dir_name(data_dir, env_name, rec_name, seed)
-            recommendations = get_and_unserialize(bucket, os.path.join(dir_name, 'recommendations.pickle'))
+            recommendations = get_and_unserialize(
+                bucket, os.path.join(dir_name, 'recommendations.pickle'))
             rec_coverage = np.mean([len(set(rec)) for rec in recommendations])
             coverage.append(rec_coverage)
         results.append(coverage)
     return results
 
+
 def plot_coverage_s3(rec_names,
-                         len_trial,
-                         bucket_name,
-                         data_dir,
-                         env_name,
-                         seeds,
-                         num_init_ratings=None):
+                     bucket_name,
+                     data_dir,
+                     env_name,
+                     seeds,
+                     num_init_ratings=None):
     """Plot coverage based on list of recommenders and data from S3.
+
     Parameters
     ----------
     rec_names : str
@@ -273,6 +282,7 @@ def plot_coverage_s3(rec_names,
     num_init_ratings : int
         The number of ratings initially available to recommenders. If set to None
         the function will plot with an x-axis based on the timestep.
+
     """
     bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
     results = []
@@ -280,16 +290,17 @@ def plot_coverage_s3(rec_names,
         coverage = []
         for seed in seeds:
             dir_name = s3_experiment_dir_name(data_dir, env_name, rec_name, seed)
-            recommendations = get_and_unserialize(bucket, os.path.join(dir_name, 'recommendations.pickle'))
+            recommendations = get_and_unserialize(
+                bucket, os.path.join(dir_name, 'recommendations.pickle'))
             coverage.append([len(set(rec)) for rec in recommendations])
         coverage = list(compute_stats(np.array(coverage)))
         results.append(coverage)
 
     plt.figure(figsize=(18, 6))
-    for i in range(len(rec_names)):
+    for i, rec_name in enumerate(rec_names):
         x_vals = [num_init_ratings + (i * recommendations.shape[1])
                   for i in range(recommendations.shape[0])]
-        plt.plot(x_vals, results[i][0], label=rec_names[i])
+        plt.plot(x_vals, results[i][0], label=rec_name)
         plt.fill_between(x_vals, results[i][2], results[i][1], alpha=0.1)
     plt.xlabel('Number of ratings')
     plt.ylabel('Number of distinct recommended items')
@@ -298,14 +309,16 @@ def plot_coverage_s3(rec_names,
     plt.show()
     return results
 
+
 def plot_coverage_vs_ratings(rec_names,
-                         len_trial,
-                         bucket_name,
-                         data_dir,
-                         env_name,
-                         seeds,
-                         num_init_ratings=None):
+                             len_trial,
+                             bucket_name,
+                             data_dir,
+                             env_name,
+                             seeds,
+                             num_init_ratings=None):
     """Plot scatterplot of coverage and ratings from data stored in S3.
+
     Parameters
     ----------
     rec_names : str
@@ -323,14 +336,25 @@ def plot_coverage_vs_ratings(rec_names,
     num_init_ratings : int
         The number of ratings initially available to recommenders. If set to None
         the function will plot with an x-axis based on the timestep.
+
     """
-    rating_stats = plot_ratings_mses_s3(rec_names, len_trial, bucket_name, data_dir, env_name, seeds, num_init_ratings=num_init_ratings, title=[[''], ['']])
-    coverage_stats = plot_coverage_s3(rec_names, len_trial, bucket_name, data_dir, env_name, seeds, num_init_ratings)
+    rating_stats = plot_ratings_mses_s3(rec_names,
+                                        len_trial,
+                                        bucket_name,
+                                        data_dir,
+                                        env_name,
+                                        seeds,
+                                        num_init_ratings=num_init_ratings,
+                                        title=[[''], ['']])
+    coverage_stats = plot_coverage_s3(rec_names,
+                                      bucket_name,
+                                      data_dir,
+                                      env_name,
+                                      seeds)
 
     mean_rmses = []
     mean_ratings = []
     coverage = []
-    
     for i in range(len(rating_stats)):
         mean_rmse = rating_stats[rec_names[i]][0][1].mean()
         mean_rating = rating_stats[rec_names[i]][0][0].mean()
@@ -342,15 +366,16 @@ def plot_coverage_vs_ratings(rec_names,
     plt.figure(figsize=[9, 4])
     plt.subplot(1, 2, 1)
     plt.scatter(mean_rmses, coverage)
-    for i in range(len(rec_names)):
+    for i, rec_name in enumerate(rec_names):
         plt.annotate(rec_names[i], (mean_rmses[i], coverage[i]))
     plt.title('Coverage vs mean RMSE')
-    
+
     plt.subplot(1, 2, 2)
     plt.scatter(mean_ratings, coverage)
-    for i in range(len(rec_names)):
-        plt.annotate(rec_names[i], (mean_ratings[i], coverage[i]))
+    for i, rec_name in enumerate(rec_names):
+        plt.annotate(rec_name, (mean_ratings[i], coverage[i]))
     plt.title('Coverage vs mean ratings')
+
 
 def plot_ratings_mses_s3(labels,
                          len_trial,
@@ -363,8 +388,9 @@ def plot_ratings_mses_s3(labels,
                          rating_frequency=None,
                          num_init_ratings=None,
                          threshold=10,
-                         title=['', '']):
+                         title=None):
     """Plot the performance results for multiple recommenders using data stored in S3.
+
     Parameters
     ----------
     labels : list of str
@@ -390,7 +416,11 @@ def plot_ratings_mses_s3(labels,
     threshold: float
         The threshold filtering on the predictions, predictions larger than it will be set to 0.
         default is 10
+
     """
+    if title is None:
+        title = ['', '']
+
     bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
 
     def arr_func(ratings, predictions):
@@ -449,11 +479,13 @@ def plot_ratings_mses_s3(labels,
     plt.show()
     return all_stats
 
+
 def plot_regret(ratings,
                 labels,
                 perfect_ratings=None,
                 num_init_ratings=None):
     """Plot the regrets for multiple recommenders comparing to the perfect recommender.
+
     Parameters
     ----------
     ratings : np.ndarray
@@ -469,6 +501,7 @@ def plot_regret(ratings,
     num_init_ratings : int
         The number of ratings initially available to recommenders. If set to None
         the function will plot with an x-axis based on round number.
+
     """
     if perfect_ratings is None:
         if 'perfect' in labels:
@@ -511,6 +544,7 @@ def plot_regret_s3(labels,
                    num_users=None,
                    num_init_ratings=None):
     """Plot the regret for multiple recommenders using data stored in S3.
+
     Parameters
     ----------
     labels : list of str
@@ -535,9 +569,11 @@ def plot_regret_s3(labels,
     num_init_ratings : int
         The number of ratings initially available to recommenders. If set to None
         the function will plot with an x-axis based on the timestep.
+
     """
     bucket = boto3.resource('s3').Bucket(bucket_name)  # pylint: disable=no-member
-    def regret(ratings, predictions):
+
+    def regret(ratings, _):
         return [np.cumsum(ratings[0] - ratings[1], axis=0)]
 
     if num_init_ratings is not None and num_users is not None:
@@ -563,6 +599,7 @@ def plot_regret_s3(labels,
     plt.legend()
     plt.tight_layout()
     plt.show()
+
 
 def compute_stats(arr, bound_zero=False, use_median=False):
     """Compute the mean/median and lower and upper bounds of an experiment result."""
@@ -601,11 +638,11 @@ def compute_stats_s3(bucket,
     """Compute the mean/median and lower and upper bounds of an experiment result stored in S3."""
     if arr_func is None:
         assert len(rec_names) == 1
+
         def arr_func(ratings, predictions):
             if use_ratings:
                 return [ratings[0]]
-            else:
-                return [predictions[0]]
+            return [predictions[0]]
 
     def get_mean_square_func(preprocess_func):
         def compute_means_square(**kwargs):
@@ -648,9 +685,11 @@ def compute_stats_s3(bucket,
 
 def get_env_dataset(environment):
     """Get the initial ratings of an environment.
+
     The intent of this function is to create an original dataset from which a recommender's
     hyperparameters can be tuned. The returned dataset will be identical to the original data
     available to each recommender when calling run_env_experiment.
+
     """
     environment.seed((INIT_SEED, 0))
     return environment.reset()
@@ -666,6 +705,7 @@ def run_env_experiment(environments,
                        data_dir=None,
                        overwrite=False, shift=False, shift_step=None):
     """Run repeated trials for a given list of recommenders on a list of environments.
+
     Parameters
     ----------
     environments : Environment
@@ -717,6 +757,7 @@ def run_env_experiment(environments,
         corresponds to the dense predictions array across all user-item pairs during
         the l-th step of the k-th trial for the j-th recommender on the i-th environment.
         predictions[i, j, k, l] corresponds to the prediction that the j-th recommender
+
     """
     bucket = None
     if bucket_name is not None:
@@ -754,7 +795,8 @@ def run_env_experiment(environments,
                 print('Running trial with seed:', seed)
                 dir_name = s3_experiment_dir_name(data_dir, env_name, rec_name, seed)
                 ratings, predictions, dense_ratings, dense_predictions = run_trial(
-                    environment, recommender, len_trial, seed, bucket, dir_name, overwrite, shift, shift_step)
+                    environment, recommender, len_trial, seed, bucket,
+                    dir_name, overwrite, shift, shift_step)
                 all_ratings[-1][-1].append(ratings)
                 all_predictions[-1][-1].append(predictions)
                 all_dense_ratings[-1][-1].append(dense_ratings)
@@ -775,8 +817,13 @@ def run_trial(env,
               trial_seed,
               bucket=None,
               dir_name=None,
-              overwrite=False, shift=False, shift_step=None, shift_fraction=0.4, soft_shift=0.0):
+              overwrite=False,
+              shift=False,
+              shift_step=None,
+              shift_fraction=0.4,
+              soft_shift=0.0):
     """Logic for running each trial.
+
     Parameters
     ----------
     env : Environment
@@ -816,6 +863,7 @@ def run_trial(env,
     dense_predictions : np.ndarray
         The array of all dense predictions across each step. dense_predictions[i] is the
         array of all predictions on round i for each user-item pair.
+
     """
     if not overwrite and s3_dir_exists(bucket, dir_name):
         print('Loading past results from S3 at directory:', dir_name)
@@ -845,10 +893,10 @@ def run_trial(env,
 
         recommendations = recommendations.flatten()
         dense_ratings = np.clip(env.dense_ratings.flatten(), 1, 5)
-        if shift == True and step == shift_step:
+        if shift and step == shift_step:
             print('Applying preference shift at step ', step)
             env.shift(shift_fraction=shift_fraction, soft_shift=soft_shift)
-        
+
         items, users, ratings, _ = env.step(recommendations)
         rec.update(users, items, ratings)
 
@@ -894,8 +942,10 @@ def run_trial(env,
     # TODO: We might want to return the env snapshots too.
     return all_ratings, all_predictions, all_dense_ratings, all_dense_predictions
 
+
 def compute_experiment_density(len_trial, environment, threshold=4):
     """Compute the rating density for the proposed experiment.
+
     Parameters
     ----------
     len_trial : int
@@ -904,6 +954,7 @@ def compute_experiment_density(len_trial, environment, threshold=4):
         The environment to consider.
     threshold : int
         The threshold for a rating to be considered "good".
+
     Returns
     -------
     initial_density : float
@@ -912,6 +963,7 @@ def compute_experiment_density(len_trial, environment, threshold=4):
         The final rating matrix density.
     good_item_density : float
         The underlying density of good items in the environment.
+
     """
     # Initialize environment
     get_env_dataset(environment)
@@ -930,8 +982,10 @@ def compute_experiment_density(len_trial, environment, threshold=4):
 
 class ModelTuner:
     """The tuner allows for easy tuning.
+
     Provides functionality for n-fold cross validation to
     assess the performance of various model parameters.
+
     Parameters
     ----------
     data : triple of iterables
@@ -958,6 +1012,7 @@ class ModelTuner:
         if bucket_name is also None.
     overwrite : bool
         Whether to overwrite tuning logs in S3 if they already exist.
+
     """
 
     def __init__(self,
@@ -1054,12 +1109,14 @@ class ModelTuner:
                     ranks = np.empty_like(temp)
                     ranks[temp] = np.arange(len(array))
                     return len(ranks) - ranks
+
                 def get_dcg(ranks, relevances, cutoff=5):
                     dcg = 0
                     for rank, relevance in zip(ranks, relevances):
                         if rank <= cutoff:
                             dcg += relevance / np.log2(rank+1)
                     return dcg
+
                 cutoff = int(len(true_ratings) / 5)
                 idcg = get_dcg(get_ranks(true_ratings), true_ratings, cutoff=cutoff)
                 dcg = get_dcg(get_ranks(predicted_ratings), true_ratings, cutoff=cutoff)
@@ -1067,7 +1124,6 @@ class ModelTuner:
                 if self.verbose:
                     print('dcg={}, ndcg={}'.format(dcg, ndcg))
                 metrics.append(ndcg)
-            
 
         if self.verbose:
             print('Average Metric:', np.mean(metrics))
@@ -1154,7 +1210,9 @@ def compute_across_trials_s3(bucket,
                              func,
                              load_dense=False):
     """Apply func to all the trials of an experiment and return a list of func's return values.
+
     This function loads one trial at a time to prevent memory issues.
+
     """
     results = []
     for seed in seeds:

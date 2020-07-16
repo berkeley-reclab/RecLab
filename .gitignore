@@ -8,6 +8,7 @@ predictions
 .ipynb_checkpoints
 *.swo
 *.swp
+*.egg-info
 
 results
 experiments/data

@@ -87,9 +87,9 @@ class LatentFactorBehavior(environment.DictEnvironment):
         # Compute the boredom penalties.
         item_norms = np.linalg.norm(self._item_factors, axis=1)
         normalized_items = self._item_factors / item_norms[:, np.newaxis]
-        similarities = normalized_items @ normalized_items.T 
+        similarities = normalized_items @ normalized_items.T
         similarities -= self._boredom_threshold
-        similarities[similarities<0] = 0
+        similarities[similarities < 0] = 0
         penalties = self._boredom_penalty * similarities
         for user_id in range(self._num_users):
             for item_id in self._user_histories[user_id]:
@@ -117,8 +117,7 @@ class LatentFactorBehavior(environment.DictEnvironment):
         raw_rating = (self._user_factors[user_id] @ self._item_factors[item_id]
                       + self._user_biases[user_id] + self._item_biases[item_id] + self._offset)
 
-        # Computing boredom penalty
-        recent_item_factors = [self._item_factors[item] for item in self._user_histories[user_id]]
+        # Compute the boredom penalty.
         boredom_penalty = 0
         for item_id_hist in self._user_histories[user_id]:
             item_factor = self._item_factors[item_id_hist]
@@ -219,13 +218,11 @@ class DatasetLatentFactor(LatentFactorBehavior):
             latent_dim = 100 if latent_dim is None else latent_dim
             self._full_num_users = 943
             self._full_num_items = 1682
-            # these parameters are the result of tuning
+            # These parameters are the result of tuning.
             reg = 0.1
             learn_rate = 0.005
-            # reg = 0.138950
-            # learn_rate = 0.01000
             self.train_params = dict(bias_reg=reg, one_way_reg=reg, two_way_reg=reg,
-                                     learning_rate=learn_rate, num_iter=100) #, use_one_way=False)
+                                     learning_rate=learn_rate, num_iter=100)
         elif name == 'ml-10m':
             self.datapath = os.path.expanduser(os.path.join(datapath, 'ml-10M100K'))
             latent_dim = 128 if latent_dim is None else latent_dim
@@ -241,7 +238,7 @@ class DatasetLatentFactor(LatentFactorBehavior):
             latent_dim = 128 if latent_dim is None else latent_dim
             self._full_num_users = 992
             self._full_num_items = 177023
-            # these parameters are presented in "Recommendations and User Agency" by Dean et al.
+            # These parameters are presented in "Recommendations and User Agency" by Dean et al.
             reg = 0.08
             learn_rate = 0.001
             self.train_params = dict(bias_reg=reg, one_way_reg=reg, two_way_reg=reg,

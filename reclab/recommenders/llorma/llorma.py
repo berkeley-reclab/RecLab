@@ -1,7 +1,5 @@
 """Tensorflow implementation of AutoRec recommender."""
 import numpy as np
-import tensorflow as tf
-
 from .llorma_lib import llorma_g
 from .. import recommender
 
@@ -10,7 +8,7 @@ class Llorma(recommender.PredictRecommender):
     """Many local low rank models averaged via kernels.
 
     Parameters
-    ---------
+    ----------
     max_user : int
         Maximum number of users in the environment
     max_item  : int
@@ -41,6 +39,7 @@ class Llorma(recommender.PredictRecommender):
         Folder to save model outputs and checkpoints.
     kernel_fun : callable
         kernel function used for similarity,
+
     """
 
     def __init__(self,
@@ -80,26 +79,20 @@ class Llorma(recommender.PredictRecommender):
         users, items, _ = list(zip(*user_item))
         users = np.array(users)
         items = np.array(items)
-        # check that both the item and the user have been seen in historical data
+        # Check that both the item and the user have been seen in historical data.
         is_seen_uid = np.array(users <= (self.model.batch_manager.n_user - 1))
         is_seen_iid = np.array(items <= (self.model.batch_manager.n_item - 1))
         is_seen_id = np.logical_and(is_seen_iid, is_seen_uid)
 
         seen_user_item = np.column_stack((users[is_seen_id], items[is_seen_id]))
         seen_estimate = self.model.predict(seen_user_item)
-        # choose the mean of the seen values as the estimate for the unseen ids
+        # Choose the mean of the seen values as the estimate for the unseen ids.
         unseen_estimate = np.mean(seen_estimate)
         estimate = np.ones(len(users))*unseen_estimate
         estimate[is_seen_id] = seen_estimate
-        print("Low: {:.3f}, Mean: {:.3f}, High: {:.3f}".format(np.quantile(seen_estimate, 0.25),
+        print('Low: {:.3f}, Mean: {:.3f}, High: {:.3f}'.format(np.quantile(seen_estimate, 0.25),
                                                                np.quantile(seen_estimate, 0.5),
                                                                np.quantile(seen_estimate, 0.75)))
-        #users = np.repeat(range(100), 170)
-        #items = np.tile(range(170), 100)
-        #user_item = np.column_stack((users, items))
-        #rating = self.model.predict(user_item)
-        #rating=rating.reshape(100, 170)
-        #np.savetxt("fixed_env_predictions.csv", rating, delimiter=',')
         return estimate
 
     def update(self, users=None, items=None, ratings=None):  # noqa: D102

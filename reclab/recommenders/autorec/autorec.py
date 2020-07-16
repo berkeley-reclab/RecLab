@@ -7,10 +7,12 @@ import torch
 from .autorec_lib import autorec
 from .. import recommender
 
+
 class Autorec(recommender.PredictRecommender):
-    """Autorec recommender.
+    """The Autorec recommender.
+
     Parameters
-    ---------
+    ----------
     num_users : int
         Number of users in the environment.
     num_items : int
@@ -35,7 +37,9 @@ class Autorec(recommender.PredictRecommender):
         Probability to initialize dropout layer. Set to 0 for no dropout.
     random_seed : int
         Random seed to reproduce results.
+
     """
+
     def __init__(self, num_users, num_items,
                  hidden_neuron=500, lambda_value=1,
                  train_epoch=1000, batch_size=1000, optimizer_method='RMSProp',
@@ -49,10 +53,13 @@ class Autorec(recommender.PredictRecommender):
         del self._hyperparameters['self']
         del self._hyperparameters['__class__']
 
-        self.model = autorec.AutoRec(num_users, num_items,
-                             seen_users=set(), seen_items=set(),
-                             hidden_neuron=hidden_neuron,
-                             dropout=dropout, random_seed=random_seed)
+        self.model = autorec.AutoRec(num_users,
+                                     num_items,
+                                     seen_users=set(),
+                                     seen_items=set(),
+                                     hidden_neuron=hidden_neuron,
+                                     dropout=dropout,
+                                     random_seed=random_seed)
         self.lambda_value = lambda_value
         self.num_users = num_users
         self.num_items = num_items
@@ -71,13 +78,13 @@ class Autorec(recommender.PredictRecommender):
     def train_model(self, data):
         """Train for all epochs in train_epoch."""
         self.model.train()
-        if self.optimizer_method == "Adam":
+        if self.optimizer_method == 'Adam':
             optimizer = torch.optim.Adam(self.model.parameters(), lr=self.base_lr)
 
-        elif self.optimizer_method == "RMSProp":
+        elif self.optimizer_method == 'RMSProp':
             optimizer = torch.optim.RMSprop(self.model.parameters(), lr=self.base_lr)
         else:
-            raise ValueError("Optimizer Key ERROR")
+            raise ValueError('Optimizer Key ERROR')
 
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=self.lr_decay)
 
@@ -92,13 +99,15 @@ class Autorec(recommender.PredictRecommender):
             if i == self.num_batch - 1:
                 batch_set_idx = random_perm_doc_idx[i * self.batch_size:]
             elif i < self.num_batch - 1:
-                batch_set_idx = random_perm_doc_idx[i * self.batch_size : (i+1) * self.batch_size]
+                batch_set_idx = random_perm_doc_idx[i * self.batch_size:(i+1) * self.batch_size]
 
             batch = data[batch_set_idx, :].to(self.device)
             output = self.model.forward(batch)
             mask = self.mask_R[batch_set_idx, :].to(self.device)
-            loss = self.model._loss(output, batch,
-                             mask, lambda_value=self.lambda_value)
+            loss = self.model.loss(output,
+                                   batch,
+                                   mask,
+                                   lambda_value=self.lambda_value)
 
             loss.backward()
             if self.grad_clip:
@@ -128,7 +137,7 @@ class Autorec(recommender.PredictRecommender):
             self.model.seen_items.add(user_item[1])
 
         ratings = self._ratings.toarray()
-        # item-based autorec expects rows that represent items
+        # Item-based autorec expects rows that represent items
         self.R = torch.FloatTensor(ratings.T)
         self.mask_R = torch.FloatTensor(ratings.T).clamp(0, 1)
 

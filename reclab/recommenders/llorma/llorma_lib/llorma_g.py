@@ -294,7 +294,7 @@ class Llorma():
         # if self.pre_model is None:
         #     self.pre_model = self.init_pre_model()
 
-        tf.reset_default_graph()
+        tf.compat.v1.reset_default_graph()
         self.pre_model = self.init_pre_model()
         pre_model = self.pre_model
 

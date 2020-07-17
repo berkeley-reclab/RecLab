@@ -20,10 +20,11 @@ def test_recommend():
     """Test that Autorec will recommend reasonable items."""
     recommender = Autorec(utils.NUM_USERS_SIMPLE,
                           utils.NUM_ITEMS_SIMPLE,
-                          hidden_neuron=500,
-                          lambda_value=20,
+                          hidden_neuron=200,
+                          lambda_value=1,
                           train_epoch=50,
                           batch_size=20,
+                          optimizer_method='Adam',
                           grad_clip=False,
-                          base_lr=1e-4)
+                          base_lr=1e-3)
     utils.test_recommend_simple(recommender)

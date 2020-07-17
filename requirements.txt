@@ -36,6 +36,7 @@ pybind11==2.5.0
 pycodestyle==2.6.0
 pydocstyle==5.0.2
 pylint==2.5.3
+pylint-quotes==0.2.1
 pyparsing==2.4.7
 pytest==5.4.3
 python-dateutil==2.8.1

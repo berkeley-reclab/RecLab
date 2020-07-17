@@ -12,6 +12,8 @@ import tensorflow as tf
 from .anchor import AnchorManager
 from .train_utils import get_train_op, init_latent_mat, init_session
 
+tf.compat.v1.disable_eager_execution()
+
 
 class Llorma():
     """Local Low Rank Matrix Approximation Model
@@ -122,9 +124,9 @@ class Llorma():
         """ Initialize TF variables, loss, objective and
         optimizer for the global pre-model
         """
-        u_var = tf.placeholder(tf.int64, [None], name='u')
-        i_var = tf.placeholder(tf.int64, [None], name='i')
-        r_var = tf.placeholder(tf.float64, [None], name='r')
+        u_var = tf.compat.v1.placeholder(tf.int64, [None], name='u')
+        i_var = tf.compat.v1.placeholder(tf.int64, [None], name='i')
+        r_var = tf.compat.v1.placeholder(tf.float64, [None], name='r')
 
         p_factor = init_latent_mat(self.max_user,
                                    self.pre_rank,
@@ -144,7 +146,7 @@ class Llorma():
         loss = tf.reduce_sum(tf.square(r_var - r_hat)) + self.pre_lambda_val * reg_loss
         rmse = tf.sqrt(tf.reduce_mean(tf.square(r_var - r_hat)))
 
-        optimizer = tf.train.MomentumOptimizer(self.pre_learning_rate, 0.9)
+        optimizer = tf.compat.v1.train.MomentumOptimizer(self.pre_learning_rate, 0.9)
         train_ops = [
             optimizer.minimize(loss, var_list=[p_factor]),
             optimizer.minimize(loss, var_list=[q_factor])
@@ -164,10 +166,10 @@ class Llorma():
         """ Initialize TF variables, loss, objective and
         optimizer for the local models
         """
-        u_var = tf.placeholder(tf.int64, [None], name='u')
-        i_var = tf.placeholder(tf.int64, [None], name='i')
-        r_var = tf.placeholder(tf.float64, [None], name='r')
-        k_var = tf.placeholder(tf.float64, [None, self.n_anchor], name='k')
+        u_var = tf.compat.v1.placeholder(tf.int64, [None], name='u')
+        i_var = tf.compat.v1.placeholder(tf.int64, [None], name='i')
+        r_var = tf.compat.v1.placeholder(tf.float64, [None], name='r')
+        k_var = tf.compat.v1.placeholder(tf.float64, [None, self.n_anchor], name='k')
         k_sum = tf.reduce_sum(k_var, axis=1)
 
         # init weights
@@ -194,7 +196,7 @@ class Llorma():
         r_hat = tf.where(tf.greater(k_sum, 1e-2), r_hat, tf.ones_like(r_hat) * 3)
         rmse = tf.sqrt(tf.reduce_mean(tf.square(r_var - r_hat)))
 
-        optimizer = tf.train.GradientDescentOptimizer(self.learning_rate)
+        optimizer = tf.compat.v1.train.GradientDescentOptimizer(self.learning_rate)
         loss = tf.reduce_sum(tf.square(r_hat - r_var)) + self.lambda_val * tf.reduce_sum(
             [tf.reduce_sum(tf.square(p_or_q)) for p_or_q in all_p_factors + all_q_factors])
         train_ops = [get_train_op(optimizer, loss, [p, q])
@@ -298,8 +300,8 @@ class Llorma():
         self.pre_model = self.init_pre_model()
         pre_model = self.pre_model
 
-        pre_session = tf.Session()
-        pre_session.run(tf.global_variables_initializer())
+        pre_session = tf.compat.v1.Session()
+        pre_session.run(tf.compat.v1.global_variables_initializer())
 
         min_valid_rmse = float('Inf')
 

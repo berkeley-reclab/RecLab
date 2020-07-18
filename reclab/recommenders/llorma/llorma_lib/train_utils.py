@@ -21,11 +21,11 @@ def init_session():
     # gpu_config = tf.ConfigProto(gpu_options=gpu_options)
     # session = tf.Session(config=gpu_config)
 
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
 
-    session = tf.Session(config=config)
-    session.run(tf.global_variables_initializer())
+    session = tf.compat.v1.Session(config=config)
+    session.run(tf.compat.v1.global_variables_initializer())
     return session
 
 
@@ -67,4 +67,4 @@ def init_latent_mat(n, rank, mu_val, std_val):
     _mu = math.sqrt(mu_val / rank)
     _std = math.sqrt((math.sqrt(mu_val * mu_val + std_val * std_val) - mu_val) / rank)
     return tf.Variable(
-        tf.truncated_normal([n, rank], _mu, _std, dtype=tf.float64))
+        tf.compat.v1.truncated_normal([n, rank], _mu, _std, dtype=tf.float64))

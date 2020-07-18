@@ -8,13 +8,12 @@ def test_predict():
     recommender = Autorec(utils.NUM_USERS_ML100K,
                           utils.NUM_ITEMS_ML100K,
                           hidden_neuron=500,
-                          lambda_value=1,
+                          lambda_value=20,
                           train_epoch=50,
                           batch_size=20,
-                          optimizer_method='Adam',
                           grad_clip=False,
-                          base_lr=1e-2)
-    utils.test_predict_ml100k(recommender, rmse_threshold=1.5)
+                          base_lr=1e-4)
+    utils.test_predict_ml100k(recommender, rmse_threshold=1.3)
 
 
 def test_recommend():

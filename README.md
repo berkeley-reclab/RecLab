@@ -1,5 +1,5 @@
 # RecLab
-RecLab is a modular simulation environment for online evaluation and comparison recommendation algorithms.
+RecLab is a modular simulation environment for online evaluation and comparison of recommendation algorithms.
 
 
 ## Geting Started
@@ -10,7 +10,7 @@ The online evaluation of recommender systems consists of two basic components: *
 
 Below is a visualization of the interaction between environment and recommender.
 
-![Flowchart](/figures/RecLab3.pdf)
+![Flowchart](/figures/RecSys.png)
 
 #### Environments
 The basic interface for an environment that all environments inherit from is [Environment](reclab/environments/environment.py). The most important methods in developing a new environments are:
@@ -29,14 +29,11 @@ To see a description of available environments see the [List of Enviroments](rec
 #### Recommenders
 
 
-#### Recommenders
 
 ## Setup
-Get started with RecLab by cloning the repository.
+RecLab was developed and tested Python version 3.8. Get started with RecLab by cloning the repository.
 
 **Coming soon**: pip installable RecLab package.
-
-RecLab was developed and tested Python version 3.8.
 
 ### Requirements
 We suggest installing RecLab in a virtual environment and installing dependencies from [requirements.txt](requirements.txt).

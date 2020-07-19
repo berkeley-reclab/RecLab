@@ -105,7 +105,7 @@ class PredictRecommender(Recommender):
 
     """
 
-    def __init__(self, strategy='greedy'):
+    def __init__(self):
         """Create a new PredictRecommender object."""
         # The features associated with each user.
         self._users = []
@@ -123,18 +123,23 @@ class PredictRecommender(Recommender):
         self._outer_to_inner_iid = {}
         self._inner_to_outer_iid = []
         # The sampling strategy to use.
-        self._strategy = strategy
-        # A dict of all the recommender's hyperparameters.
-        self._hyperparameters = {'strategy': strategy}
+        self._strategy_dict = {'type': 'greedy'}
         # The cached dense predictions, reset to None each time update is called.
         self._dense_predictions = None
-        # Check that the strategy is of valid type.
-        assert self._strategy.split(',')[0] in ['greedy', 'eps_greedy', 'thompson']
 
     @property
     def hyperparameters(self):
-        """Get a dict of all the recommender's hyperparameters."""
-        return self._hyperparameters
+        return(self.strategy_dict)
+
+    def update_strategy(self, new_strategy):
+        try:
+            assert(validate_strategy(new_strategy))
+            if not new_strategy:
+                new_strategy = {'type': 'greedy'}
+            self.strategy_dict = new_strategy
+        except AssertionError as e:
+            print("Proposed strategy is not valid, the current strategy: {} will be maintained".format(self.strategy_dict))
+
 
     def reset(self, users=None, items=None, ratings=None):
         """Reset the recommender with optional starting user, item, and rating data.
@@ -344,19 +349,12 @@ class PredictRecommender(Recommender):
         """
         assert len(item_ids) == len(predictions)
         num_items = len(item_ids)
-        strategy_name = self._strategy.split(',')[0]
-        # TODO: clean up this method of parameter specification
-        if len(self._strategy.split(',')) > 1:
-            strategy_param = self._strategy.split(',')[1]
-        else:
-            strategy_param = None
-        if strategy_name == 'greedy':
+
+        strategy_type = self._strategy_dict.get('type')
+        if strategy_type == 'greedy':
             selected_indices = np.argsort(predictions)[-num_recommendations:]
-        elif strategy_name == 'eps_greedy':
-            if strategy_param is None:
-                eps = 0.1
-            else:
-                eps = float(strategy_param)
+        elif strategy_type == 'eps_greedy':
+            eps = float(self._strategy_dict.get('eps'))
             num_explore = np.random.binomial(num_recommendations, eps)
             num_exploit = num_recommendations - num_explore
             if num_exploit > 0:
@@ -366,12 +364,8 @@ class PredictRecommender(Recommender):
             explore_indices = np.random.choice([x for x in range(0, num_items)
                                                 if x not in exploit_indices], num_explore)
             selected_indices = np.concatenate((exploit_indices, explore_indices))
-        elif strategy_name == 'thompson':
-            if strategy_param is None:
-                # artificial parameter to boost the probability of the more likely items
-                power = np.ceil(np.log(len(predictions)))
-            else:
-                power = int(float(strategy_param))
+        elif strategy_type == 'thompson':
+            power = int(float(self._strategy_dict.get('power')))
             selection_probs = np.power(predictions/sum(predictions), power)
             selection_probs = selection_probs/sum(selection_probs)
             selected_indices = np.random.choice(range(0, num_items),
@@ -388,7 +382,6 @@ class PredictRecommender(Recommender):
         Parameters
         ----------
         user_item : list of tuple
-            The list of all user-item pairs along with the rating context.
             Each element is a triple where the first element in the tuple is
             the inner user id, the second element is the inner item id and the third element
             is the context in which the item will be rated.
@@ -400,3 +393,39 @@ class PredictRecommender(Recommender):
 
         """
         raise NotImplementedError
+
+def validate_strategy(strategy_dict):
+    if not strategy_dict:
+        return True
+
+    strategy_type = strategy_dict.get('type')
+    if strategy_type == 'greedy':
+        return True
+    elif strategy_type == 'eps_greedy':
+        eps = strategy_dict.get('eps')
+        if not eps:
+            print('Strategy invalid, provide "eps" value in [0,1]')
+            return False
+        try:
+            eps = float(eps)
+        except ValueError:
+            print('"eps":{} value is not numeric, provide "eps" value in [0,1]'.format(eps))
+            return False
+        if (eps < 0) or (eps > 1):
+            print('Strategy invalid, "eps":{}, is not in [0,1], provide "eps" value in [0,1]'.format(eps))
+            return False
+        return True
+    elif strategy_type == 'thompson':
+        power = strategy_dict.get('power')
+        if not power:
+            print('Strategy invalid, provide nonnegative integer "power" parameter')
+            return False
+        try:
+            power = float(power)
+        except ValueError:
+            print('"power":{} value is not numeric, provide nonnegative integer "power" parameter'.format(power))
+            return False
+        if not power.is_integer() or power < 0:
+            print('"power":{} value is not a nonnegative integer, provide nonnegative integer "power" parameter'.format(value))
+            return False
+        return True

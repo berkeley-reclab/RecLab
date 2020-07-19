@@ -13,7 +13,7 @@ Below is a visualization of the interaction between environment and recommender.
 ![Flowchart](/figures/RecSys.png)
 
 #### Environments
-The basic interface for an environment that all environments inherit from is [Environment](reclab/environments/environment.py). The most important methods in developing a new environments are:
+The basic interface for an environment that all environments inherit from is [Environment](reclab/environments/environment.py). The most important methods in developing a new environment are:
 
 - `reset`: method that resets the environment to its original state. Must be called before the first step of the simulation.
 - `online_users`: method that returns a list of available users from the environment.
@@ -45,7 +45,7 @@ RecLab was developed and tested Python version 3.8. Get started with RecLab by c
 We suggest installing RecLab in a virtual environment and installing dependencies from [requirements.txt](requirements.txt).
 
 ### Running Experiments
-See below a simple usage example"
+See below a simple usage example:
 ```
 from reclab.environments import Topics
 from reclab.recommenders import LibFM

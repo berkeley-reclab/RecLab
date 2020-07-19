@@ -105,7 +105,7 @@ class PredictRecommender(Recommender):
 
     """
 
-    def __init__(self):
+    def __init__(self, **strategy_dict):
         """Create a new PredictRecommender object."""
         # The features associated with each user.
         self._users = []
@@ -124,21 +124,23 @@ class PredictRecommender(Recommender):
         self._inner_to_outer_iid = []
         # The sampling strategy to use.
         self._strategy_dict = {'type': 'greedy'}
+        self.update_strategy(strategy_dict)
         # The cached dense predictions, reset to None each time update is called.
         self._dense_predictions = None
+        self._hyperparameters = self._strategy_dict
 
     @property
     def hyperparameters(self):
-        return(self.strategy_dict)
+        return(self._strategy_dict)
 
     def update_strategy(self, new_strategy):
         try:
             assert(validate_strategy(new_strategy))
             if not new_strategy:
                 new_strategy = {'type': 'greedy'}
-            self.strategy_dict = new_strategy
+            self._strategy_dict = new_strategy
         except AssertionError as e:
-            print("Proposed strategy is not valid, the current strategy: {} will be maintained".format(self.strategy_dict))
+            print("Proposed strategy is not valid, the current strategy: {} will be maintained".format(self._strategy_dict))
 
 
     def reset(self, users=None, items=None, ratings=None):

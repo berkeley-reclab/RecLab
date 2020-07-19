@@ -47,6 +47,27 @@ We suggest installing RecLab in a virtual environment and installing dependencie
 ### Running Experiments
 See below a simple usage example"
 ```
+from reclab.environments import Topics
+from reclab.recommenders import LibFM
+
+# Setup
+num_users = 100
+num_items = 170
+
+# Instantiate environment
+env = Topics(num_topics=10,
+             num_users=num_users,
+             num_items=num_items,
+             rating_frequency=0.2,
+             num_init_ratings=1000)
+
+# Instantiate recommender
+recommender = LibFM(max_num_users=num_users,
+                    max_num_items=num_items,
+                    method='sgd',
+                    learning_rate=0.01
+                    )
+
 # Get initial state from the environment
 items, users, ratings = env.reset()
 # Initialize recommender

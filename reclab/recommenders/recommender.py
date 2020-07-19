@@ -95,13 +95,14 @@ class PredictRecommender(Recommender):
 
     Parameters
     ----------
-    strategy : str, optional
+    strategy_dict : dict, optional
         The item selection strategy to use.
         Valid strategies are:
-            'greedy': chooses the unseen item with largest predicted rating
-            'eps_greedy': with probability 1-eps chooses the unseen item with largest
+            {'type': 'greedy'}: chooses the unseen item with largest predicted rating
+            {'type':'eps_greedy', 'eps':0.x}: with probability 1-eps chooses the unseen item with largest
                            predicted rating, with probability eps chooses a random unseen item
-            'thompson': picks an item with probability proportional to the expected rating
+            {'type':'thompson', 'power':x}: picks an item with probability proportional to the expected rating
+                            raised to power x.
 
     """
 
@@ -134,6 +135,13 @@ class PredictRecommender(Recommender):
         return(self._strategy_dict)
 
     def update_strategy(self, new_strategy):
+        """ Update the strategy_dict parameter with a new_strategy
+
+        Parameters
+        ----------
+        new_strategy : dict
+            contains expolation strategy parameters
+        """
         try:
             assert(validate_strategy(new_strategy))
             if not new_strategy:
@@ -397,6 +405,18 @@ class PredictRecommender(Recommender):
         raise NotImplementedError
 
 def validate_strategy(strategy_dict):
+    """Validates if strategy_dict is a valid exploration strategy
+
+    Parameters
+    ----------
+    strategy_dict : dict
+        Dictionary containing exploration strategy
+
+    Returns
+    -------
+    bool
+        if True, exploration strategy is valid
+    """
     if not strategy_dict:
         return True
 

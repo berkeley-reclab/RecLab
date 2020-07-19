@@ -27,6 +27,12 @@ The basic interface for an environment that all environments inherit from is [En
 To see a description of available environments see the [List of Enviroments](reclab/environments/README.md).
 
 #### Recommenders
+The basic interface for an environment that all environments inherit from is [Recommender](reclab/recommenders/recommender.py). The most important methods for adding a new recommender are:
+
+- `recommend(user_contexts, num_recommendations)`: Method that returns a list of items to be recommended to each online user. The `user_contexts` contains all the information about online users provided by the environment.
+- `update(users, items, ratings)`: Method that updates the recommender at each time-step with the new `user`, `item` and `rating` data provided by the environment.
+
+To see a description of available recommenders see the [List of Recommenders](reclab/recommenders/README.md).
 
 
 
@@ -38,6 +44,22 @@ RecLab was developed and tested Python version 3.8. Get started with RecLab by c
 ### Requirements
 We suggest installing RecLab in a virtual environment and installing dependencies from [requirements.txt](requirements.txt).
 
-## Metrics
-
 ### Running Experiments
+See below a simple usage example"
+```
+# Get initial state from the environment
+items, users, ratings = env.reset()
+# Initialize recommender
+recommender.reset(items, users, ratings)
+
+# Now recommend items to users.
+for _ in range(len_trial):
+    online_users = env.online_users()
+    recommendations, predictions = recommender.recommend(online_users, num_recommendations=1)
+    recommendations = recommendations.flatten()
+
+    items, users, ratings, info = env.step(recommendations)
+    recommender.update(users, items, ratings)
+```
+
+**Coming soon:** More functionality for running experiments and custom performance metrics.

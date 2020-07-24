@@ -18,6 +18,13 @@ class Topics(environment.DictEnvironment):
     also have a changing preference for topics they get recommended based on the topic_change
     parameter.
 
+    Users and items can have biases, there is an underlying bias.
+
+    Ratings are generated as
+    r = clip( user preference for a given topic + b_u + b_i + b_0, 1, 5)
+    where p_u is a user's latent factor, q_i is an item's latent factor,
+    b_u is a user bias, b_i is an item bias, and b_0 is a global bias.
+
     Parameters
     ----------
     num_topics : int
@@ -85,6 +92,9 @@ class Topics(environment.DictEnvironment):
         self._shift_steps = shift_steps
         self._shift_frequency = shift_frequency
         self._shift_weight = shift_weight
+        self._user_biases = None
+        self._item_biases = None
+        self._offset = None
 
     @property
     def name(self):  # noqa: D102
@@ -94,7 +104,7 @@ class Topics(environment.DictEnvironment):
         ratings = np.zeros([self._num_users, self._num_items])
         for item_id in range(self._num_items):
             topic = self._item_topics[item_id]
-            ratings[:, item_id] = self._user_preferences[:, topic]
+            ratings[:, item_id] = self._user_preferences[:, topic] + np.full((5), self._item_biases[item_id]) + self._user_biases + self._offset 
 
         # Account for boredom.
         for user_id in range(self._num_users):
@@ -108,7 +118,7 @@ class Topics(environment.DictEnvironment):
 
     def _get_rating(self, user_id, item_id):  # noqa: D102
         topic = self._item_topics[item_id]
-        rating = self._user_preferences[user_id, topic]
+        rating = self._user_preferences[user_id, topic] + self._user_biases[user_id] + self._item_biases[item_id] + self._offset
         recent_topics = [self._item_topics[item] for item in self._user_histories[user_id]]
         if recent_topics.count(topic) > self._boredom_threshold:
             rating -= self._boredom_penalty
@@ -128,9 +138,15 @@ class Topics(environment.DictEnvironment):
         return rating
 
     def _reset_state(self):  # noqa: D102
+        
+        self._user_bias = self._init_random.normal(loc=0., scale=0.5, size=self._num_users)
+        self._item_bias = self._init_random.normal(loc=0., scale=0.5, size=self._num_items)
+        self._offset = 3.0
         self._user_preferences = self._init_random.uniform(low=0.5, high=5.5,
                                                            size=(self._num_users, self._num_topics))
         self._item_topics = self._init_random.choice(self._num_topics, size=self._num_items)
+        
+        
         self._users = collections.OrderedDict((user_id, np.zeros(0))
                                               for user_id in range(self._num_users))
         self._items = collections.OrderedDict((item_id, np.zeros(0))
@@ -138,14 +154,21 @@ class Topics(environment.DictEnvironment):
 
     def _update_state(self):  # noqa: D102
         if self._timestep % self._shift_steps == 0:
-            # Apply the preference shift to a fraction of users.
+            # Apply preference and bias shift to a fraction of users.
             shifted_users = self._dynamics_random.choice(
                 self._num_users, int(self._num_users * self._shift_frequency))
 
             new_preferences = self._init_random.uniform(low=0.5, high=5.5,
                                                         size=(len(shifted_users), self._num_topics))
+            
+            new_user_bias = self._init_random.normal(loc=0., scale=0.5, size=len(shifted_users))
+            
             self._user_preferences[shifted_users] = (
                 self._shift_weight * self._user_preferences[shifted_users] +
                 (1 - self._shift_weight) * new_preferences)
+
+            self._user_bias[shifted_users] = (
+                self._shift_weight * self._user_bias[shifted_users] +
+                (1 - self._shift_weight) * new_user_bias)
 
         return collections.OrderedDict(), collections.OrderedDict()

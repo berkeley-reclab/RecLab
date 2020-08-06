@@ -27,7 +27,7 @@ The basic interface for an environment that all environments inherit from is [En
 To see a description of available environments see the [List of Enviroments](reclab/environments/README.md).
 
 #### Recommenders
-The basic interface for an environment that all environments inherit from is [Recommender](reclab/recommenders/recommender.py). The most important methods for adding a new recommender are:
+The basic interface for a recommender that all recommenders inherit from is [Recommender](reclab/recommenders/recommender.py). The most important methods for adding a new recommender are:
 
 - `recommend(user_contexts, num_recommendations)`: Method that returns a list of items to be recommended to each online user. The `user_contexts` contains all the information about online users provided by the environment.
 - `update(users, items, ratings)`: Method that updates the recommender at each time-step with the new `user`, `item` and `rating` data provided by the environment.

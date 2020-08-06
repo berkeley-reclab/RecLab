@@ -1,5 +1,7 @@
 """
-Contains the implementation for the Engelhardt environment from the algorithmic confounding paper.
+Contains the implementation of "How Algorithmic Confounding in Recommendation Systems 
+Increases Homogeneity and Decreases Utility".
+https://arxiv.org/abs/1710.11214
 
 In this environment users have a hidden preference for each topic and each item has a
 hidden topic assigned to it.

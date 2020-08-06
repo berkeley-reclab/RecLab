@@ -13,10 +13,13 @@ class Topics(environment.DictEnvironment):
     """An environment where items have a single topic and users prefer certain topics.
 
     The user preference for any given topic is initialized as Unif(0.5, 5.5) while
-    topics are uniformly assigned to items. Users will rate items as clip(p + e, 0, 5)
-    where p is their preference for a given topic and e ~ N(0, self._noise). Users will
+    topics are uniformly assigned to items. Users will
     also have a changing preference for topics they get recommended based on the topic_change
-    parameter.
+    parameter. Users and items can have biases, there can also exist an underlying bias.
+
+    Ratings are generated as
+    r = clip( user preference for a given topic + b_u + b_i + b_0, 1, 5)
+    where b_u is a user bias, b_i is an item bias, and b_0 is a global bias.
 
     Parameters
     ----------
@@ -85,6 +88,9 @@ class Topics(environment.DictEnvironment):
         self._shift_steps = shift_steps
         self._shift_frequency = shift_frequency
         self._shift_weight = shift_weight
+        self._user_biases = None
+        self._item_biases = None
+        self._offset = None
 
     @property
     def name(self):  # noqa: D102
@@ -94,7 +100,9 @@ class Topics(environment.DictEnvironment):
         ratings = np.zeros([self._num_users, self._num_items])
         for item_id in range(self._num_items):
             topic = self._item_topics[item_id]
-            ratings[:, item_id] = self._user_preferences[:, topic]
+            ratings[:, item_id] = (self._user_preferences[:, topic] +
+                                   np.full((self._num_users), self._item_biases[item_id]) +
+                                   self._user_biases + np.full((self._num_users), self._offset))
 
         # Account for boredom.
         for user_id in range(self._num_users):
@@ -108,7 +116,8 @@ class Topics(environment.DictEnvironment):
 
     def _get_rating(self, user_id, item_id):  # noqa: D102
         topic = self._item_topics[item_id]
-        rating = self._user_preferences[user_id, topic]
+        rating = (self._user_preferences[user_id, topic] + self._user_biases[user_id] +
+                  self._item_biases[item_id] + self._offset)
         recent_topics = [self._item_topics[item] for item in self._user_histories[user_id]]
         if recent_topics.count(topic) > self._boredom_threshold:
             rating -= self._boredom_penalty
@@ -128,6 +137,10 @@ class Topics(environment.DictEnvironment):
         return rating
 
     def _reset_state(self):  # noqa: D102
+
+        self._user_biases = self._init_random.normal(loc=0., scale=0.5, size=self._num_users)
+        self._item_biases = self._init_random.normal(loc=0., scale=0.5, size=self._num_items)
+        self._offset = 0
         self._user_preferences = self._init_random.uniform(low=0.5, high=5.5,
                                                            size=(self._num_users, self._num_topics))
         self._item_topics = self._init_random.choice(self._num_topics, size=self._num_items)
@@ -138,14 +151,22 @@ class Topics(environment.DictEnvironment):
 
     def _update_state(self):  # noqa: D102
         if self._timestep % self._shift_steps == 0:
-            # Apply the preference shift to a fraction of users.
+            # Apply preference and bias shift to a fraction of users.
+
             shifted_users = self._dynamics_random.choice(
                 self._num_users, int(self._num_users * self._shift_frequency))
 
             new_preferences = self._init_random.uniform(low=0.5, high=5.5,
                                                         size=(len(shifted_users), self._num_topics))
+
+            new_user_biases = self._init_random.normal(loc=0., scale=0.5, size=len(shifted_users))
+
             self._user_preferences[shifted_users] = (
                 self._shift_weight * self._user_preferences[shifted_users] +
                 (1 - self._shift_weight) * new_preferences)
+
+            self._user_biases[shifted_users] = (
+                self._shift_weight * self._user_biases[shifted_users] +
+                (1 - self._shift_weight) * new_user_biases)
 
         return collections.OrderedDict(), collections.OrderedDict()

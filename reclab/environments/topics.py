@@ -101,8 +101,8 @@ class Topics(environment.DictEnvironment):
         for item_id in range(self._num_items):
             topic = self._item_topics[item_id]
             ratings[:, item_id] = (self._user_preferences[:, topic] +
-                                np.full((self._num_users), self._item_biases[item_id]) +
-                                self._user_biases + np.full((self._num_users), self._offset))
+                                   np.full((self._num_users), self._item_biases[item_id]) +
+                                   self._user_biases + np.full((self._num_users), self._offset))
 
         # Account for boredom.
         for user_id in range(self._num_users):
@@ -117,7 +117,7 @@ class Topics(environment.DictEnvironment):
     def _get_rating(self, user_id, item_id):  # noqa: D102
         topic = self._item_topics[item_id]
         rating = (self._user_preferences[user_id, topic] + self._user_biases[user_id] +
-            self._item_biases[item_id] + self._offset)
+                  self._item_biases[item_id] + self._offset)
         recent_topics = [self._item_topics[item] for item in self._user_histories[user_id]]
         if recent_topics.count(topic) > self._boredom_threshold:
             rating -= self._boredom_penalty
@@ -138,8 +138,8 @@ class Topics(environment.DictEnvironment):
 
     def _reset_state(self):  # noqa: D102
 
-        self._user_bias = self._init_random.normal(loc=0., scale=0.5, size=self._num_users)
-        self._item_bias = self._init_random.normal(loc=0., scale=0.5, size=self._num_items)
+        self._user_biases = self._init_random.normal(loc=0., scale=0.5, size=self._num_users)
+        self._item_biases = self._init_random.normal(loc=0., scale=0.5, size=self._num_items)
         self._offset = 0
         self._user_preferences = self._init_random.uniform(low=0.5, high=5.5,
                                                            size=(self._num_users, self._num_topics))
@@ -159,14 +159,14 @@ class Topics(environment.DictEnvironment):
             new_preferences = self._init_random.uniform(low=0.5, high=5.5,
                                                         size=(len(shifted_users), self._num_topics))
 
-            new_user_bias = self._init_random.normal(loc=0., scale=0.5, size=len(shifted_users))
+            new_user_biases = self._init_random.normal(loc=0., scale=0.5, size=len(shifted_users))
 
             self._user_preferences[shifted_users] = (
                 self._shift_weight * self._user_preferences[shifted_users] +
                 (1 - self._shift_weight) * new_preferences)
 
-            self._user_bias[shifted_users] = (
-                self._shift_weight * self._user_bias[shifted_users] +
-                (1 - self._shift_weight) * new_user_bias)
+            self._user_biases[shifted_users] = (
+                self._shift_weight * self._user_biases[shifted_users] +
+                (1 - self._shift_weight) * new_user_biases)
 
         return collections.OrderedDict(), collections.OrderedDict()

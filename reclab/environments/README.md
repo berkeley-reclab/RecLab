@@ -4,8 +4,8 @@ All the provided environments inherit from `DictEnvironment`, which is an enviro
 
 ### [Topics](reclab/environments/topics.py)
 In the `Topics` environment, each item is uniformly assigned to one of *K* topics and users prefer certain topics.
-The preference of user *u* for items *i* of topic *k_i* is initialized as *p(u,k_i) ~ Unif(0.5, 5.5)*, while the topic *k* of item *i* is chosen randomly from the set of all topics. When user *u**is recommended item *i* it will rate the item as
-*r_t(u,i) = clip(p(u,k_i) + eps)** where *eps* is normally distributed independent noise.
+The preference of user *u* for items *i* of topic *k_i* is initialized as *p(u,k_i) ~ Unif(0.5, 5.5)*, while the topic *k* of item *i* is chosen randomly from the set of all topics. When user *u* is recommended item *i* it will rate the item as
+*r_t(u,i) = clip(p(u,k_i) + eps)* where *eps* is normally distributed independent noise.
 
 User preferences can change as a result of the items they consume. We model the fact that users might become more interested in a topic through repeated exposure (`topic_change` parameter). The item rating also models negative effects arising from boredom. The effect of boredom arises from three parameters: `memory_length, boredom_threshold, boredom_penalty`.
 

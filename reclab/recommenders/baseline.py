@@ -50,7 +50,7 @@ class PerfectRec(recommender.PredictRecommender):
 
     Parameters
     ----------
-    rating_function : function
+    dense_rating_function : function
         The function which generates true user ratings.
 
     """

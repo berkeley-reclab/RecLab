@@ -227,8 +227,8 @@ class DictEnvironment(Environment):
         ----------
         recommendations : np.ndarray
             The recommendations made to each user. recommendations[i] corresponds to the
-            item id recommended to the i-th online user. This array must have the same size as
-            the ordered dict returned by online_users.
+            item ids recommended to the i-th online user. The first dimension of this array
+            must have the same size as the ordered dict returned by online_users.
 
         Returns
         -------
@@ -255,10 +255,14 @@ class DictEnvironment(Environment):
 
         # Get online users to rate the recommended items.
         ratings = {}
-        for user_id, item_id in zip(self._online_users, recommendations):
-            ratings[user_id, item_id] = (self._rate_item(user_id, item_id),
-                                         self._rating_context(user_id))
-            self._user_histories[user_id].append(item_id)
+        for user_id, item_ids in zip(self._online_users, recommendations):
+            user_context = self._rating_context(user_id)
+            user_ratings = self._rate_items(user_id, item_ids)
+            for item_id, rating in zip(item_ids, user_ratings):
+                # If a rating is NaN the user did not rate the item.
+                if not np.isnan(rating):
+                    ratings[user_id, item_id] = (rating, user_context)
+            self._user_histories[user_id].append(item_ids)
             if len(self._user_histories[user_id]) == self._memory_length + 1:
                 self._user_histories[user_id].pop(0)
             assert len(self._user_histories[user_id]) <= self._memory_length
@@ -387,20 +391,21 @@ class DictEnvironment(Environment):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def _rate_item(self, user_id, item_id):
+    def _rate_items(self, user_id, item_ids):
         """Get a user to rate an item and update the internal rating state.
 
         Parameters
         ----------
         user_id : int
             The id of the user making the rating.
-        item_id : int
-            The id of the item being rated.
+        item_ids : iterable of int
+            The ids of the items being rated.
 
         Returns
         -------
-        rating : float
-            The rating the item was given by the user.
+        rating : iterable float
+            The ratings the items were given by the user. Can include np.nan entries
+            if the user did not rate a given item.
 
         """
         raise NotImplementedError

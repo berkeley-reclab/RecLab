@@ -1,5 +1,5 @@
 """The package that contains all environments."""
-from .engelhardt import Engelhardt
+from .beta_score import BetaScore
 from .environment import DictEnvironment
 from .environment import Environment
 from .fixed_rating import FixedRating

@@ -15,7 +15,7 @@ class FixedRating(environment.DictEnvironment):
         The number of items in the environment.
     rating_frequency : float
         What proportion of users will need a recommendation at each step.
-    num_init_ratings: : int
+    num_init_ratings : int
         The number of initial ratings available when the environment is reset.
 
     """
@@ -40,9 +40,7 @@ class FixedRating(environment.DictEnvironment):
         self._users = {user_id: np.zeros((0,)) for user_id in range(self._num_users)}
         self._items = {item_id: np.zeros((0,)) for item_id in range(self._num_items)}
 
-    def _rate_item(self, user_id, item_id):  # noqa: D102
-        if item_id < self._num_items / 2:
-            rating = 1.0
-        else:
-            rating = 5.0
-        return rating
+    def _rate_items(self, user_id, item_ids):  # noqa: D102
+        ratings = np.ones(len(item_ids)) * np.nan
+        ratings[np.argmax(item_ids >= self._num_items / 2)] = 5.0
+        return ratings

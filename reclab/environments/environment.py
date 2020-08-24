@@ -162,6 +162,7 @@ class DictEnvironment(Environment):
         self._users = None
         self._items = None
         self._ratings = None
+        self._rated_items = None
         self._dense_ratings = None
         self._online_users = None
         self._user_prob = None
@@ -203,6 +204,7 @@ class DictEnvironment(Environment):
         user_ids = idx_1d // num_items
         item_ids = idx_1d % num_items
         self._ratings = {}
+
         for user_id, item_id in zip(user_ids, item_ids):
             # TODO: This is a hack, but I don't think we should necessarily put the burden
             # of having to implement a version of _rate_item that knows whether it's being called
@@ -210,7 +212,7 @@ class DictEnvironment(Environment):
             # than doing this though.
             temp_random = self._dynamics_random
             self._dynamics_random = self._init_random
-            self._ratings[user_id, item_id] = (self._rate_item(user_id, item_id),
+            self._ratings[user_id, item_id] = (self._rate_items(user_id, np.array([item_id])),
                                                self._rating_context(user_id))
             self._dynamics_random = temp_random
 

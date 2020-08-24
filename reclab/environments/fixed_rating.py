@@ -41,6 +41,18 @@ class FixedRating(environment.DictEnvironment):
         self._items = {item_id: np.zeros((0,)) for item_id in range(self._num_items)}
 
     def _rate_items(self, user_id, item_ids):  # noqa: D102
+        # Find the largest item id that has not yet been rated.
+        max_id = None
+        for item_id in sorted(item_ids, reverse=True):
+            if (user_id, item_id) not in self._ratings:
+                max_id = item_id
+
+        # If we have found an unrated item, rate it either 1 or 5.
         ratings = np.ones(len(item_ids)) * np.nan
-        ratings[np.argmax(item_ids >= self._num_items / 2)] = 5.0
+        if max_id is not None:
+            if max_id >= self._num_items / 2:
+                ratings[item_ids == max_id] = 5.0
+            else:
+                ratings[item_ids == max_id] = 1.0
+
         return ratings

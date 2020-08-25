@@ -62,3 +62,25 @@ def test_fixed_two_users(mocker):
     assert len(env.ratings) == 2
     assert env.ratings[0, 0][0] == 1
     assert env.ratings[1, 1][0] == 5
+
+
+def test_fixed_slates():
+    """Test FixedRating with slate recommendations."""
+    env = FixedRating(num_users=1,
+                      num_items=4,
+                      rating_frequency=1.0,
+                      num_init_ratings=0)
+    users, items, ratings = env.reset()
+    users, items, ratings, info = env.step(np.array([[0, 1, 2, 3]]))
+    assert len(ratings) == 1
+    print(ratings)
+    assert ratings[0, 3][0] == 5
+    users, items, ratings, info = env.step(np.array([[0, 1, 2, 3]]))
+    assert len(ratings) == 1
+    assert ratings[0, 2][0] == 5
+    users, items, ratings, info = env.step(np.array([[0, 2, 3]]))
+    assert len(ratings) == 1
+    assert ratings[0, 0][0] == 1
+    users, items, ratings, info = env.step(np.array([[0, 1, 2, 3]]))
+    assert len(ratings) == 1
+    assert ratings[0, 1][0] == 1

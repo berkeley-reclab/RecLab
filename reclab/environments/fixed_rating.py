@@ -46,6 +46,7 @@ class FixedRating(environment.DictEnvironment):
         for item_id in sorted(item_ids, reverse=True):
             if (user_id, item_id) not in self._ratings:
                 max_id = item_id
+                break
 
         # If we have found an unrated item, rate it either 1 or 5.
         ratings = np.ones(len(item_ids)) * np.nan

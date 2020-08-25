@@ -95,3 +95,10 @@ def test_recommend_simple(recommender):
 def rmse(predictions, targets):
     """Compute the root mean squared error (RMSE) between prediction and target vectors."""
     return np.sqrt(((predictions - targets) ** 2).mean())
+
+
+def mock_select_online_users(self):
+    num_online = int(len(self._users) * self._rating_frequency)
+    start_id = (num_online * (self._timestep + 1)) % len(self._users)
+    end_id = min(start_id + num_online, len(self._users))
+    return np.arange(start_id, end_id)

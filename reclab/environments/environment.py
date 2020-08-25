@@ -7,7 +7,7 @@ import abc
 import collections
 
 import numpy as np
-from scipy.stats import norm, lognorm, pareto
+import scipy.stats
 
 
 class Environment(abc.ABC):
@@ -57,6 +57,7 @@ class Environment(abc.ABC):
         """
         raise NotImplementedError
 
+    @property
     @abc.abstractmethod
     def online_users(self):
         """Return the users that need a recommendation at the current timestep.
@@ -282,6 +283,7 @@ class DictEnvironment(Environment):
         self._timestep += 1
         return new_users, new_items, ratings, info
 
+    @property
     def online_users(self):
         """Return the users that need a recommendation at the current timestep.
 
@@ -470,19 +472,20 @@ class DictEnvironment(Environment):
             user_dist = np.ones(num_users) / num_users
         elif dist_choice == 'norm':
             idx = np.random.permutation(num_users)
-            user_dist = np.array([norm.pdf(idx[i], scale=num_users / 7, loc=num_users / 2)
-                                  for i in range(num_users)])
+            user_dist = np.array([
+                scipy.stats.norm.pdf(idx[i], scale=num_users / 7, loc=num_users / 2)
+                for i in range(num_users)])
             user_dist = user_dist / sum(user_dist)
             user_dist = np.clip(user_dist, 0, 1)
         elif dist_choice == 'lognorm':
             idx = np.random.permutation(num_users)
-            user_dist = np.array([lognorm.pdf(idx[i], 1, scale=num_users / 7, loc=-1)
+            user_dist = np.array([scipy.stats.lognorm.pdf(idx[i], 1, scale=num_users / 7, loc=-1)
                                   for i in range(num_users)])
             user_dist = user_dist / sum(user_dist)
             user_dist = np.clip(user_dist, 0, 1)
         elif dist_choice == 'pareto':
             idx = np.random.permutation(num_users)
-            user_dist = np.array([pareto.pdf(idx[i], 1, scale=num_users / 1e4, loc=-1)
+            user_dist = np.array([scipy.stats.pareto.pdf(idx[i], 1, scale=num_users / 1e4, loc=-1)
                                   for i in range(num_users)])
             user_dist = user_dist / sum(user_dist)
             user_dist = np.clip(user_dist, 0, 1)

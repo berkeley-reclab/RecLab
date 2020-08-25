@@ -35,7 +35,7 @@ class Llorma(recommender.PredictRecommender):
         Batch size in training phase
     use_cache : bool
         If True use stored pre-trained item/user latent factors
-    results_path :
+    results_path : str
         Folder to save model outputs and checkpoints.
     kernel_fun : callable
         kernel function used for similarity,

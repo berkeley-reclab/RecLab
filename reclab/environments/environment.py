@@ -151,7 +151,6 @@ class DictEnvironment(Environment):
 
     def __init__(self, rating_frequency=0.02, num_init_ratings=0, memory_length=0,
                  user_dist_choice='uniform'):
-        """Create a Topics environment."""
         self._timestep = -1
         # The RandomState to use while initializing the environment.
         self._init_random = np.random.RandomState()

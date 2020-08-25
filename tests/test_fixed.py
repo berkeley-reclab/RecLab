@@ -1,9 +1,8 @@
 """Tests for the FixedRating environment."""
 import numpy as np
 
-
-from . import utils
 from reclab.environments import FixedRating
+from . import utils
 
 
 def test_fixed_simple():
@@ -21,7 +20,7 @@ def test_fixed_simple():
     assert env.online_users[0].shape == (0,)
 
     # Recommend item 0, we shouldn't observe new users or items.
-    users, items, ratings, info = env.step(np.array([[0]]))
+    users, items, ratings, _ = env.step(np.array([[0]]))
     assert users == {}
     assert items == {}
 
@@ -29,7 +28,7 @@ def test_fixed_simple():
     assert ratings[(0, 0)][0] == 1
 
     # Recommend item 1, the environment should rate it 5.
-    users, items, ratings, info = env.step(np.array([[1]]))
+    users, items, ratings, _ = env.step(np.array([[1]]))
     assert users == {}
     assert items == {}
     assert ratings[(0, 1)][0] == 5
@@ -52,16 +51,16 @@ def test_fixed_two_users(mocker):
                       num_items=2,
                       rating_frequency=0.5,
                       num_init_ratings=0)
-    users, items, ratings = env.reset()
+    env.reset()
     assert env.dense_ratings.shape == (2, 2)
     assert (env.dense_ratings[:, 0] == 1).all()
     assert (env.dense_ratings[:, 1] == 5).all()
     assert len(env.online_users) == 1
     assert 0 in env.online_users
-    users, items, ratings, info = env.step(np.array([[0]]))
+    env.step(np.array([[0]]))
     assert len(env.online_users) == 1
     assert 1 in env.online_users
-    users, items, ratings, info = env.step(np.array([[1]]))
+    env.step(np.array([[1]]))
     assert len(env.ratings) == 2
     assert env.ratings[0, 0][0] == 1
     assert env.ratings[1, 1][0] == 5
@@ -73,17 +72,16 @@ def test_fixed_slates():
                       num_items=4,
                       rating_frequency=1.0,
                       num_init_ratings=0)
-    users, items, ratings = env.reset()
-    users, items, ratings, info = env.step(np.array([[0, 1, 2, 3]]))
+    env.reset()
+    _, _, ratings, _ = env.step(np.array([[0, 1, 2, 3]]))
     assert len(ratings) == 1
-    print(ratings)
     assert ratings[0, 3][0] == 5
-    users, items, ratings, info = env.step(np.array([[0, 1, 2, 3]]))
+    _, _, ratings, _ = env.step(np.array([[0, 1, 2, 3]]))
     assert len(ratings) == 1
     assert ratings[0, 2][0] == 5
-    users, items, ratings, info = env.step(np.array([[0, 2, 3]]))
+    _, _, ratings, _ = env.step(np.array([[0, 2, 3]]))
     assert len(ratings) == 1
     assert ratings[0, 0][0] == 1
-    users, items, ratings, info = env.step(np.array([[0, 1, 2, 3]]))
+    _, _, ratings, _ = env.step(np.array([[0, 1, 2, 3]]))
     assert len(ratings) == 1
     assert ratings[0, 1][0] == 1

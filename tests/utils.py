@@ -98,6 +98,12 @@ def rmse(predictions, targets):
 
 
 def mock_select_online_users(self):
+    """Return the users online at a given timestep.
+
+    This functions is meant to replace the _select_online_users method in an environment
+    when used for testing.
+    """
+    # pylint: disable=protected-access
     num_online = int(len(self._users) * self._rating_frequency)
     start_id = (num_online * (self._timestep + 1)) % len(self._users)
     end_id = min(start_id + num_online, len(self._users))

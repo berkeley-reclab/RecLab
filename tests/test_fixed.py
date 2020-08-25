@@ -53,6 +53,9 @@ def test_fixed_two_users(mocker):
                       rating_frequency=0.5,
                       num_init_ratings=0)
     users, items, ratings = env.reset()
+    assert env.dense_ratings.shape == (2, 2)
+    assert (env.dense_ratings[:, 0] == 1).all()
+    assert (env.dense_ratings[:, 1] == 5).all()
     assert len(env.online_users) == 1
     assert 0 in env.online_users
     users, items, ratings, info = env.step(np.array([[0]]))

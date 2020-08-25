@@ -33,7 +33,7 @@ class FixedRating(environment.DictEnvironment):
 
     def _get_dense_ratings(self):  # noqa: D102
         ratings = np.ones([self._num_users, self._num_items])
-        ratings[:, self._num_items / 2:] = 5.0
+        ratings[:, self._num_items // 2:] = 5.0
         return ratings
 
     def _reset_state(self):  # noqa: D102
@@ -51,7 +51,7 @@ class FixedRating(environment.DictEnvironment):
         # If we have found an unrated item, rate it either 1 or 5.
         ratings = np.ones(len(item_ids)) * np.nan
         if max_id is not None:
-            if max_id >= self._num_items / 2:
+            if max_id >= self._num_items // 2:
                 ratings[item_ids == max_id] = 5.0
             else:
                 ratings[item_ids == max_id] = 1.0

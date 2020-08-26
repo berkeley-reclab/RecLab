@@ -1,4 +1,4 @@
-from .engelhardt import Engelhardt
+from .engelhardt import BetaRank
 from .environment import DictEnvironment
 from .environment import Environment
 from .fixed_rating import FixedRating
@@ -71,15 +71,17 @@ named_env_dict = {'topics-static': (Topics,
                                         rating_frequency=0.2,
                                         num_init_ratings=100000,
                                         rank=10,
-                                        sigma=0.2)),
-                  'beta-rank': (Engelhardt,
+                                        sigma=0.2)
+                                   ),
+                  'beta-rank': (BetaRank,
                                 dict(num_users=1000,
                                      num_items=1700,
                                      num_topics=19,
                                      rating_frequency=0.2,
                                      num_init_ratings=100000,
                                      known_weight=0.98,
-                                     beta_var=1e-05)),
+                                     beta_var=1e-05)
+                                ),
                   }
 
 def make(name, **kwargs):
@@ -97,6 +99,10 @@ def make(name, **kwargs):
         The constructed environment.
 
     """
-    Env, params = named_env_dict[name]
+    if name not in named_env_dict:
+        print("{} is not a valid environment name.".format(name))
+        print("Valid named environments:", named_env_dict.keys())
+        return None
+    EnvObj, params = named_env_dict[name]
     params.update(kwargs)
-    return Env(**params)
+    return EnvObj(**params)

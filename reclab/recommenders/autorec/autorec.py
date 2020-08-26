@@ -73,6 +73,7 @@ class Autorec(recommender.PredictRecommender):
         self.lr_decay = lr_decay
         self.grad_clip = grad_clip
         np.random.seed(self.random_seed)
+        # pylint: disable=no-member
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
     def train_model(self, data):
@@ -103,7 +104,7 @@ class Autorec(recommender.PredictRecommender):
 
             batch = data[batch_set_idx, :].to(self.device)
             output = self.model.forward(batch)
-            mask = self.mask_R[batch_set_idx, :].to(self.device)
+            mask = self.mask_ratings[batch_set_idx, :].to(self.device)
             loss = self.model.loss(output,
                                    batch,
                                    mask,
@@ -122,7 +123,7 @@ class Autorec(recommender.PredictRecommender):
 
     def _predict(self, user_item):
         self.model = self.model.eval()
-        return self.model.predict(user_item, self.R.to(self.device))
+        return self.model.predict(user_item, self.ratings.to(self.device))
 
     def reset(self, users=None, items=None, ratings=None):  # noqa: D102
         self.model.prepare_model()
@@ -138,7 +139,9 @@ class Autorec(recommender.PredictRecommender):
 
         ratings = self._ratings.toarray()
         # Item-based autorec expects rows that represent items
-        self.R = torch.FloatTensor(ratings.T)
-        self.mask_R = torch.FloatTensor(ratings.T).clamp(0, 1)
+        # pylint: disable=no-member
+        self.ratings = torch.FloatTensor(ratings.T)
+        # pylint: disable=no-member
+        self.mask_ratings = torch.FloatTensor(ratings.T).clamp(0, 1)
 
-        self.train_model(self.R)
+        self.train_model(self.ratings)

@@ -56,7 +56,14 @@ class Topics(environment.DictEnvironment):
     shift_weight : float
         The weight to assign to a user's new preferences after a preference shift.
         User's old preferences get assigned a weight of 1 - shift_weight.
-
+    user_bias_type : normal or power
+        distribution type for user biases.
+        normal is normal distribution with default mean zero and variance 0.5
+        power is power law distribution
+    item_bias_type : normal or power
+        distribution type for item biases.
+        normal is normal distribution with default mean zero and variance 0.5
+        power is power law distribution
     """
 
     def __init__(self,
@@ -73,7 +80,10 @@ class Topics(environment.DictEnvironment):
                  user_dist_choice='uniform',
                  shift_steps=1,
                  shift_frequency=0.0,
-                 shift_weight=0.0):
+                 shift_weight=0.0,
+                 user_bias_type='normal',
+                 item_bias_type='normal'):
+
         """Create a Topics environment."""
         super().__init__(rating_frequency, num_init_ratings, memory_length, user_dist_choice)
         self._num_topics = num_topics
@@ -91,6 +101,8 @@ class Topics(environment.DictEnvironment):
         self._user_biases = None
         self._item_biases = None
         self._offset = None
+        self._user_bias_type = user_bias_type
+        self._item_bias_type = item_bias_type
 
     @property
     def name(self):  # noqa: D102
@@ -137,9 +149,20 @@ class Topics(environment.DictEnvironment):
         return rating
 
     def _reset_state(self):  # noqa: D102
+        if self._user_bias_type == 'normal':
+            self._user_biases = self._init_random.normal(loc=0., scale=0.5, size=self._num_users)
+        elif self._user_bias_type == 'power':
+            self._user_biases = 1-self._init_random.power(5, size=self._num_users)
+        else:
+            print('User bias distribution is not supported')
 
-        self._user_biases = self._init_random.normal(loc=0., scale=0.5, size=self._num_users)
-        self._item_biases = self._init_random.normal(loc=0., scale=0.5, size=self._num_items)
+        if self._item_bias_type == 'normal':
+            self._item_biases = self._init_random.normal(loc=0., scale=0.5, size=self._num_items)
+        elif self._item_bias_type == 'power':
+            self._item_biases = 1-self._init_random.power(5, size=self._num_users)
+        else:
+            print('Item bias distribution is not supported')
+
         self._offset = 0
         self._user_preferences = self._init_random.uniform(low=0.5, high=5.5,
                                                            size=(self._num_users, self._num_topics))
@@ -158,8 +181,12 @@ class Topics(environment.DictEnvironment):
 
             new_preferences = self._init_random.uniform(low=0.5, high=5.5,
                                                         size=(len(shifted_users), self._num_topics))
-
-            new_user_biases = self._init_random.normal(loc=0., scale=0.5, size=len(shifted_users))
+            if self._user_bias_type == 'normal':
+                new_user_biases = self._init_random.normal(loc=0., scale=0.5, size=len(shifted_users))
+            elif self._user_bias_type == 'power':
+                new_user_biases = 1-self._init_random.power(5, size=len(shifted_users))
+            else:
+                print('User bias distribution is not supported')
 
             self._user_preferences[shifted_users] = (
                 self._shift_weight * self._user_preferences[shifted_users] +

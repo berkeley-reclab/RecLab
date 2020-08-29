@@ -154,7 +154,7 @@ class Topics(environment.DictEnvironment):
         elif self._user_bias_type == 'power':
             self._user_biases = 1-self._init_random.power(5, size=self._num_users)
         else:
-            print('User bias ditribution is not supported')
+            print('User bias distribution is not supported')
 
         if self._item_bias_type == 'normal':
             self._item_biases = self._init_random.normal(loc=0., scale=0.5, size=self._num_items)
@@ -186,7 +186,7 @@ class Topics(environment.DictEnvironment):
             elif self._user_bias_type == 'power':
                 new_user_biases = 1-self._init_random.power(5, size=len(shifted_users))
             else:
-                print('User bias ditribution is not supported')
+                print('User bias distribution is not supported')
 
             self._user_preferences[shifted_users] = (
                 self._shift_weight * self._user_preferences[shifted_users] +

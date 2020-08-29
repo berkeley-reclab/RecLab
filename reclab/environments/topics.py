@@ -57,11 +57,11 @@ class Topics(environment.DictEnvironment):
         The weight to assign to a user's new preferences after a preference shift.
         User's old preferences get assigned a weight of 1 - shift_weight.
     user_bias_type : normal or power
-        ditribution type for user biases.
+        distribution type for user biases.
         normal is normal distribution with default mean zero and variance 0.5
         power is power law distribution
     item_bias_type : normal or power
-        ditribution type for item biases.
+        distribution type for item biases.
         normal is normal distribution with default mean zero and variance 0.5
         power is power law distribution
     """
@@ -152,14 +152,14 @@ class Topics(environment.DictEnvironment):
         if self._user_bias_type == 'normal':
             self._user_biases = self._init_random.normal(loc=0., scale=0.5, size=self._num_users)
         elif self._user_bias_type == 'power':
-            self._user_biases = 1-self._init_random.power(5, size=None)
+            self._user_biases = 1-self._init_random.power(5, size=self._num_users)
         else:
             print('User bias ditribution is not supported')
 
         if self._item_bias_type == 'normal':
             self._item_biases = self._init_random.normal(loc=0., scale=0.5, size=self._num_items)
         elif self._item_bias_type == 'power':
-            self._item_biases = 1-self._init_random.power(5, size=None)
+            self._item_biases = 1-self._init_random.power(5, size=self._num_users)
         else:
             print('Item bias distribution is not supported')
 
@@ -181,8 +181,12 @@ class Topics(environment.DictEnvironment):
 
             new_preferences = self._init_random.uniform(low=0.5, high=5.5,
                                                         size=(len(shifted_users), self._num_topics))
-
-            new_user_biases = self._init_random.normal(loc=0., scale=0.5, size=len(shifted_users))
+            if self._user_bias_type == 'normal':
+                new_user_biases = self._init_random.normal(loc=0., scale=0.5, size=len(shifted_users))
+            elif self._user_bias_type == 'power':
+                new_user_biases = 1-self._init_random.power(5, size=len(shifted_users))
+            else:
+                print('User bias ditribution is not supported')
 
             self._user_preferences[shifted_users] = (
                 self._shift_weight * self._user_preferences[shifted_users] +

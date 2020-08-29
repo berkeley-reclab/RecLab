@@ -83,6 +83,7 @@ class Topics(environment.DictEnvironment):
                  shift_weight=0.0,
                  user_bias_type='normal',
                  item_bias_type='normal'):
+
         """Create a Topics environment."""
         super().__init__(rating_frequency, num_init_ratings, memory_length, user_dist_choice)
         self._num_topics = num_topics

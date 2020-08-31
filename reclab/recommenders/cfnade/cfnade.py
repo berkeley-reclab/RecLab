@@ -41,7 +41,8 @@ class Cfnade(recommender.PredictRecommender):
             self, num_users, num_items,
             batch_size=64, train_epoch=10,
             rating_bucket=5, hidden_dim=500,
-            learning_rate=0.001, normalized_layer=False):
+            learning_rate=0.001, normalized_layer=False,
+            random_seed=0):
         """Create new Cfnade recommender."""
         super().__init__()
         self._num_users = num_users
@@ -57,6 +58,7 @@ class Cfnade(recommender.PredictRecommender):
         self._train_epoch = train_epoch
         self._hyperparameters.update(locals())
         self._new_items = np.zeros(num_items)
+        np.random.seed(random_seed)
 
         # We only want the function arguments so remove class related objects.
         del self._hyperparameters['self']

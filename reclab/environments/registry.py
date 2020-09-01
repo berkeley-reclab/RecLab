@@ -1,4 +1,4 @@
-from .engelhardt import BetaRank
+from .beta_rank import BetaRank
 from .environment import DictEnvironment
 from .environment import Environment
 from .fixed_rating import FixedRating

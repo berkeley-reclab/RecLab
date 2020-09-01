@@ -57,7 +57,8 @@ class Llorma(recommender.PredictRecommender):
                  batch_size=128,
                  use_cache=True,
                  result_path='results',
-                 kernel_fun=None):
+                 kernel_fun=None,
+                 random_seed=0):
         """Create new Local Low-Rank Matrix Approximation (LLORMA) recommender."""
         super().__init__()
 
@@ -70,6 +71,7 @@ class Llorma(recommender.PredictRecommender):
         # We only want the function arguments so remove class related objects.
         del self._hyperparameters['self']
         del self._hyperparameters['__class__']
+        np.random.seed(random_seed)
 
     @property
     def name(self):  # noqa: D102

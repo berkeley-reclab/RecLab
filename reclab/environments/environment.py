@@ -259,7 +259,7 @@ class DictEnvironment(Environment):
         ratings = {}
         for user_id, item_ids in zip(self._online_users, recommendations):
             user_context = self._rating_context(user_id)
-            user_ratings = self._rate_items(user_id, item_ids)
+            user_ratings = self._rate_items(user_id, [item_ids])
             for item_id, rating in zip(item_ids, user_ratings):
                 # If a rating is NaN the user did not rate the item.
                 if not np.isnan(rating):

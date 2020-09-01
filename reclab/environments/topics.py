@@ -152,7 +152,7 @@ class Topics(environment.DictEnvironment):
                                               for item_id in range(self._num_items))
 
     def _update_state(self):  # noqa: D102
-        if self._timestep % self._shift_steps == 0:
+        if (self._timestep + 1) % self._shift_steps == 0:
             # Apply preference and bias shift to a fraction of users.
 
             shifted_users = self._dynamics_random.choice(

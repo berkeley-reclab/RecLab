@@ -126,7 +126,7 @@ class Topics(environment.DictEnvironment):
 
     def _rate_items(self, user_id, item_ids):  # noqa: D102
         # TODO: Add support for slates of size greater than 1.
-        item_id = item_ids[0]
+        item_id = [item_ids[0]]
         rating = self._get_rating(user_id, item_id)
         # Updating underlying preference
         topic = self._item_topics[item_id]

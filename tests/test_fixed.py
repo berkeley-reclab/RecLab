@@ -1,4 +1,8 @@
-"""Tests for the FixedRating environment."""
+"""Tests for the FixedRating environment.
+
+The primary intent of these tests is to validate the code in the DictEnvironment
+parent class instead of only testing FixedRating.
+"""
 import numpy as np
 
 from reclab.environments import FixedRating
@@ -85,3 +89,21 @@ def test_fixed_slates():
     _, _, ratings, _ = env.step(np.array([[0, 1, 2, 3]]))
     assert len(ratings) == 1
     assert ratings[0, 1][0] == 1
+
+
+def test_init_ratings():
+    """Test FixedRating properly initializes ratings."""
+    env = FixedRating(num_users=50,
+                      num_items=50,
+                      rating_frequency=1.0,
+                      num_init_ratings=100)
+    _, _, ratings = env.reset()
+    assert len(ratings) == 100
+    for (user_id, item_id), (rating, context) in ratings.items():
+        assert context.shape == (0,)
+        assert user_id < 50
+        assert item_id < 50
+        if rating == 5.0:
+            assert item_id >= 25
+        else:
+            assert item_id < 25

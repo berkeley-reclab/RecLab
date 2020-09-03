@@ -39,6 +39,7 @@ class BetaRank(environment.DictEnvironment):
         return self._user_preferences @ self._item_preferences.T
 
     def _reset_state(self):  # noqa: D102
+        # TODO: We should probably pass the magic numbers below as parameters.
         self._user_preferences = self._init_random.dirichlet(
             10 * self._init_random.dirichlet(np.ones(self._dimension)),
             size=self._num_users

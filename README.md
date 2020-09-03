@@ -1,13 +1,18 @@
 # RecLab
-RecLab is a simulation framework used to evaluate recommendation algorithms.
+RecLab is a simulation framework used to evaluate recommendation algorithms. The framework makes
+no platform-specific assumptions. As such, it can be used to evaluate recommendation algorithms
+implemented with any computational library.
 
 Reclab is under active development. If you find a bug or would like to request a new feature
 please file an [issue](https://github.com/berkeley-reclab/reclab/issues). Furthermore, we welcome a
 broad set of contributions including: documentation, tests, new environments, reproduced
-recommenders, and code quality improvements. Simply fork the repo and make a pull request with your
-feature.
+recommenders, and code quality improvements. Simply fork the repo and make a
+[pull request](https://github.com/berkeley-reclab/recsys-eval/pulls).
 
-## Setup
+## Getting Started
+This section contains a brief guide on how to get started with RecLab.
+
+### Setup
 RecLab was developed and tested in Python 3.8. To install RecLab run
 ```
 pip install reclab
@@ -28,36 +33,40 @@ for _ in range(1000):
 env.close()
 ```
 
-## Geting Started
-This section contains a brief guide for getting started with RecLab.
+## RecLab Design
+This section briefly outlines the overall design of RecLab, and how to add new environments.
 
 ### Basics
-The online evaluation of recommender systems consists of two basic components: **User Environments** and **Recommenders**. The environment governs the behavior of users with respect to recommended content. The recommender is using available data from the environment to select items as recommendations. Recommender and environment interact in a step-base fashion: At each time-step the environment specifies a set of users that are available to receive recommendations (we call them _online users_), along with any other side information. The recommender uses the history of interactions to recommend a single item (Top-1 recommendation), or a set of items (slate based recommendation) to each online user. In turn the environment respond by providing ratings to recommended items in Top-1 setting or by selecting a item form a slate of potential items in a Slate based setting.
+Evaluation in RecLab consists of two basic components: **Environments** and **Recommenders**.
+An environment consists of a set of users and items. A recommender and an environment interact
+iteratively. At each time-step the environment specifies a set of _online users_ that need to be
+recommended an item. The recommender uses the history of user-item interactions to either recommend
+a single item (top-1 recommendation), or a set of items (slate-based recommendation) to each online
+user. The environment then provides ratings to some of, or all, the recommended items.
 
 Below is a visualization of the interaction between environment and recommender.
 
 ![Flowchart](/figures/RecSys.png)
 
 #### Environments
-The basic interface for an environment that all environments inherit from is [Environment](reclab/environments/environment.py). The most important methods in developing a new environment are:
-
-- `reset`: method that resets the environment to its original state. Must be called before the first step of the simulation.
-- `online_users`: method that returns a list of available users from the environment.
-- `step(recommendations)`: main method that environments must implement. It takes in the `recommendations` from the recommender, updates the internal state of the environment and returns the following, which are in turn passed to the recommender:
+In RecLab all environments inherit from the [`Environment`](reclab/environments/environment.py) interface. The following methods must be implemented:
+- `reset`: Reset the environment to its original state. Must be called before the first step of the simulation.
+- `online_users`: Return a list of available users at each timestep.
+- `step(recommendations)`: Given `recommendations`, update the internal state of the environment and return the following data:
     - `users`: New users and users whose information got updated this timestep, along with any side information about each user.
     - `items`: New items and items whose information got updated this timestep, along with any side information about each item.
     - `ratings`: New ratings and ratings whose information got updated this timestep, along with any side information about each rating.
     - `info`: Extra information that can be used for debugging but should not be made accessible to the recommender.
 
-
-To see a description of available environments see the [List of Enviroments](reclab/environments/README.md).
+To see a description of available environments see the [list of enviroments](reclab/environments/README.md).
 
 #### Recommenders
-The basic interface for a recommender that all recommenders inherit from is [Recommender](reclab/recommenders/recommender.py). The most important methods for adding a new recommender are:
+RecLab does not assume recommendation algorithms are implemented in any specific way. However, we
+also provide a [convenient interface](reclab/recommenders/recommender.py) to simplify the design of
+new recommendation algorithms.
 
-- `recommend(user_contexts, num_recommendations)`: Method that returns a list of items to be recommended to each online user. The `user_contexts` contains all the information about online users provided by the environment.
-- `update(users, items, ratings)`: Method that updates the recommender at each time-step with the new `user`, `item` and `rating` data provided by the environment.
-
-To see a description of available recommenders see the [List of Recommenders](reclab/recommenders/README.md).
+To see a description of available recommenders see the
+[List of Recommenders](reclab/recommenders/README.md). Note that you must install the optional
+dependencies to use some of these recommenders as outline under the [setup section](###Setup).
 
 **Coming soon:** More functionality for running experiments and custom performance metrics.

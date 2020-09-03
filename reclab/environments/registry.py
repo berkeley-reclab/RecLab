@@ -6,7 +6,7 @@ from .latent_factors import LatentFactorBehavior, DatasetLatentFactor
 from .schmit import Schmit
 from .topics import Topics
 
-named_env_dict = {'topics-static': (Topics,
+named_env_dict = {'topics-static-v1': (Topics,
                                     dict(num_topics=19,
                                          num_users=1000,
                                          num_items=1700,
@@ -18,7 +18,7 @@ named_env_dict = {'topics-static': (Topics,
                                          boredom_threshold=0,
                                          boredom_penalty=0)
                                     ),
-                  'topics-dynamic': (Topics,
+                  'topics-dynamic-v1': (Topics,
                                      dict(num_topics=19,
                                           num_users=1000,
                                           num_items=1700,
@@ -30,7 +30,7 @@ named_env_dict = {'topics-static': (Topics,
                                           boredom_threshold=2,
                                           boredom_penalty=1)
                                      ),
-                  'latent-static': (LatentFactorBehavior,
+                  'latent-static-v1': (LatentFactorBehavior,
                                     dict(latent_dim=100,
                                          num_users=943,
                                          num_items=1682,
@@ -42,7 +42,7 @@ named_env_dict = {'topics-static': (Topics,
                                          boredom_threshold=0,
                                          boredom_penalty=0)
                                     ),
-                  'latent-dynamic': (LatentFactorBehavior,
+                  'latent-dynamic-v1': (LatentFactorBehavior,
                                      dict(latent_dim=100,
                                           num_users=943,
                                           num_items=1682,
@@ -54,7 +54,7 @@ named_env_dict = {'topics-static': (Topics,
                                           boredom_threshold=0,
                                           boredom_penalty=2)
                                      ),
-                  'ml-100k': (DatasetLatentFactor,
+                  'ml-100k-v1': (DatasetLatentFactor,
                               dict(name='ml-100k',
                                    latent_dim=100,
                                    rating_frequency=0.2,
@@ -65,7 +65,7 @@ named_env_dict = {'topics-static': (Topics,
                                    boredom_threshold=0,
                                    boredom_penalty=0)
                               ),
-                  'latent-score': (Schmit,
+                  'latent-score-v1': (Schmit,
                                    dict(num_users=1000,
                                         num_items=1700,
                                         rating_frequency=0.2,
@@ -73,7 +73,7 @@ named_env_dict = {'topics-static': (Topics,
                                         rank=10,
                                         sigma=0.2)
                                    ),
-                  'beta-rank': (BetaRank,
+                  'beta-rank-v1': (BetaRank,
                                 dict(num_users=1000,
                                      num_items=1700,
                                      num_topics=19,
@@ -100,9 +100,8 @@ def make(name, **kwargs):
 
     """
     if name not in named_env_dict:
-        print("{} is not a valid environment name.".format(name))
-        print("Valid named environments:", named_env_dict.keys())
-        return None
+        raise ValueError("{} is not a valid environment name. ".format(name) +
+                         "Valid named environments: {}".format(named_env_dict.keys()))
     EnvObj, params = named_env_dict[name]
     params.update(kwargs)
     return EnvObj(**params)

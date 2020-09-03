@@ -58,8 +58,8 @@ class BetaRank(environment.DictEnvironment):
         means = self._item_preferences[item_ids] @ self._user_preferences[user_id]
         values = self._beta_prime(means)
         known = self._beta_prime(self._known_mean, size=len(item_ids))
-        sorted_idxs = reversed(np.argsort(np.arange(1, len(item_ids) + 1) ** (-0.8) *
-                               known * values))
+        sorted_idxs = reversed(
+            np.argsort(np.arange(1, len(item_ids) + 1) ** (-0.8) * known * values))
 
         # Find the index of the item with the highest known value that hasn't been rated yet.
         chosen_idx = None

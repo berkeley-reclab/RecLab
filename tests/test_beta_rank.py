@@ -6,7 +6,7 @@ from . import utils
 
 
 def test_beta_simple():
-    """Test BetaRank with only one item."""
+    """Test BetaRank with only one user."""
     env = BetaRank(dimension=10,
                    num_users=1,
                    num_items=2,

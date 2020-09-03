@@ -212,7 +212,7 @@ class DictEnvironment(Environment):
             # than doing this though.
             temp_random = self._dynamics_random
             self._dynamics_random = self._init_random
-            self._ratings[user_id, item_id] = (self._rate_items(user_id, np.array([item_id])),
+            self._ratings[user_id, item_id] = (self._rate_items(user_id, np.array([item_id]))[0],
                                                self._rating_context(user_id))
             self._dynamics_random = temp_random
 

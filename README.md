@@ -46,7 +46,7 @@ We suggest installing RecLab in a virtual environment and installing dependencie
 
 ### Running Experiments
 See below a simple usage example:
-```
+```python
 import numpy as np
 import reclab
 env = reclab.make('topics-dynamic-v1')

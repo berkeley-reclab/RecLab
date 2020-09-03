@@ -97,6 +97,7 @@ def test_init_ratings():
                       num_items=50,
                       rating_frequency=1.0,
                       num_init_ratings=100)
+    env.seed(0)
     _, _, ratings = env.reset()
     assert len(ratings) == 100
     for (user_id, item_id), (rating, context) in ratings.items():

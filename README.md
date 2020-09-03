@@ -47,40 +47,16 @@ We suggest installing RecLab in a virtual environment and installing dependencie
 ### Running Experiments
 See below a simple usage example:
 ```
-from reclab.environments import Topics
-from reclab.recommenders import LibFM
-
-# Setup
-num_users = 100
-num_items = 170
-
-# Instantiate environment
-env = Topics(num_topics=10,
-             num_users=num_users,
-             num_items=num_items,
-             rating_frequency=0.2,
-             num_init_ratings=1000)
-
-# Instantiate recommender
-recommender = LibFM(max_num_users=num_users,
-                    max_num_items=num_items,
-                    method='sgd',
-                    learning_rate=0.01
-                    )
-
-# Get initial state from the environment
+import numpy as np
+import reclab
+env = reclab.make('topics-dynamic-v1')
 items, users, ratings = env.reset()
-# Initialize recommender
-recommender.reset(items, users, ratings)
-
-# Now recommend items to users.
-for _ in range(len_trial):
+for _ in range(1000):
     online_users = env.online_users()
-    recommendations, predictions = recommender.recommend(online_users, num_recommendations=1)
-    recommendations = recommendations.flatten()
-
+    # Your recommendation algorithm here. This recommends 10 random items to each online user.
+    recommendations = np.random.choice(items, size=(len(online_users), 10))
     items, users, ratings, info = env.step(recommendations)
-    recommender.update(users, items, ratings)
+env.close()
 ```
 
 **Coming soon:** More functionality for running experiments and custom performance metrics.

@@ -1,6 +1,32 @@
 # RecLab
-RecLab is a modular simulation environment for online evaluation and comparison of recommendation algorithms.
+RecLab is a simulation framework used to evaluate recommendation algorithms.
 
+Reclab is under active development. If you find a bug or would like to request a new feature
+please file an [issue](https://github.com/berkeley-reclab/reclab/issues). Furthermore, we welcome a
+broad set of contributions including: documentation, tests, new environments, reproduced
+recommenders, and code quality improvements. Simply fork the repo and make a pull request with your
+feature.
+
+## Setup
+RecLab was developed and tested in Python 3.8. To install RecLab run
+```
+pip install reclab
+```
+
+### Example
+Ths code below shows a simple use-case with random recommendations.
+```python
+import numpy as np
+import reclab
+env = reclab.make('topics-dynamic-v1')
+items, users, ratings = env.reset()
+for _ in range(1000):
+    online_users = env.online_users()
+    # Your recommendation algorithm here. This recommends 10 random items to each online user.
+    recommendations = np.random.choice(items, size=(len(online_users), 10))
+    items, users, ratings, info = env.step(recommendations)
+env.close()
+```
 
 ## Geting Started
 This section contains a brief guide for getting started with RecLab.
@@ -33,30 +59,5 @@ The basic interface for a recommender that all recommenders inherit from is [Rec
 - `update(users, items, ratings)`: Method that updates the recommender at each time-step with the new `user`, `item` and `rating` data provided by the environment.
 
 To see a description of available recommenders see the [List of Recommenders](reclab/recommenders/README.md).
-
-
-
-## Setup
-RecLab was developed and tested Python version 3.8. Get started with RecLab by cloning the repository.
-
-**Coming soon**: pip installable RecLab package.
-
-### Requirements
-We suggest installing RecLab in a virtual environment and installing dependencies from [requirements.txt](requirements.txt).
-
-### Running Experiments
-See below a simple usage example:
-```python
-import numpy as np
-import reclab
-env = reclab.make('topics-dynamic-v1')
-items, users, ratings = env.reset()
-for _ in range(1000):
-    online_users = env.online_users()
-    # Your recommendation algorithm here. This recommends 10 random items to each online user.
-    recommendations = np.random.choice(items, size=(len(online_users), 10))
-    items, users, ratings, info = env.step(recommendations)
-env.close()
-```
 
 **Coming soon:** More functionality for running experiments and custom performance metrics.

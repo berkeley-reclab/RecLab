@@ -56,7 +56,7 @@ def test_topics_static_simple():
     _test_dimension_consistency(env)
     users, items, ratings = env.reset()
 
-    old_user_preferences = env._user_preferences
+    old_user_preferences = copy.deepcopy(env._user_preferences)
     old_dense_ratings = env._get_dense_ratings()
 
     # Recommend item 0
@@ -65,7 +65,7 @@ def test_topics_static_simple():
     # Test that the preferences didn't change
     assert np.array_equal(old_user_preferences, env._user_preferences)
 
-    # Test that old dense ratings are not changing
+    # Test that the dense ratings didn't change
     assert np.array_equal(old_dense_ratings, env._get_dense_ratings())
 
 def test_topics_shift():

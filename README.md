@@ -69,17 +69,17 @@ recommender = LibFM(max_num_users=num_users,
                     )
 
 # Get initial state from the environment
-items, users, ratings = env.reset()
+users, items, ratings = env.reset()
 # Initialize recommender
-recommender.reset(items, users, ratings)
+recommender.reset(users, items, ratings)
 
 # Now recommend items to users.
 for _ in range(len_trial):
-    online_users = env.online_users()
+    online_users = env.online_users
     recommendations, predictions = recommender.recommend(online_users, num_recommendations=1)
-    recommendations = recommendations.flatten()
+    recommendations = recommendations
 
-    items, users, ratings, info = env.step(recommendations)
+    users, items, ratings, info = env.step(recommendations)
     recommender.update(users, items, ratings)
 ```
 

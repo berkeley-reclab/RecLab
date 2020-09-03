@@ -66,7 +66,7 @@ also provide a [convenient interface](reclab/recommenders/recommender.py) to sim
 new recommendation algorithms.
 
 To see a description of available recommenders see the
-[List of Recommenders](reclab/recommenders/README.md). Note that you must install the optional
-dependencies to use some of these recommenders as outline under the [setup section](###Setup).
+[list of recommenders](reclab/recommenders/README.md). Note that you must install the optional
+dependencies to use some of these recommenders as outline under the [setup section](#Setup).
 
 **Coming soon:** More functionality for running experiments and custom performance metrics.

@@ -151,6 +151,7 @@ class DictEnvironment(Environment):
 
     def __init__(self, rating_frequency=0.02, num_init_ratings=0, memory_length=0,
                  user_dist_choice='uniform'):
+        """Create a new DictEnvironment."""
         self._timestep = -1
         # The RandomState to use while initializing the environment.
         self._init_random = np.random.RandomState()
@@ -212,7 +213,7 @@ class DictEnvironment(Environment):
             # than doing this though.
             temp_random = self._dynamics_random
             self._dynamics_random = self._init_random
-            self._ratings[user_id, item_id] = (self._rate_items(user_id, np.array([item_id])),
+            self._ratings[user_id, item_id] = (self._rate_items(user_id, np.array([item_id]))[0],
                                                self._rating_context(user_id))
             self._dynamics_random = temp_random
 

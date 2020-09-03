@@ -13,12 +13,13 @@ def test_llorma_predict():
                          pre_lambda_val=10,
                          pre_train_steps=10,
                          rank=10,
-                         learning_rate=1e-2,
+                         learning_rate=1e-3,
                          lambda_val=1e-3,
                          train_steps=10,
                          batch_size=1024,
                          use_cache=True,
-                         result_path='results')
+                         result_path='results',
+                         random_seed=0)
     utils.test_predict_ml100k(recommender, rmse_threshold=1.1)
 
 
@@ -37,5 +38,6 @@ def test_llorma_recommend():
                          train_steps=10,
                          batch_size=128,
                          use_cache=True,
-                         result_path='results')
+                         result_path='results',
+                         random_seed=0)
     utils.test_recommend_simple(recommender)

@@ -99,10 +99,10 @@ class PredictRecommender(Recommender):
         The item selection strategy to use.
         Valid strategies are:
             {'type': 'greedy'}: chooses the unseen item with largest predicted rating
-            {'type':'eps_greedy', 'eps':0.x}: with probability 1-eps chooses the unseen item with largest
-                           predicted rating, with probability eps chooses a random unseen item
-            {'type':'thompson', 'power':x}: picks an item with probability proportional to the expected rating
-                            raised to power x.
+            {'type': 'eps_greedy', 'eps': 0.x}: with probability 1 - eps chooses the unseen item
+            with the largest predicted rating, with probability eps chooses a random unseen item.
+            {'type': 'thompson', 'power': x}: picks an item with probability proportional to the
+            expected rating raised to power x.
 
     """
 
@@ -132,24 +132,34 @@ class PredictRecommender(Recommender):
 
     @property
     def hyperparameters(self):
-        return(self._strategy_dict)
+        """Get a dict of hyperparameters for this recommender."""
+        return self._strategy_dict
 
     def update_strategy(self, new_strategy):
-        """ Update the strategy_dict parameter with a new_strategy
+        """Update the strategy_dict parameter with a new_strategy.
 
         Parameters
         ----------
         new_strategy : dict
-            contains expolation strategy parameters
-        """
-        try:
-            assert(validate_strategy(new_strategy))
-            if not new_strategy:
-                new_strategy = {'type': 'greedy'}
-            self._strategy_dict = new_strategy
-        except AssertionError as e:
-            print("Proposed strategy is not valid, the current strategy: {} will be maintained".format(self._strategy_dict))
+            Contains the exploration strategy parameters.
 
+        """
+        if not new_strategy:
+            new_strategy = {'type': 'greedy'}
+
+        strategy_type = new_strategy['type']
+        if strategy_type == 'eps_greedy':
+            eps = new_strategy['eps']
+            if (eps < 0) or (eps > 1):
+                raise ValueError('eps must be in [0, 1].')
+        elif strategy_type == 'thompson':
+            power = new_strategy['power']
+            if not power.is_integer() or power < 0:
+                raise ValueError('power must be a non-negative integer.')
+        elif strategy_type != 'greedy':
+            raise ValueError('Invalid strategy type.')
+
+        self._strategy_dict = new_strategy
 
     def reset(self, users=None, items=None, ratings=None):
         """Reset the recommender with optional starting user, item, and rating data.
@@ -403,51 +413,3 @@ class PredictRecommender(Recommender):
 
         """
         raise NotImplementedError
-
-def validate_strategy(strategy_dict):
-    """Validates if strategy_dict is a valid exploration strategy
-
-    Parameters
-    ----------
-    strategy_dict : dict
-        Dictionary containing exploration strategy
-
-    Returns
-    -------
-    bool
-        if True, exploration strategy is valid
-    """
-    if not strategy_dict:
-        return True
-
-    strategy_type = strategy_dict.get('type')
-    if strategy_type == 'greedy':
-        return True
-    elif strategy_type == 'eps_greedy':
-        eps = strategy_dict.get('eps')
-        if not eps:
-            print('Strategy invalid, provide "eps" value in [0,1]')
-            return False
-        try:
-            eps = float(eps)
-        except ValueError:
-            print('"eps":{} value is not numeric, provide "eps" value in [0,1]'.format(eps))
-            return False
-        if (eps < 0) or (eps > 1):
-            print('Strategy invalid, "eps":{}, is not in [0,1], provide "eps" value in [0,1]'.format(eps))
-            return False
-        return True
-    elif strategy_type == 'thompson':
-        power = strategy_dict.get('power')
-        if not power:
-            print('Strategy invalid, provide nonnegative integer "power" parameter')
-            return False
-        try:
-            power = float(power)
-        except ValueError:
-            print('"power":{} value is not numeric, provide nonnegative integer "power" parameter'.format(power))
-            return False
-        if not power.is_integer() or power < 0:
-            print('"power":{} value is not a nonnegative integer, provide nonnegative integer "power" parameter'.format(value))
-            return False
-        return True

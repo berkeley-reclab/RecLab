@@ -7,7 +7,7 @@ import abc
 import collections
 
 import numpy as np
-from scipy.stats import norm, lognorm, pareto
+import scipy.stats
 
 
 class Environment(abc.ABC):
@@ -57,6 +57,7 @@ class Environment(abc.ABC):
         """
         raise NotImplementedError
 
+    @property
     @abc.abstractmethod
     def online_users(self):
         """Return the users that need a recommendation at the current timestep.
@@ -150,6 +151,7 @@ class DictEnvironment(Environment):
 
     def __init__(self, rating_frequency=0.02, num_init_ratings=0, memory_length=0,
                  user_dist_choice='uniform'):
+        """Create a new DictEnvironment."""
         self._timestep = -1
         # The RandomState to use while initializing the environment.
         self._init_random = np.random.RandomState()
@@ -161,6 +163,7 @@ class DictEnvironment(Environment):
         self._users = None
         self._items = None
         self._ratings = None
+        self._rated_items = None
         self._dense_ratings = None
         self._online_users = None
         self._user_prob = None
@@ -202,6 +205,7 @@ class DictEnvironment(Environment):
         user_ids = idx_1d // num_items
         item_ids = idx_1d % num_items
         self._ratings = {}
+
         for user_id, item_id in zip(user_ids, item_ids):
             # TODO: This is a hack, but I don't think we should necessarily put the burden
             # of having to implement a version of _rate_item that knows whether it's being called
@@ -209,7 +213,7 @@ class DictEnvironment(Environment):
             # than doing this though.
             temp_random = self._dynamics_random
             self._dynamics_random = self._init_random
-            self._ratings[user_id, item_id] = (self._rate_item(user_id, item_id),
+            self._ratings[user_id, item_id] = (self._rate_items(user_id, np.array([item_id]))[0],
                                                self._rating_context(user_id))
             self._dynamics_random = temp_random
 
@@ -226,8 +230,8 @@ class DictEnvironment(Environment):
         ----------
         recommendations : np.ndarray
             The recommendations made to each user. recommendations[i] corresponds to the
-            item id recommended to the i-th online user. This array must have the same size as
-            the ordered dict returned by online_users.
+            item ids recommended to the i-th online user. The first dimension of this array
+            must have the same size as the ordered dict returned by online_users.
 
         Returns
         -------
@@ -254,10 +258,14 @@ class DictEnvironment(Environment):
 
         # Get online users to rate the recommended items.
         ratings = {}
-        for user_id, item_id in zip(self._online_users, recommendations):
-            ratings[user_id, item_id] = (self._rate_item(user_id, item_id),
-                                         self._rating_context(user_id))
-            self._user_histories[user_id].append(item_id)
+        for user_id, item_ids in zip(self._online_users, recommendations):
+            user_context = self._rating_context(user_id)
+            user_ratings = self._rate_items(user_id, item_ids)
+            for item_id, rating in zip(item_ids, user_ratings):
+                # If a rating is NaN the user did not rate the item.
+                if not np.isnan(rating):
+                    ratings[user_id, item_id] = (rating, user_context)
+            self._user_histories[user_id].append(item_ids)
             if len(self._user_histories[user_id]) == self._memory_length + 1:
                 self._user_histories[user_id].pop(0)
             assert len(self._user_histories[user_id]) <= self._memory_length
@@ -275,6 +283,7 @@ class DictEnvironment(Environment):
         self._timestep += 1
         return new_users, new_items, ratings, info
 
+    @property
     def online_users(self):
         """Return the users that need a recommendation at the current timestep.
 
@@ -386,20 +395,21 @@ class DictEnvironment(Environment):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def _rate_item(self, user_id, item_id):
+    def _rate_items(self, user_id, item_ids):
         """Get a user to rate an item and update the internal rating state.
 
         Parameters
         ----------
         user_id : int
             The id of the user making the rating.
-        item_id : int
-            The id of the item being rated.
+        item_ids : iterable of int
+            The ids of the items being rated.
 
         Returns
         -------
-        rating : float
-            The rating the item was given by the user.
+        rating : iterable float
+            The ratings the items were given by the user. Can include np.nan entries
+            if the user did not rate a given item.
 
         """
         raise NotImplementedError
@@ -462,19 +472,20 @@ class DictEnvironment(Environment):
             user_dist = np.ones(num_users) / num_users
         elif dist_choice == 'norm':
             idx = np.random.permutation(num_users)
-            user_dist = np.array([norm.pdf(idx[i], scale=num_users / 7, loc=num_users / 2)
-                                  for i in range(num_users)])
+            user_dist = np.array([
+                scipy.stats.norm.pdf(idx[i], scale=num_users / 7, loc=num_users / 2)
+                for i in range(num_users)])
             user_dist = user_dist / sum(user_dist)
             user_dist = np.clip(user_dist, 0, 1)
         elif dist_choice == 'lognorm':
             idx = np.random.permutation(num_users)
-            user_dist = np.array([lognorm.pdf(idx[i], 1, scale=num_users / 7, loc=-1)
+            user_dist = np.array([scipy.stats.lognorm.pdf(idx[i], 1, scale=num_users / 7, loc=-1)
                                   for i in range(num_users)])
             user_dist = user_dist / sum(user_dist)
             user_dist = np.clip(user_dist, 0, 1)
         elif dist_choice == 'pareto':
             idx = np.random.permutation(num_users)
-            user_dist = np.array([pareto.pdf(idx[i], 1, scale=num_users / 1e4, loc=-1)
+            user_dist = np.array([scipy.stats.pareto.pdf(idx[i], 1, scale=num_users / 1e4, loc=-1)
                                   for i in range(num_users)])
             user_dist = user_dist / sum(user_dist)
             user_dist = np.clip(user_dist, 0, 1)

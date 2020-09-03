@@ -1,17 +1,14 @@
 """An implementation of the top popularity baseline recommender."""
+
 import numpy as np
 import scipy.sparse
 
 from . import recommender
 
 
+# TODO: add flag to allow this to also be based on number of times rated.
 class TopPop(recommender.PredictRecommender):
     """The top popularity recommendation model based on ratings."""
-
-    def __init__(self):
-        """Create a TopPop recommender."""
-        # TODO: add flag to allow this to also be based on number of times rated.
-        super().__init__()
 
     @property
     def name(self):  # noqa: D102

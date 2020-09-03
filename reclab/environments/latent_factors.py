@@ -133,7 +133,7 @@ class LatentFactorBehavior(environment.DictEnvironment):
 
         return rating
 
-    def _rate_item(self, user_id, item_id):
+    def _rate_items(self, user_id, item_ids):
         """Get a user to rate an item and update the internal rating state.
 
         Parameters
@@ -149,6 +149,8 @@ class LatentFactorBehavior(environment.DictEnvironment):
             The rating the item was given by the user.
 
         """
+        # TODO: Add support for slates of size greater than 1.
+        item_id = item_ids[0]
         rating = self._get_rating(user_id, item_id)
 
         # Updating underlying affinity

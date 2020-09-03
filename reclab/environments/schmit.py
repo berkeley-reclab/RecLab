@@ -1,7 +1,7 @@
 """
 Contains implementation for environment in "Human Interaction with Recommendation Systems".
-https://arxiv.org/pdf/1703.00535.pdf
 
+https://arxiv.org/pdf/1703.00535.pdf
 """
 
 import numpy as np
@@ -66,7 +66,7 @@ class Schmit(environment.DictEnvironment):
     def true_score(self, user, item):
         """
         Calculate true score.
-        
+
         Parameters
         ----------
         user : int

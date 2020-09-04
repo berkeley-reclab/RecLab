@@ -7,7 +7,7 @@ Reclab is under active development. If you find a bug or would like to request a
 please file an [issue](https://github.com/berkeley-reclab/reclab/issues). Furthermore, we welcome a
 broad set of contributions including: documentation, tests, new environments, reproduced
 recommenders, and code quality improvements. Simply fork the repo and make a
-[pull request](https://github.com/berkeley-reclab/recsys-eval/pulls).
+[pull request](https://github.com/berkeley-reclab/reclab/pulls).
 
 ## Getting Started
 This section contains a brief guide on how to get started with RecLab.

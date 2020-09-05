@@ -18,22 +18,22 @@ setup(
         'evaluation'
     ],
     install_requires=[
-        numpy>=1.19.0,
-        pandas>=1.0.5,
-        scipy>=1.4.1,
-        wpyfm>=0.1.9,
+        'numpy>=1.19.0',
+        'pandas>=1.0.5',
+        'scipy>=1.4.1',
+        'wpyfm>=0.1.9',
     ],
     extras_require={
         'recommenders': [
-            keras>=2.4.3,
-            scikit-learn>=0.23.1,
-            tensorflow>=2.2.0,
-            torch>=1.5.1,
+            'keras>=2.4.3',
+            'scikit-learn>=0.23.1',
+            'tensorflow>=2.2.0',
+            'torch>=1.5.1',
         ]
     },
     tests_require=[
-        pytest>=5.4.3,
-        pytest-mock>=3.3.0,
+        'pytest>=5.4.3',
+        'pytest-mock>=3.3.0',
     ],
     python_requires='>=3.6',
     classifiers=[

@@ -17,9 +17,17 @@ RecLab was developed and tested in Python 3.8. To install RecLab run
 ```
 pip install reclab
 ```
+RecLab also implements a set of benchmark recommender systems, however the default
+`pip install` command will not fetch the necessary dependencies. To fetch these dependencies
+you must have g++ 5.0 or higher and [python3-dev](https://stackoverflow.com/a/21530768)
+installed. You should then run
+```
+pip install reclab[recommenders]
+```
+which will install both the core reclab framework and the benchmark recommendation algorithms.
 
 ### Example
-Ths code below shows a simple use-case with random recommendations.
+The code below shows a simple use-case with random recommendations.
 ```python
 import numpy as np
 import reclab

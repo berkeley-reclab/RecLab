@@ -12,7 +12,6 @@ import numpy as np
 
 from . import environment
 from .. import data_utils
-from ..recommenders import LibFM
 
 
 class LatentFactorBehavior(environment.DictEnvironment):
@@ -264,75 +263,77 @@ class DatasetLatentFactor(LatentFactorBehavior):
                                  max_num_users=self._full_num_users,
                                  max_num_items=self._full_num_items,
                                  num_two_way_factors=self._latent_dim, **self.train_params)
-        if self._num_users < self._full_num_users or self._num_items < self._full_num_items:
-            reduced_num_users_items = (min(self._num_users, self._full_num_users),
-                                       min(self._num_items, self._full_num_items))
+
+        model_file = os.path.join(self.datapath, 'fm_model.npz')
+        res = load_latent_factors(model_file)
+        if not res or self._force_retrain:
+            print('Training model from scratch, either due to force_retrain flag or')
+            print('\tdid not find model file at {}'.format(model_file))
+            res = generate_latent_factors_from_data(self.dataset_name, model_file,
+                                                    full_model_params)
+            user_factors, user_bias, item_factors, item_bias, offset = res
         else:
-            reduced_num_users_items = None
-        # TODO: This is another source of randomness that isn't accounted for by our seeds.
-        # We probably want to make it more obvious that we need to snapshot the output when
-        # we want consistency across experiments.
-        return generate_latent_factors_from_data(self.dataset_name, self.datapath,
-                                                 full_model_params, self._init_random,
-                                                 force_retrain=self._force_retrain,
-                                                 reduced_num_users_items=reduced_num_users_items)
+            user_factors, user_bias, item_factors, item_bias, offset = res
 
+        if self._num_users < self._full_num_users or self._num_items < self._full_num_items:
+            num_users, num_items = (min(self._num_users, self._full_num_users),
+                                    min(self._num_items, self._full_num_items))
+            # TODO: may want to reduce the number in some other way
+            # e.g. related to popularity
+            user_indices = self._init_random.choice(user_factors.shape[0], size=num_users,
+                                                    replace=False)
+            item_indices = self._init_random.choice(item_factors.shape[0], size=num_items,
+                                                    replace=False)
+            user_factors = user_factors[user_indices]
+            user_bias = user_bias[user_indices]
+            item_factors = item_factors[item_indices]
+            item_bias = item_bias[item_indices]
+        return user_factors, user_bias, item_factors, item_bias, offset
 
-def generate_latent_factors_from_data(dataset_name, datapath, params, random,
-                                      force_retrain=False, reduced_num_users_items=None):
+def load_latent_factors(model_file):
+    """Load pretrained latent factor model."""
+    if not os.path.isfile(model_file):
+        return None
+    model = np.load(model_file)
+    print('Loading model from {} trained via:\n{}.'.format(model_file, model['params']))
+
+    user_factors = model['user_factors']
+    user_bias = model['user_bias']
+    item_factors = model['item_factors']
+    item_bias = model['item_bias']
+    offset = model['offset']
+
+    return user_factors, user_bias, item_factors, item_bias, offset
+
+def generate_latent_factors_from_data(dataset_name, model_file, params):
     """Create latent factors based on a dataset."""
-    model_file = os.path.join(datapath, 'fm_model.npz')
-    if not os.path.isfile(model_file) or force_retrain:
-        print('Did not find model file at {}, loading data for training'.format(model_file))
+    from ..recommenders import LibFM
 
-        users, items, ratings = data_utils.read_dataset(dataset_name)
-        print('Initializing latent factor model')
-        recommender = LibFM(**params)
-        recommender.reset(users, items, ratings)
-        print('Training latent factor model with parameters: {}'.format(params))
+    users, items, ratings = data_utils.read_dataset(dataset_name)
+    print('Initializing latent factor model')
+    recommender = LibFM(**params)
+    recommender.reset(users, items, ratings)
+    print('Training latent factor model with parameters: {}'.format(params))
 
-        global_bias, weights, pairwise_interactions = recommender.model_parameters()
-        if len(weights) == 0:
-            weights = np.zeros(pairwise_interactions.shape[0])
+    global_bias, weights, pairwise_interactions = recommender.model_parameters()
+    if len(weights) == 0:
+        weights = np.zeros(pairwise_interactions.shape[0])
 
-        # TODO: this logic is only correct if there are no additional user/item/rating features
-        # Note that we discard the original data's user_ids and item_ids at this step
-        user_indices = np.arange(params['max_num_users'])
-        item_indices = np.arange(params['max_num_users'],
-                                 params['max_num_users'] + params['max_num_items'])
+    # TODO: this logic is only correct if there are no additional user/item/rating features
+    # Note that we discard the original data's user_ids and item_ids at this step
+    user_indices = np.arange(params['max_num_users'])
+    item_indices = np.arange(params['max_num_users'],
+                             params['max_num_users'] + params['max_num_items'])
 
-        user_factors = pairwise_interactions[user_indices]
-        user_bias = weights[user_indices]
-        item_factors = pairwise_interactions[item_indices]
-        item_bias = weights[item_indices]
-        offset = global_bias
-        params = json.dumps(recommender.hyperparameters)
+    user_factors = pairwise_interactions[user_indices]
+    user_bias = weights[user_indices]
+    item_factors = pairwise_interactions[item_indices]
+    item_bias = weights[item_indices]
+    offset = global_bias
+    params = json.dumps(recommender.hyperparameters)
 
-        np.savez(model_file, user_factors=user_factors, user_bias=user_bias,
-                 item_factors=item_factors, item_bias=item_bias, offset=offset,
-                 params=params)
-
-    else:
-        model = np.load(model_file)
-        print('Loading model from {} trained via:\n{}.'.format(model_file, model['params']))
-
-        user_factors = model['user_factors']
-        user_bias = model['user_bias']
-        item_factors = model['item_factors']
-        item_bias = model['item_bias']
-        offset = model['offset']
-
-    if reduced_num_users_items is not None:
-        num_users, num_items = reduced_num_users_items
-        # TODO: may want to reduce the number in some other way
-        # e.g. related to popularity
-        user_indices = random.choice(user_factors.shape[0], size=num_users,
-                                     replace=False)
-        item_indices = random.choice(item_factors.shape[0], size=num_items,
-                                     replace=False)
-        user_factors = user_factors[user_indices]
-        user_bias = user_bias[user_indices]
-        item_factors = item_factors[item_indices]
-        item_bias = item_bias[item_indices]
+    np.savez(model_file, user_factors=user_factors, user_bias=user_bias,
+             item_factors=item_factors, item_bias=item_bias, offset=offset,
+             params=params)
 
     return user_factors, user_bias, item_factors, item_bias, offset

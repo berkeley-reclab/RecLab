@@ -8,7 +8,6 @@ from reclab.environments import Topics
 def _test_dimension_consistency(environment):  # noqa: W0212
     """ Basic Helper Test to check if dimension of
     various environment properties."""
-
     env = copy.deepcopy(environment)
 
     assert env.name == 'topics'
@@ -22,7 +21,7 @@ def _test_dimension_consistency(environment):  # noqa: W0212
     assert items[0].shape == (0,)
     assert env.online_users[0].shape == (0,)
 
-    # Test that item topics and user preferences are of the correct size
+    # Test that item topics and user preferences are of the correct size.
     assert env._item_topics.shape == (n_item,)
     assert env._user_preferences.shape == (n_user, n_topics)
     old_user_preferences = env._user_preferences
@@ -92,14 +91,14 @@ def test_topics_shift():  # noqa: W0212
     old_user_preferences = copy.deepcopy(env._user_preferences)
     old_user_biases = copy.deepcopy(env._user_biases)
 
-    # Recommend item 0
+    # Recommend item 0.
     env.step(np.array([[0]]))
 
-    # Test that the preferences and biases didn't change
+    # Test that the preferences and biases didn't change.
     assert np.array_equal(old_user_preferences, env._user_preferences)
     assert np.array_equal(old_user_biases, env._user_biases)
 
-    # Recommend another item and check that preferences have changed
+    # Recommend another item and check that preferences have changed.
     env.step(np.array([[1]]))
     assert not np.array_equal(old_user_preferences, env._user_preferences)
     assert not np.array_equal(old_user_biases, env._user_biases)
@@ -124,17 +123,17 @@ def test_topics_boredom():  # noqa: W0212
 
     _test_dimension_consistency(env)
     env.reset()
-    # change all the item types to type 0
+    # Change all the item types to type 0.
     env._item_topics = np.zeros(env._num_items, dtype=int)
 
     old_ratings = env._get_dense_ratings()
 
-    # Recommend item 0 and check that ratings don't change
+    # Recommend item 0 and check that ratings don't change.
     env.step(np.array([[0]]))
     assert np.array_equal(old_ratings, env._get_dense_ratings())
 
     # Recommend item 1 and check that dense ratings decrease by the
-    # same amount as the boredom penalty
+    # same amount as the boredom penalty.
     env.step(np.array([[1]]))
     assert np.array_equal(old_ratings-env._boredom_penalty, env._get_dense_ratings())
 
@@ -164,7 +163,7 @@ def test_topics_change():  # noqa: W0212
     old_user_preferences = copy.deepcopy(env._user_preferences)
 
     # Recommend item 0 and check that preferences for the recommended topic have
-    # increased while the preference for the other topic decreased
+    # increased while the preference for the other topic decreased.
     env.step(np.array([[0]]))
     topic = env._item_topics[0]
     new_user_preferences = env._user_preferences

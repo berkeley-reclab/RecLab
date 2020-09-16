@@ -266,7 +266,7 @@ class DatasetLatentFactor(LatentFactorBehavior):
 
         model_file = os.path.join(self.datapath, 'fm_model.npz')
         res = load_latent_factors(model_file)
-        if not res or self._force_retrain:
+        if res is None or self._force_retrain:
             print('Training model from scratch, either due to force_retrain flag or')
             print('\tdid not find model file at {}'.format(model_file))
             res = generate_latent_factors_from_data(self.dataset_name, model_file,

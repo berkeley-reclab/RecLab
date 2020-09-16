@@ -138,7 +138,7 @@ class Topics(environment.DictEnvironment):
 
     def _rate_items(self, user_id, item_ids):  # noqa: D102
         # TODO: Add support for slates of size greater than 1.
-        item_id = item_ids[0]
+        item_id = [item_ids[0]]
         rating = self._get_rating(user_id, item_id)
         # Updating underlying preference
         topic = self._item_topics[item_id]
@@ -175,7 +175,7 @@ class Topics(environment.DictEnvironment):
                                               for item_id in range(self._num_items))
 
     def _update_state(self):  # noqa: D102
-        if self._timestep % self._shift_steps == 0:
+        if (self._timestep + 1) % self._shift_steps == 0:
             # Apply preference and bias shift to a fraction of users.
 
             shifted_users = self._dynamics_random.choice(

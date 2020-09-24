@@ -6,9 +6,93 @@ import zipfile
 
 import numpy as np
 import pandas as pd
+import scipy.sparse
 
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '../data')
+
+
+def read_dataset(name, shuffle=True):
+    """Read a dataset as specified by name.
+
+    Parameters
+    ----------
+    name : str
+        The name of the dataset. Must be one of: 'ml-100k', 'ml-10m', 'citeulike-a',
+        'pinterest', or 'lastfm'.
+    shuffle : bool, optional
+        A flag to indicate whether the dataset should be shuffled after loading,
+        true by default.
+
+    Returns
+    -------
+    users : dict
+        The dict of all users where the key is the user-id and the value is the user's features.
+    items : dict
+        The dict of all items where the key is the item-id and the value is the item's features.
+    ratings : dict
+        The dict of all ratings where the key is a tuple whose first element is the user-id
+        and whose second element is the item id. The value is a tuple whose first element is the
+        rating value and whose second element is the rating context (in this case an empty array).
+
+    """
+    data = get_data(name)
+
+    if shuffle:
+        data = data.sample(frac=1).reset_index(drop=True)
+
+    users = {user_id: np.zeros(0) for user_id in np.unique(data['user_id'])}
+    items = {item_id: np.zeros(0) for item_id in np.unique(data['item_id'])}
+
+    # Fill the rating array with initial data.
+    ratings = {}
+    for user_id, item_id, rating in zip(data['user_id'], data['item_id'], data['rating']):
+        # TODO: may want to eventually a rating context depending on dataset (e.g. time)
+        ratings[user_id, item_id] = (rating, np.zeros(0))
+
+    return users, items, ratings
+
+
+def read_bandit_dataset(name, shuffle=True):
+    """Read a bandit dataset as specified by name.
+
+    Parameters
+    ----------
+    name : str
+        The name of the dataset. Must be one of: 'wiki10-31k'.
+    shuffle : bool, optional
+        A flag to indicate whether the dataset should be shuffled after loading,
+        true by default.
+
+    Returns
+    -------
+    features : scipy.sparse.dok_matrix
+        The features at each timestep.
+    ratings : scipy.sparse.dok_matrix
+        The ratings at each timestep.
+
+    """
+    if name == 'wiki10-31k':
+        with open_zipped(zipped_dir_name='wiki10-31k',
+                         data_name='train.txt',
+                         data_url='https://kkrauth.s3-us-west-2.amazonaws.com/wiki10-31k.zip',
+                         mode='r') as f:
+            num_points, num_features, num_labels = [int(x) for x in f.readline().split()]
+            features = scipy.sparse.dok_matrix((num_points, num_features))
+            ratings = scipy.sparse.dok_matrix((num_points, num_labels))
+            for i, line in enumerate(f):
+                # First extract the ratings.
+                for label in line.split()[0].split(','):
+                    ratings[i, int(label)] = 1.0
+
+                # Now extract the features.
+                for feature in line.split()[1:]:
+                    feature_id, feature_value = feature.split(':')
+                    features[i, int(feature_id)] = float(feature_value)
+    else:
+        raise ValueError('Dataset name not recognized.')
+
+    return features, ratings
 
 
 def split_ratings(ratings, proportion, shuffle=False, seed=None):
@@ -50,7 +134,7 @@ def split_ratings(ratings, proportion, shuffle=False, seed=None):
     return split_1, split_2
 
 
-def find_zipped(zipped_dir_name, data_name, data_url, csv_params):
+def read_zipped_csv(zipped_dir_name, data_name, data_url, csv_params):
     """Locate or download zipped file and load csv into DataFrame.
 
     Parameters
@@ -70,9 +154,48 @@ def find_zipped(zipped_dir_name, data_name, data_url, csv_params):
         Dataset of interest.
 
     """
+    data_file = os.path.join(DATA_DIR, zipped_dir_name, data_name)
+    fetch_zip(zipped_dir_name, data_url)
+    return pd.read_csv(data_file, **csv_params)
+
+
+def open_zipped(zipped_dir_name, data_name, data_url, mode):
+    """Download a zipped file and open it.
+
+    Parameters
+    ----------
+    zipped_dir_name : str
+        The directory within the downloaded zip.
+    data_name : str
+        The name of the data file to be loaded from the directory.
+    data_url : str
+        The location of the download.
+    mode: str
+        The mode to open the file in.
+
+    Returns
+    -------
+    file : file
+        The file of interest.
+
+    """
+    data_file = os.path.join(DATA_DIR, zipped_dir_name, data_name)
+    fetch_zip(zipped_dir_name, data_url)
+    return open(data_file, mode)
+
+def fetch_zip(zipped_dir_name, data_url):
+    """Download a zipped directory and extract it.
+
+    Parameters
+    ----------
+    zipped_dir_name : str
+        The directory within the downloaded zip.
+    data_url : str
+        The location of the download.
+
+    """
     data_dir = os.path.join(DATA_DIR, zipped_dir_name)
-    datafile = os.path.join(data_dir, data_name)
-    if not os.path.isfile(datafile):
+    if not os.path.isdir(data_dir):
         os.makedirs(DATA_DIR, exist_ok=True)
 
         download_location = os.path.join('{}.zip'.format(data_dir))
@@ -81,8 +204,6 @@ def find_zipped(zipped_dir_name, data_name, data_url, csv_params):
         with zipfile.ZipFile(download_location, 'r') as zip_ref:
             zip_ref.extractall(DATA_DIR)
         os.remove(download_location)
-    data = pd.read_csv(datafile, **csv_params)
-    return data
 
 
 def find_npz(dir_name, data_name, data_url, np_params):
@@ -138,21 +259,21 @@ def get_data(name):
         data_url = 'http://files.grouplens.org/datasets/movielens/ml-100k.zip'
         csv_params = dict(sep='\t', header=None, usecols=[0, 1, 2, 3],
                           names=['user_id', 'item_id', 'rating', 'timestamp'])
-        data = find_zipped(zipped_dir_name, data_name, data_url, csv_params)
+        data = read_zipped_csv(zipped_dir_name, data_name, data_url, csv_params)
     elif name == 'ml-10m':
         zipped_dir_name = 'ml-10M100K'
         data_name = 'ratings.dat'
         data_url = 'http://files.grouplens.org/datasets/movielens/ml-10m.zip'
         csv_params = dict(sep='::', header=None, usecols=[0, 1, 2, 3],
                           names=['user_id', 'item_id', 'rating', 'timestamp'], engine='python')
-        data = find_zipped(zipped_dir_name, data_name, data_url, csv_params)
+        data = read_zipped_csv(zipped_dir_name, data_name, data_url, csv_params)
     elif name == 'ml-1m':
         zipped_dir_name = 'ml-1m'
         data_name = 'ratings.dat'
         data_url = 'http://files.grouplens.org/datasets/movielens/ml-1m.zip'
         csv_params = dict(sep='::', header=None, usecols=[0, 1, 2, 3],
                           names=['user_id', 'item_id', 'rating', 'timestamp'], engine='python')
-        data = find_zipped(zipped_dir_name, data_name, data_url, csv_params)
+        data = read_zipped_csv(zipped_dir_name, data_name, data_url, csv_params)
     elif name == 'citeulike-a':
         dir_name = 'citeulike-a'
         data_name = 'data.npz'
@@ -186,47 +307,6 @@ def get_data(name):
     else:
         raise ValueError('dataset name not recognized')
     return data
-
-
-def read_dataset(name, shuffle=True):
-    """Read a dataset as specified by name.
-
-    Parameters
-    ----------
-    name : str
-        The name of the dataset. Must be one of: 'ml-100k', 'ml-10m', 'citeulike-a',
-        'pinterest', or 'lastfm'.
-    shuffle : bool, optional
-        A flag to indicate whether the dataset should be shuffled after loading,
-        true by default.
-
-    Returns
-    -------
-    users : dict
-        The dict of all users where the key is the user-id and the value is the user's features.
-    items : dict
-        The dict of all items where the key is the item-id and the value is the item's features.
-    ratings : dict
-        The dict of all ratings where the key is a tuple whose first element is the user-id
-        and whose second element is the item id. The value is a tuple whose first element is the
-        rating value and whose second element is the rating context (in this case an empty array).
-
-    """
-    data = get_data(name)
-
-    if shuffle:
-        data = data.sample(frac=1).reset_index(drop=True)
-
-    users = {user_id: np.zeros(0) for user_id in np.unique(data['user_id'])}
-    items = {item_id: np.zeros(0) for item_id in np.unique(data['item_id'])}
-
-    # Fill the rating array with initial data.
-    ratings = {}
-    for user_id, item_id, rating in zip(data['user_id'], data['item_id'], data['rating']):
-        # TODO: may want to eventually a rating context depending on dataset (e.g. time)
-        ratings[user_id, item_id] = (rating, np.zeros(0))
-
-    return users, items, ratings
 
 
 def get_time_split_dataset(name, shuffle=True, binarize=False):

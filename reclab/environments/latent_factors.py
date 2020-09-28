@@ -264,7 +264,7 @@ class DatasetLatentFactor(LatentFactorBehavior):
                                  max_num_items=self._full_num_items,
                                  num_two_way_factors=self._latent_dim, **self.train_params)
 
-        model_file = os.path.join(self.datapath, 'fm_model.npz')
+        model_file = os.path.join(self.datapath + '-model', 'fm_model.npz')
         res = load_latent_factors(model_file)
         if res is None or self._force_retrain:
             print('Training model from scratch, either due to force_retrain flag or')

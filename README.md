@@ -1,3 +1,4 @@
+![Whether the build is passing.](https://travis-ci.com/berkeley-reclab/RecLab.svg?branch=master)
 # RecLab
 RecLab is a simulation framework used to evaluate recommendation algorithms. The framework makes
 no platform-specific assumptions. As such, it can be used to evaluate recommendation algorithms

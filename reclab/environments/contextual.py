@@ -15,11 +15,22 @@ from . import environment
 
 
 class Contextual(environment.DictEnvironment):
-    """Implementation of an environment in which contextual bandits operate."""
+    """
+    An environment that implements the contextual bandit assumption.
 
-    def __init__(self, user_dist_choice='uniform'):
+    Parameters
+    ----------
+    name: string
+        The dataset to instantiate the environment with. Can be one of: 'wiki10-31k'.
+    user_dist_choice : str
+        The choice of user distribution for selecting online users. By default, the subset of
+        online users is chosen from a uniform distribution. Currently supports normal and lognormal.
+
+    """
+
+    def __init__(self, name, user_dist_choice='uniform'):
         """Create a Contextual environment."""
-        self._features, self._full_ratings = data_utils.read_bandit_dataset('wiki10-31k')
+        self._features, self._full_ratings = data_utils.read_bandit_dataset(name)
         self._curr_user = 0
         super().__init__(rating_frequency=1,
                          num_init_ratings=0,

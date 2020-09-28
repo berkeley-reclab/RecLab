@@ -74,21 +74,16 @@ def read_bandit_dataset(name, shuffle=True):
     """
     if name == 'wiki10-31k':
         with open_zipped(zipped_dir_name='wiki10-31k',
-                         data_name='train.txt',
+                         data_name='features.npz',
                          data_url='https://kkrauth.s3-us-west-2.amazonaws.com/wiki10-31k.zip',
-                         mode='r') as f:
-            num_points, num_features, num_labels = [int(x) for x in f.readline().split()]
-            features = scipy.sparse.dok_matrix((num_points, num_features))
-            ratings = scipy.sparse.dok_matrix((num_points, num_labels))
-            for i, line in enumerate(f):
-                # First extract the ratings.
-                for label in line.split()[0].split(','):
-                    ratings[i, int(label)] = 1.0
+                         mode='rb') as f:
+            features = scipy.sparse.load_npz(f).tocsr()
 
-                # Now extract the features.
-                for feature in line.split()[1:]:
-                    feature_id, feature_value = feature.split(':')
-                    features[i, int(feature_id)] = float(feature_value)
+        with open_zipped(zipped_dir_name='wiki10-31k',
+                         data_name='ratings.npz',
+                         data_url='https://kkrauth.s3-us-west-2.amazonaws.com/wiki10-31k.zip',
+                         mode='rb') as f:
+            ratings = scipy.sparse.load_npz(f).tocsr()
     else:
         raise ValueError('Dataset name not recognized.')
 

@@ -1,8 +1,7 @@
-"""Tests for the BetaRank environment."""
+"""Tests for the Contextual environment."""
 import numpy as np
 
 from reclab.environments import Contextual
-from . import utils
 
 
 def test_contextual_wiki():

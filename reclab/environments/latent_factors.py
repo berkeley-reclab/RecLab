@@ -290,6 +290,7 @@ class DatasetLatentFactor(LatentFactorBehavior):
             item_bias = item_bias[item_indices]
         return user_factors, user_bias, item_factors, item_bias, offset
 
+
 def load_latent_factors(model_file):
     """Load pretrained latent factor model."""
     if not os.path.isfile(model_file):
@@ -304,6 +305,7 @@ def load_latent_factors(model_file):
     offset = model['offset']
 
     return user_factors, user_bias, item_factors, item_bias, offset
+
 
 def generate_latent_factors_from_data(dataset_name, model_file, params):
     """Create latent factors based on a dataset."""

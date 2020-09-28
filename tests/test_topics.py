@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 """Tests for the Topics environment."""
 import copy
 import numpy as np
@@ -5,7 +6,7 @@ import numpy as np
 from reclab.environments import Topics
 
 
-def _test_dimension_consistency(environment):  # noqa: W0212
+def _test_dimension_consistency(environment):
     """ Basic Helper Test to check if dimension of
     various environment properties."""
     env = copy.deepcopy(environment)
@@ -14,19 +15,16 @@ def _test_dimension_consistency(environment):  # noqa: W0212
     users, items, _ = env.reset()
 
     # Test that the users and items have empty features.
-    n_user = env._num_users
-    n_item = env._num_items
-    n_topics = env._num_topics
+    num_users = len(env.users)
+    num_items = len(env.items)
+    num_topics = env._num_topics
     assert users[0].shape == (0,)
     assert items[0].shape == (0,)
     assert env.online_users[0].shape == (0,)
 
     # Test that item topics and user preferences are of the correct size.
-    assert env._item_topics.shape == (n_item,)
-    assert env._user_preferences.shape == (n_user, n_topics)
-    old_user_preferences = env._user_preferences
-
-    old_dense_ratings = env._get_dense_ratings()
+    assert env._item_topics.shape == (num_items,)
+    assert env._user_preferences.shape == (num_users, num_topics)
 
     # Recommend item 0, we shouldn't observe new users or items.
     users, items, _, _ = env.step(np.array([[0]]))
@@ -34,7 +32,7 @@ def _test_dimension_consistency(environment):  # noqa: W0212
     assert items == {}
 
 
-def test_topics_static_simple():  # noqa: W0212
+def test_topics_static_simple():
     """Test Topics with only one user, with no preference shifts
     and no topic change and no boredom."""
     env = Topics(num_topics=2,
@@ -63,12 +61,11 @@ def test_topics_static_simple():  # noqa: W0212
 
     # Test that the preferences didn't change
     assert np.array_equal(old_user_preferences, env._user_preferences)
-
     # Test that the dense ratings didn't change
     assert np.array_equal(old_dense_ratings, env._get_dense_ratings())
 
 
-def test_topics_shift():  # noqa: W0212
+def test_topics_shift():
     """Test Topics with random preference shifts"""
     env = Topics(num_topics=2,
                  num_users=1,
@@ -104,7 +101,7 @@ def test_topics_shift():  # noqa: W0212
     assert not np.array_equal(old_user_biases, env._user_biases)
 
 
-def test_topics_boredom():  # noqa: W0212
+def test_topics_boredom():
     """Test Topics with boredom shifts"""
     env = Topics(num_topics=2,
                  num_users=1,
@@ -124,7 +121,7 @@ def test_topics_boredom():  # noqa: W0212
     _test_dimension_consistency(env)
     env.reset()
     # Change all the item types to type 0.
-    env._item_topics = np.zeros(env._num_items, dtype=int)
+    env._item_topics = np.zeros(len(env.items), dtype=int)
 
     old_ratings = env._get_dense_ratings()
 
@@ -138,7 +135,7 @@ def test_topics_boredom():  # noqa: W0212
     assert np.array_equal(old_ratings-env._boredom_penalty, env._get_dense_ratings())
 
 
-def test_topics_change():  # noqa: W0212
+def test_topics_change():
     """Test Topics with topic change"""
     env = Topics(num_topics=2,
                  num_users=1,
@@ -157,8 +154,8 @@ def test_topics_change():  # noqa: W0212
 
     _test_dimension_consistency(env)
     env.reset()
-    # change all the item types to type 0
-    env._item_topics = np.zeros(env._num_items, dtype=int)
+    # Change all the item types to type 0.
+    env._item_topics = np.zeros(len(env.items), dtype=int)
 
     old_user_preferences = copy.deepcopy(env._user_preferences)
 

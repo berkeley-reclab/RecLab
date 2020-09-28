@@ -183,6 +183,7 @@ def open_zipped(zipped_dir_name, data_name, data_url, mode):
     fetch_zip(zipped_dir_name, data_url)
     return open(data_file, mode)
 
+
 def fetch_zip(zipped_dir_name, data_url):
     """Download a zipped directory and extract it.
 

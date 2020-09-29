@@ -53,16 +53,13 @@ def read_dataset(name, shuffle=True):
     return users, items, ratings
 
 
-def read_bandit_dataset(name, shuffle=True):
+def read_bandit_dataset(name):
     """Read a bandit dataset as specified by name.
 
     Parameters
     ----------
     name : str
         The name of the dataset. Must be one of: 'wiki10-31k'.
-    shuffle : bool, optional
-        A flag to indicate whether the dataset should be shuffled after loading,
-        true by default.
 
     Returns
     -------
@@ -76,14 +73,14 @@ def read_bandit_dataset(name, shuffle=True):
         with open_zipped(zipped_dir_name='wiki10-31k',
                          data_name='features.npz',
                          data_url='https://kkrauth.s3-us-west-2.amazonaws.com/wiki10-31k.zip',
-                         mode='rb') as f:
-            features = scipy.sparse.load_npz(f).tocsr()
+                         mode='rb') as feature_file:
+            features = scipy.sparse.load_npz(feature_file).tocsr()
 
         with open_zipped(zipped_dir_name='wiki10-31k',
                          data_name='ratings.npz',
                          data_url='https://kkrauth.s3-us-west-2.amazonaws.com/wiki10-31k.zip',
-                         mode='rb') as f:
-            ratings = scipy.sparse.load_npz(f).tocsr()
+                         mode='rb') as ratings_file:
+            ratings = scipy.sparse.load_npz(ratings_file).tocsr()
     else:
         raise ValueError('Dataset name not recognized.')
 

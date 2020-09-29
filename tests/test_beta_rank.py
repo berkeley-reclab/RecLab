@@ -2,7 +2,6 @@
 import numpy as np
 
 from reclab.environments import BetaRank
-from . import utils
 
 
 def test_beta_simple():

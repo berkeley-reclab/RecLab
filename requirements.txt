@@ -5,6 +5,7 @@ attrs==19.3.0
 cachetools==4.1.1
 certifi==2020.6.20
 chardet==3.0.4
+coveralls==2.1.2
 future==0.18.2
 gast==0.3.3
 google-auth==1.19.1
@@ -39,6 +40,7 @@ pylint==2.5.3
 pylint-quotes==0.2.1
 pyparsing==2.4.7
 pytest==5.4.3
+pytest-cov==2.10.1
 pytest-mock==3.3.0
 python-dateutil==2.8.1
 pytz==2020.1

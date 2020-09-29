@@ -10,7 +10,8 @@ from . import environment
 
 
 class Topics(environment.DictEnvironment):
-    """An environment where items have a single topic and users prefer certain topics.
+    """
+    An environment where items have a single topic and users prefer certain topics.
 
     The user preference for any given topic is initialized as Unif(0.5, 5.5) while
     topics are uniformly assigned to items. Users will
@@ -64,6 +65,7 @@ class Topics(environment.DictEnvironment):
         distribution type for item biases.
         normal is normal distribution with default mean zero and variance 0.5
         power is power law distribution
+
     """
 
     def __init__(self,
@@ -83,7 +85,6 @@ class Topics(environment.DictEnvironment):
                  shift_weight=0.0,
                  user_bias_type='normal',
                  item_bias_type='normal'):
-
         """Create a Topics environment."""
         super().__init__(rating_frequency, num_init_ratings, memory_length, user_dist_choice)
         self._num_topics = num_topics
@@ -184,7 +185,8 @@ class Topics(environment.DictEnvironment):
             new_preferences = self._init_random.uniform(low=0.5, high=5.5,
                                                         size=(len(shifted_users), self._num_topics))
             if self._user_bias_type == 'normal':
-                new_user_biases = self._init_random.normal(loc=0., scale=0.5, size=len(shifted_users))
+                new_user_biases = self._init_random.normal(loc=0, scale=0.5,
+                                                           size=len(shifted_users))
             elif self._user_bias_type == 'power':
                 new_user_biases = 1-self._init_random.power(5, size=len(shifted_users))
             else:

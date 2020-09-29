@@ -31,7 +31,8 @@ install:
 # Command to run tests
 script:
     - bash lint.sh
-    - pytest --durations=0 tests
-
+    - pytest --durations=0 --cov=reclab tests
+after_success:
+    - coveralls
 notifications:
       email: false

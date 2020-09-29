@@ -13,3 +13,8 @@ predictions
 results
 experiments/data
 experiments/results
+
+.coverage
+.venv
+model.h5
+dist/

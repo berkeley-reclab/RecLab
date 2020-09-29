@@ -252,7 +252,6 @@ class DictEnvironment(Environment):
 
         """
         assert len(recommendations) == len(self._online_users)
-        new_users, new_items = self._update_state()
         # Old dense ratings are now invalid so set it to None and lazily recompute.
         self._dense_ratings = None
 
@@ -272,15 +271,19 @@ class DictEnvironment(Environment):
 
         self._ratings.update(ratings)
 
-        # Update the online users.
-        self._online_users = self._select_online_users()
-
         # Create the info dict.
         info = {'users': self._users,
                 'items': self._items,
                 'ratings': self._ratings}
 
+        # Update the user and item state.
+        new_users, new_items = self._update_state()
+
+        # Update the online users.
+        self._online_users = self._select_online_users()
+
         self._timestep += 1
+
         return new_users, new_items, ratings, info
 
     @property
@@ -503,7 +506,7 @@ class DictEnvironment(Environment):
             The ids of all users that are online.
 
         """
-        num_users = len(self._users)
-        num_online = int(self._rating_frequency * num_users)
-        return self._dynamics_random.choice(num_users, size=num_online,
+        user_ids = list(self._users.keys())
+        num_online = int(self._rating_frequency * len(self._users))
+        return self._dynamics_random.choice(user_ids, size=num_online,
                                             replace=False, p=self._user_prob)

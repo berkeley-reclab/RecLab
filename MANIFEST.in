@@ -1,1 +1,1 @@
-data/ml-100k-model/fm_model.npz
+include data/ml-100k-model/fm_model.npz

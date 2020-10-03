@@ -3,13 +3,14 @@ from setuptools import find_packages, setup
 
 setup(
     name='RecLab',
-    version='0.1.0',
+    version='0.1.1',
     author='Karl Krauth',
     author_email='karl.krauth@gmail.com',
     description='A simulation framework for recommender systems.',
     license='MIT',
-    download_url= 'https://github.com/berkeley-reclab/RecLab/archive/v0.1.0.tar.gz',
+    download_url= 'https://github.com/berkeley-reclab/RecLab/archive/v0.1.1.tar.gz',
     packages=find_packages(),
+    include_package_data=True,
     url='https://berkeley-reclab.github.io/',
     keywords=[
         'recommender',
@@ -21,7 +22,6 @@ setup(
         'numpy>=1.19.0',
         'pandas>=1.0.5',
         'scipy>=1.4.1',
-        'wpyfm>=0.1.9',
     ],
     extras_require={
         'recommenders': [
@@ -29,6 +29,7 @@ setup(
             'scikit-learn>=0.23.1',
             'tensorflow>=2.2.0',
             'torch>=1.5.1',
+            'wpyfm>=0.1.9',
         ]
     },
     tests_require=[

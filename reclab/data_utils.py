@@ -81,6 +81,19 @@ def read_bandit_dataset(name):
                          data_url='https://kkrauth.s3-us-west-2.amazonaws.com/wiki10-31k.zip',
                          mode='rb') as ratings_file:
             ratings = scipy.sparse.load_npz(ratings_file).tocsr()
+    if name == 'amazoncat-13k-bert':
+        with open_zipped(zipped_dir_name='amazoncat-13k-bert',
+                         data_name='features.npz',
+                         data_url='https://kkrauth.s3-us-west-2.amazonaws.com/amazoncat-13k-bert.zip',
+                         mode='rb') as feature_file:
+            npz = np.load(feature_file)
+            features = npz[npz.files[0]]
+
+        with open_zipped(zipped_dir_name='amazoncat-13k-bert',
+                         data_name='ratings.npz',
+                         data_url='https://kkrauth.s3-us-west-2.amazonaws.com/amazoncat-13k-bert.zip',
+                         mode='rb') as ratings_file:
+            ratings = scipy.sparse.load_npz(ratings_file).tocsr()
     else:
         raise ValueError('Dataset name not recognized.')
 

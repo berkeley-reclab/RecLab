@@ -9,6 +9,7 @@ with a context that is predictive of its preferences for items.
 import collections
 
 import numpy as np
+import scipy.sparse
 
 from .. import data_utils
 from . import environment
@@ -57,7 +58,8 @@ class Contextual(environment.DictEnvironment):
         return np.array([rating])
 
     def _rating_context(self, user_id):  # noqa: D102
-        return self._features[self._curr_user].toarray().flatten()
+        row = self._features[self._curr_user]
+        return row.toarray().flatten() if scipy.sparse.issparse(row) else row
 
     def _update_state(self):  # noqa: D102
         self._curr_user += 1

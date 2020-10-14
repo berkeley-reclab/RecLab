@@ -12,7 +12,7 @@ import scipy.sparse
 DATA_DIR = os.path.join(os.path.dirname(__file__), '../data')
 
 
-def read_dataset(name, shuffle=True):
+def read_dataset(name, shuffle=True, seed=0):
     """Read a dataset as specified by name.
 
     Parameters
@@ -39,7 +39,7 @@ def read_dataset(name, shuffle=True):
     data = get_data(name)
 
     if shuffle:
-        data = data.sample(frac=1).reset_index(drop=True)
+        data = data.sample(frac=1, random_state=seed).reset_index(drop=True)
 
     users = {user_id: np.zeros(0) for user_id in np.unique(data['user_id'])}
     items = {item_id: np.zeros(0) for item_id in np.unique(data['item_id'])}

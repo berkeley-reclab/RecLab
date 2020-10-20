@@ -12,7 +12,7 @@ import scipy.sparse
 DATA_DIR = os.path.join(os.path.dirname(__file__), '../data')
 
 
-def read_dataset(name, shuffle=True):
+def read_dataset(name, shuffle=True, seed=0):
     """Read a dataset as specified by name.
 
     Parameters
@@ -39,7 +39,7 @@ def read_dataset(name, shuffle=True):
     data = get_data(name)
 
     if shuffle:
-        data = data.sample(frac=1).reset_index(drop=True)
+        data = data.sample(frac=1, random_state=seed).reset_index(drop=True)
 
     users = {user_id: np.zeros(0) for user_id in np.unique(data['user_id'])}
     items = {item_id: np.zeros(0) for item_id in np.unique(data['item_id'])}
@@ -230,8 +230,36 @@ def find_npz(dir_name, data_name, data_url, np_params):
     data['rating'] = 1
     return data
 
+def find_txt(dir_name, data_name, data_url, csv_params):
+    """Locate or download txt file and load into DataFrame.
 
-def get_data(name):
+    Parameters
+    ----------
+    dir_name : str
+        The directory to put the .txt file.
+    data_name : str
+        The name of the .txt file.
+    data_url : str
+        The location of the download.
+    csv_params : str
+        Parameters for loading the csv into DataFrame.
+
+    Returns
+    -------
+    data : DataFrame
+        Dataset of interest.
+
+    """
+    download_dir = os.path.join(DATA_DIR, dir_name)
+    datafile = os.path.join(download_dir, data_name)
+    if not os.path.isfile(datafile):
+        os.makedirs(download_dir, exist_ok=True)
+        urllib.request.urlretrieve(data_url, filename=datafile)
+    data = pd.read_csv(datafile, **csv_params)
+    return data
+
+
+def get_data(name, load_attributes=False):
     """Read a dataset specified by name into pandas dataframe.
 
     Parameters
@@ -253,6 +281,14 @@ def get_data(name):
         csv_params = dict(sep='\t', header=None, usecols=[0, 1, 2, 3],
                           names=['user_id', 'item_id', 'rating', 'timestamp'])
         data = read_zipped_csv(zipped_dir_name, data_name, data_url, csv_params)
+        if load_attributes:
+            user_attributes = read_zipped_csv(zipped_dir_name, 'u.user', data_url,
+                                              dict(sep='|', header=None, usecols=[0, 1, 2, 3, 4],
+                                                   names=['user_id', 'age', 'gender', 'occupation', 'zip_code']))
+            item_attributes = read_zipped_csv(zipped_dir_name, 'u.item', data_url,
+                                              dict(sep='|', header=None, usecols=[0, 1, 2, 3, 4], encoding='latin-1',
+                                                   names=['item_id', 'title', 'release', 'video release', 'IMDb URL']))
+            data = (data, user_attributes, item_attributes)
     elif name == 'ml-10m':
         zipped_dir_name = 'ml-10M100K'
         data_name = 'ratings.dat'
@@ -260,6 +296,11 @@ def get_data(name):
         csv_params = dict(sep='::', header=None, usecols=[0, 1, 2, 3],
                           names=['user_id', 'item_id', 'rating', 'timestamp'], engine='python')
         data = read_zipped_csv(zipped_dir_name, data_name, data_url, csv_params)
+        if load_attributes:
+            item_attributes = read_zipped_csv(zipped_dir_name, 'movies.dat', data_url,
+                                              dict(sep='::', header=None, usecols=[0, 1, 2],
+                                                   names=['item_id', 'title', 'genre']))
+            data = (data, None, item_attributes)
     elif name == 'ml-1m':
         zipped_dir_name = 'ml-1m'
         data_name = 'ratings.dat'
@@ -267,6 +308,14 @@ def get_data(name):
         csv_params = dict(sep='::', header=None, usecols=[0, 1, 2, 3],
                           names=['user_id', 'item_id', 'rating', 'timestamp'], engine='python')
         data = read_zipped_csv(zipped_dir_name, data_name, data_url, csv_params)
+        if load_attributes:
+            user_attributes = read_zipped_csv(zipped_dir_name, 'users.dat', data_url,
+                                              dict(sep='::', header=None, usecols=[0, 1, 2, 3, 4],
+                                                   names=['user_id', 'gender', 'age', 'occupation', 'zip code']))
+            item_attributes = read_zipped_csv(zipped_dir_name, 'movies.dat', data_url,
+                                              dict(sep='::', header=None, usecols=[0, 1, 2],
+                                                   names=['item_id', 'title', 'genre']))
+            data = (data,user_attributes, item_attributes)
     elif name == 'citeulike-a':
         dir_name = 'citeulike-a'
         data_name = 'data.npz'
@@ -274,6 +323,7 @@ def get_data(name):
                     'master/data/citeulike-a.npz')
         np_params = dict(columns=['user_id', 'item_id'])
         data = find_npz(dir_name, data_name, data_url, np_params)
+        # TODO: additional info on users or items?
     elif name == 'pinterest':
         dir_name = 'pinterest'
         data_name = 'data.npz'
@@ -281,6 +331,22 @@ def get_data(name):
                     'master/data/pinterest.npz')
         np_params = dict(columns=['user_id', 'item_id'])
         data = find_npz(dir_name, data_name, data_url, np_params)
+        # TODO: additional info on users or items?
+    elif name == 'lastfm-360k':
+        dir_name = 'lastfm-360k'
+        data_name = 'LastFM360k-Le75.txt'
+        data_url = ('https://zenodo.org/record/3964506/files/LastFM360k-Le75.txt?download=1')
+        csv_params = dict(sep=',', header=0, usecols=[0, 1, 2],
+                         names=['user_id', 'item_id', 'rating'])
+        data = find_txt(dir_name, data_name, data_url, csv_params)
+        # log transform for better scaling
+        data['rating'] = np.log(1 + data['rating'])
+        if load_attributes:
+            item_attributes = find_txt(dir_name, 'LastFM360k-MB-artists.txt',
+                                       'https://zenodo.org/record/3964506/files/LastFM360k-MB-artists.txt?download=1',
+                                       dict(sep='\t', header=0, usecols=[0, 1, 2],
+                                            names=['item_id', 'artist_name', 'gender']))
+            data = (data, None, item_attributes)
     elif name == 'lastfm':
         data_name = 'lastfm-dataset-1K/lfm1k-play-counts.csv'
         csv_params = dict(header=0, usecols=[0, 1, 2],

@@ -38,6 +38,32 @@ def read_dataset(name, shuffle=True, seed=0):
     """
     data = get_data(name)
 
+    return dataset_from_dataframe(data, shuffle=shuffle, seed=seed)
+
+def dataset_from_dataframe(data, shuffle=True, seed=0):
+    """Read a dataset as specified by name.
+
+    Parameters
+    ----------
+    data : dataframe
+        The dataset, with columns user_id, item_id, and rating
+    shuffle : bool, optional
+        A flag to indicate whether the dataset should be shuffled after loading,
+        true by default.
+
+    Returns
+    -------
+    users : dict
+        The dict of all users where the key is the user-id and the value is the user's features.
+    items : dict
+        The dict of all items where the key is the item-id and the value is the item's features.
+    ratings : dict
+        The dict of all ratings where the key is a tuple whose first element is the user-id
+        and whose second element is the item id. The value is a tuple whose first element is the
+        rating value and whose second element is the rating context (in this case an empty array).
+
+    """
+
     if shuffle:
         data = data.sample(frac=1, random_state=seed).reset_index(drop=True)
 

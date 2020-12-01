@@ -155,7 +155,7 @@ class LatentFactorBehavior(environment.DictEnvironment):
         # Updating underlying affinity
         self._user_factors[user_id] = ((1.0 - self._affinity_change) * self._user_factors[user_id]
                                        + self._affinity_change * self._item_factors[item_id])
-        return rating
+        return np.array([rating])
 
     def _reset_state(self):
         """Reset the state of the environment."""
@@ -214,8 +214,10 @@ class DatasetLatentFactor(LatentFactorBehavior):
                  max_num_users=np.inf, max_num_items=np.inf, **kwargs):
         """Create a ML100K Latent Factor environment."""
         self.dataset_name = name
+        modelpath = os.path.join(os.path.dirname(__file__), '../../models')
         if name == 'ml-100k':
             self.datapath = os.path.expanduser(os.path.join(datapath, 'ml-100k'))
+            self.modelpath = os.path.join(modelpath, 'ml-100k')
             latent_dim = 100 if latent_dim is None else latent_dim
             self._full_num_users = 943
             self._full_num_items = 1682
@@ -226,6 +228,7 @@ class DatasetLatentFactor(LatentFactorBehavior):
                                      learning_rate=learn_rate, num_iter=100)
         elif name == 'ml-10m':
             self.datapath = os.path.expanduser(os.path.join(datapath, 'ml-10M100K'))
+            self.modelpath = os.path.join(modelpath, 'ml-10M100K')
             latent_dim = 128 if latent_dim is None else latent_dim
             self._full_num_users = 69878
             self._full_num_items = 10677
@@ -236,6 +239,7 @@ class DatasetLatentFactor(LatentFactorBehavior):
                                      learning_rate=learn_rate, num_iter=128)
         elif name == 'lastfm':
             self.datapath = os.path.expanduser(os.path.join(datapath, 'lastfm-dataset-1K'))
+            self.modelpath = os.path.join(modelpath, 'lastfm-dataset-1K')
             latent_dim = 128 if latent_dim is None else latent_dim
             self._full_num_users = 992
             self._full_num_items = 177023
@@ -264,7 +268,7 @@ class DatasetLatentFactor(LatentFactorBehavior):
                                  max_num_items=self._full_num_items,
                                  num_two_way_factors=self._latent_dim, **self.train_params)
 
-        model_file = os.path.join(self.datapath + '-model', 'fm_model.npz')
+        model_file = os.path.join(self.modelpath, 'fm_model.npz')
         res = load_latent_factors(model_file)
         if res is None or self._force_retrain:
             print('Training model from scratch, either due to force_retrain flag or')

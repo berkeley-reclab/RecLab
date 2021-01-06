@@ -32,15 +32,28 @@ which will install both the core reclab framework and the benchmark recommendati
 ### Example
 The code below shows a simple use-case with random recommendations.
 ```python
-import numpy as np
-import reclab
-env = reclab.make('topics-dynamic-v1')
-items, users, ratings = env.reset()
-for _ in range(1000):
-    online_users = env.online_users()
-    # Your recommendation algorithm here. This recommends 10 random items to each online user.
-    recommendations = np.random.choice(items, size=(len(online_users), 10))
-    items, users, ratings, info = env.step(recommendations)
+n_users = 1000
+n_topics = 10
+n_items = 20
+env = reclab.make(
+    "topics-dynamic-v1",
+    num_topics=n_topics,
+    num_users=n_users,
+    num_items=n_items,
+    num_init_ratings=n_users * n_topics,
+)
+users, items, ratings = env.reset()
+assert len(users) == n_users
+assert len(items) == n_items
+for _ in range(1):
+    online_users = env.online_users
+    # Your recommendation algorithm here.
+    # This recommends 2 random items to each online user.
+    recommendations = np.random.choice(
+        len(items), size=(len(online_users), 2)
+    )
+    users, items, ratings, info = env.step(recommendations)
+
 env.close()
 ```
 

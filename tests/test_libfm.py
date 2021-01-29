@@ -76,7 +76,7 @@ def test_als_predict():
                         reg=0.02,
                         num_iter=128,
                         seed=0)
-    utils.test_predict_ml100k(recommender, rmse_threshold=1.3)
+    utils.test_predict_ml100k(recommender, rmse_threshold=1.4)
 
 
 def test_als_recommend():

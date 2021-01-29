@@ -1,6 +1,6 @@
 /**/__pycache__/
 
-data
+models
 train.libfm
 test.libfm
 predictions
@@ -8,7 +8,13 @@ predictions
 .ipynb_checkpoints
 *.swo
 *.swp
+*.egg-info
 
 results
 experiments/data
 experiments/results
+
+.coverage
+.venv
+model.h5
+dist/

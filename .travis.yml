@@ -4,18 +4,11 @@ matrix:
     include:
         - os: osx
           language: generic
-          env: PYTHON_VERSION=3.6
-        - os: osx
-          language: generic
-          env: PYTHON_VERSION=3.7
+          env: PYTHON_VERSION=3.8
         - os: linux
           dist: xenial
-          python: 3.6
-          env: PYTHON_VERSION=3.6
-        - os: linux
-          dist: xenial
-          python: 3.7
-          env: PYTHON_VERSION=3.7
+          python: 3.8
+          env: PYTHON_VERSION=3.8
 
 # Command to install dependencies
 install:
@@ -38,7 +31,8 @@ install:
 # Command to run tests
 script:
     - bash lint.sh
-    - pytest --durations=0 tests
-
+    - pytest --durations=0 --cov=reclab tests
+after_success:
+    - coveralls
 notifications:
       email: false

@@ -2,7 +2,6 @@
 Contains implementation for environment in "Human Interaction with Recommendation Systems".
 
 https://arxiv.org/pdf/1703.00535.pdf
-
 """
 
 import numpy as np
@@ -68,10 +67,17 @@ class Schmit(environment.DictEnvironment):
         """
         Calculate true score.
 
+        Parameters
+        ----------
         user : int
             User id for calculating preferences.
         item : int
             Item id.
+
+        Returns
+        -------
+        score : float
+            The true score of the item for the user.
 
         """
         return float(self.item_bias[item] + self.user_bias[user] + self.U[user] @ self.V[item].T)
@@ -80,10 +86,17 @@ class Schmit(environment.DictEnvironment):
         """
         Add private user preferences and Gaussian noise to true score.
 
+        Parameters
+        ----------
         user : int
             User id for calculating preferences.
         item : int
             Item id.
+
+        Returns
+        -------
+        value : float
+            The (noisy) value of the item to the user.
 
         """
         ratings = float(self.true_score(user, item) + self.X[user] @ self.Y[item].T +

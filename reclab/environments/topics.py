@@ -10,13 +10,17 @@ from . import environment
 
 
 class Topics(environment.DictEnvironment):
-    """An environment where items have a single topic and users prefer certain topics.
+    """
+    An environment where items have a single topic and users prefer certain topics.
 
     The user preference for any given topic is initialized as Unif(0.5, 5.5) while
-    topics are uniformly assigned to items. Users will rate items as clip(p + e, 0, 5)
-    where p is their preference for a given topic and e ~ N(0, self._noise). Users will
+    topics are uniformly assigned to items. Users will
     also have a changing preference for topics they get recommended based on the topic_change
-    parameter.
+    parameter. Users and items can have biases, there can also exist an underlying bias.
+
+    Ratings are generated as
+    r = clip( user preference for a given topic + b_u + b_i + b_0, 1, 5)
+    where b_u is a user bias, b_i is an item bias, and b_0 is a global bias.
 
     Parameters
     ----------
@@ -53,6 +57,14 @@ class Topics(environment.DictEnvironment):
     shift_weight : float
         The weight to assign to a user's new preferences after a preference shift.
         User's old preferences get assigned a weight of 1 - shift_weight.
+    user_bias_type : normal or power
+        distribution type for user biases.
+        normal is normal distribution with default mean zero and variance 0.5
+        power is power law distribution
+    item_bias_type : normal or power
+        distribution type for item biases.
+        normal is normal distribution with default mean zero and variance 0.5
+        power is power law distribution
 
     """
 
@@ -70,7 +82,9 @@ class Topics(environment.DictEnvironment):
                  user_dist_choice='uniform',
                  shift_steps=1,
                  shift_frequency=0.0,
-                 shift_weight=0.0):
+                 shift_weight=0.0,
+                 user_bias_type='normal',
+                 item_bias_type='normal'):
         """Create a Topics environment."""
         super().__init__(rating_frequency, num_init_ratings, memory_length, user_dist_choice)
         self._num_topics = num_topics
@@ -85,6 +99,11 @@ class Topics(environment.DictEnvironment):
         self._shift_steps = shift_steps
         self._shift_frequency = shift_frequency
         self._shift_weight = shift_weight
+        self._user_biases = None
+        self._item_biases = None
+        self._offset = None
+        self._user_bias_type = user_bias_type
+        self._item_bias_type = item_bias_type
 
     @property
     def name(self):  # noqa: D102
@@ -94,7 +113,9 @@ class Topics(environment.DictEnvironment):
         ratings = np.zeros([self._num_users, self._num_items])
         for item_id in range(self._num_items):
             topic = self._item_topics[item_id]
-            ratings[:, item_id] = self._user_preferences[:, topic]
+            ratings[:, item_id] = (self._user_preferences[:, topic] +
+                                   np.full((self._num_users), self._item_biases[item_id]) +
+                                   self._user_biases + np.full((self._num_users), self._offset))
 
         # Account for boredom.
         for user_id in range(self._num_users):
@@ -108,14 +129,17 @@ class Topics(environment.DictEnvironment):
 
     def _get_rating(self, user_id, item_id):  # noqa: D102
         topic = self._item_topics[item_id]
-        rating = self._user_preferences[user_id, topic]
+        rating = (self._user_preferences[user_id, topic] + self._user_biases[user_id] +
+                  self._item_biases[item_id] + self._offset)
         recent_topics = [self._item_topics[item] for item in self._user_histories[user_id]]
         if recent_topics.count(topic) > self._boredom_threshold:
             rating -= self._boredom_penalty
         rating = np.clip(rating + self._dynamics_random.randn() * self._noise, 1, 5)
         return rating
 
-    def _rate_item(self, user_id, item_id):  # noqa: D102
+    def _rate_items(self, user_id, item_ids):  # noqa: D102
+        # TODO: Add support for slates of size greater than 1.
+        item_id = [item_ids[0]]
         rating = self._get_rating(user_id, item_id)
         # Updating underlying preference
         topic = self._item_topics[item_id]
@@ -128,6 +152,21 @@ class Topics(environment.DictEnvironment):
         return rating
 
     def _reset_state(self):  # noqa: D102
+        if self._user_bias_type == 'normal':
+            self._user_biases = self._init_random.normal(loc=0., scale=0.5, size=self._num_users)
+        elif self._user_bias_type == 'power':
+            self._user_biases = 1-self._init_random.power(5, size=self._num_users)
+        else:
+            print('User bias distribution is not supported')
+
+        if self._item_bias_type == 'normal':
+            self._item_biases = self._init_random.normal(loc=0., scale=0.5, size=self._num_items)
+        elif self._item_bias_type == 'power':
+            self._item_biases = 1-self._init_random.power(5, size=self._num_users)
+        else:
+            print('Item bias distribution is not supported')
+
+        self._offset = 0
         self._user_preferences = self._init_random.uniform(low=0.5, high=5.5,
                                                            size=(self._num_users, self._num_topics))
         self._item_topics = self._init_random.choice(self._num_topics, size=self._num_items)
@@ -137,15 +176,28 @@ class Topics(environment.DictEnvironment):
                                               for item_id in range(self._num_items))
 
     def _update_state(self):  # noqa: D102
-        if self._timestep % self._shift_steps == 0:
-            # Apply the preference shift to a fraction of users.
+        if (self._timestep + 1) % self._shift_steps == 0:
+            # Apply preference and bias shift to a fraction of users.
+
             shifted_users = self._dynamics_random.choice(
                 self._num_users, int(self._num_users * self._shift_frequency))
 
             new_preferences = self._init_random.uniform(low=0.5, high=5.5,
                                                         size=(len(shifted_users), self._num_topics))
+            if self._user_bias_type == 'normal':
+                new_user_biases = self._init_random.normal(loc=0, scale=0.5,
+                                                           size=len(shifted_users))
+            elif self._user_bias_type == 'power':
+                new_user_biases = 1-self._init_random.power(5, size=len(shifted_users))
+            else:
+                print('User bias distribution is not supported')
+
             self._user_preferences[shifted_users] = (
                 self._shift_weight * self._user_preferences[shifted_users] +
                 (1 - self._shift_weight) * new_preferences)
+
+            self._user_biases[shifted_users] = (
+                self._shift_weight * self._user_biases[shifted_users] +
+                (1 - self._shift_weight) * new_user_biases)
 
         return collections.OrderedDict(), collections.OrderedDict()

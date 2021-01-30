@@ -140,17 +140,24 @@ class DictEnvironment(Environment):
         The proportion of users that will need a recommendation at each step.
         Must be between 0 and 1.
     num_init_ratings : int
-        The number of ratings available from the start. User-item pairs are randomly selected.
+        The number of ratings available from the start. User-item pairs are selected according
+        to initial_sampling. If initial_sampling is an array this parameter is ignored.
     memory : int
         The number of recent items a user remembers which affect the rating
     user_dist_choice : str
         The choice of user distribution for selecting online users. By default, the subset of
-        online users is chosen from a uniform distribution. Currently supports normal and lognormal.
+        online users is chosen from a uniform distribution. Can be 'normal', 'lognormal',
+        'uniform' or 'powerlaw'.
+    initial_sampling: str or array
+        How the initial ratings should be sampled. Can be 'uniform', 'powerlaw', or an
+        array of tuples where arr[i][0] and arr[i][1] are the user-id and item-id respectively
+        of the i-th initial rating. If initial_sampling is a string, then users are sampled
+        according to user_dist_choice and items are sampled according to initial_sampling.
 
     """
 
     def __init__(self, rating_frequency=0.02, num_init_ratings=0, memory_length=0,
-                 user_dist_choice='uniform'):
+                 user_dist_choice='uniform', initial_sampling='uniform'):
         """Create a new DictEnvironment."""
         self._timestep = -1
         # The RandomState to use while initializing the environment.
@@ -169,6 +176,7 @@ class DictEnvironment(Environment):
         self._user_prob = None
         self._user_histories = collections.defaultdict(list)
         self._memory_length = memory_length
+        self._initial_sampling = initial_sampling
 
     def reset(self):
         """Reset the environment to its original state. Must be called before the first step.
@@ -198,14 +206,29 @@ class DictEnvironment(Environment):
         # We will lazily compute dense ratings.
         self._dense_ratings = None
 
-        # Fill the rating dict with initial data.
-        idx_1d = self._init_random.choice(num_users * num_items, self._num_init_ratings,
-                                          replace=False,
-                                          p=np.repeat(self._user_prob, num_items) / num_items)
-        user_ids = idx_1d // num_items
-        item_ids = idx_1d % num_items
-        self._ratings = {}
 
+        # Fill the rating dict with initial data.
+        if self._initial_sampling == 'uniform':
+            idx_1d = self._init_random.choice(num_users * num_items, self._num_init_ratings,
+                                              replace=False,
+                                              p=np.repeat(self._user_prob, num_items) / num_items)
+            user_ids = idx_1d // num_items
+            item_ids = idx_1d % num_items
+        elif self._initial_sampling == 'popular':
+            def power_func(num_points, scaling):
+                probs = scaling * np.linspace(0, 1, num_points) ** (scaling - 1)
+                # Renormalize since the tail isn't infinitely long.
+                probs /= probs.sum()
+                return probs
+            ranked_users = np.random.permutation(num_users)
+            ranked_items = np.random.permutation(num_items)
+            user_probs = power_func(num_users, scaling=1.0)
+            item_probs = power_func(num_items, scaling=1.0)
+
+        else:
+            user_ids, item_ids = zip(*self._initial_sampling)
+
+        self._ratings = {}
         for user_id, item_id in zip(user_ids, item_ids):
             # TODO: This is a hack, but I don't think we should necessarily put the burden
             # of having to implement a version of _rate_item that knows whether it's being called
@@ -480,15 +503,15 @@ class DictEnvironment(Environment):
                 for i in range(num_users)])
             user_dist = user_dist / sum(user_dist)
             user_dist = np.clip(user_dist, 0, 1)
-        elif dist_choice == 'lognorm':
+        elif dist_choice == 'lognormal':
             idx = np.random.permutation(num_users)
             user_dist = np.array([scipy.stats.lognorm.pdf(idx[i], 1, scale=num_users / 7, loc=-1)
                                   for i in range(num_users)])
             user_dist = user_dist / sum(user_dist)
             user_dist = np.clip(user_dist, 0, 1)
-        elif dist_choice == 'pareto':
+        elif dist_choice == 'powerlaw':
             idx = np.random.permutation(num_users)
-            user_dist = np.array([scipy.stats.pareto.pdf(idx[i], 1, scale=num_users / 1e4, loc=-1)
+            user_dist = np.array([scipy.stats.powerlaw.pdf(idx[i], 1, scale=num_users / 1e4, loc=-1)
                                   for i in range(num_users)])
             user_dist = user_dist / sum(user_dist)
             user_dist = np.clip(user_dist, 0, 1)

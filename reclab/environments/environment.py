@@ -214,13 +214,7 @@ class DictEnvironment(Environment):
                                               p=np.repeat(self._user_prob, num_items) / num_items)
             user_ids = idx_1d // num_items
             item_ids = idx_1d % num_items
-        elif self._initial_sampling == 'popular':
-            def power_func(num_points, scaling):
-                probs = scaling * np.linspace(0, 1, num_points) ** (scaling - 1)
-                # Renormalize since the tail isn't infinitely long.
-                probs /= probs.sum()
-                return probs
-            ranked_users = np.random.permutation(num_users)
+        elif self._initial_sampling == 'powerlaw':
             ranked_items = np.random.permutation(num_items)
             user_probs = power_func(num_users, scaling=1.0)
             item_probs = power_func(num_items, scaling=1.0)
@@ -494,30 +488,20 @@ class DictEnvironment(Environment):
         dist_choice = self._user_dist_choice
         num_users = len(self._users)
 
+        idx = np.random.permutation(num_users)
         if dist_choice == 'uniform':
             user_dist = np.ones(num_users) / num_users
         elif dist_choice == 'norm':
-            idx = np.random.permutation(num_users)
-            user_dist = np.array([
-                scipy.stats.norm.pdf(idx[i], scale=num_users / 7, loc=num_users / 2)
-                for i in range(num_users)])
-            user_dist = user_dist / sum(user_dist)
-            user_dist = np.clip(user_dist, 0, 1)
+            user_dist  = scipy.stats.norm.pdf(idx[i], scale=num_users / 7, loc=num_users / 2)
         elif dist_choice == 'lognormal':
-            idx = np.random.permutation(num_users)
-            user_dist = np.array([scipy.stats.lognorm.pdf(idx[i], 1, scale=num_users / 7, loc=-1)
-                                  for i in range(num_users)])
-            user_dist = user_dist / sum(user_dist)
-            user_dist = np.clip(user_dist, 0, 1)
+            user_dist = scipy.stats.lognorm.pdf(idx, 1, scale=num_users / 7, loc=-1)
         elif dist_choice == 'powerlaw':
-            idx = np.random.permutation(num_users)
-            user_dist = np.array([scipy.stats.powerlaw.pdf(idx[i], 1, scale=num_users / 1e4, loc=-1)
-                                  for i in range(num_users)])
-            user_dist = user_dist / sum(user_dist)
-            user_dist = np.clip(user_dist, 0, 1)
+            user_dist = scipy.stats.powerlaw.pdf(idx, 1, scale=num_users / 1e4, loc=-1)
         else:
             raise ValueError('user distribution name not recognized')
 
+        # Normalize user_dist to convert from continuous to discrete distributions.
+        user_dist /= user_dist.sum()
         return user_dist
 
     def _select_online_users(self):

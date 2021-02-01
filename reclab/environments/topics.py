@@ -50,6 +50,11 @@ class Topics(environment.DictEnvironment):
     user_dist_choice : str
         The choice of user distribution for selecting online users. By default, the subset of
         online users is chosen from a uniform distribution. Currently supports normal and lognormal.
+    initial_sampling: str or array
+        How the initial ratings should be sampled. Can be 'uniform', 'powerlaw', or an
+        array of tuples where arr[i][0] and arr[i][1] are the user-id and item-id respectively
+        of the i-th initial rating. If initial_sampling is a string, then users are sampled
+        according to user_dist_choice and items are sampled according to initial_sampling.
     shift_steps : int
         The number of timesteps to wait between each user preference shift.
     shift_frequency : float
@@ -80,13 +85,18 @@ class Topics(environment.DictEnvironment):
                  boredom_threshold=0,
                  boredom_penalty=0.0,
                  user_dist_choice='uniform',
+                 initial_sampling='uniform',
                  shift_steps=1,
                  shift_frequency=0.0,
                  shift_weight=0.0,
-                 user_bias_type='normal',
-                 item_bias_type='normal'):
+                 user_bias_type='none',
+                 item_bias_type='none'):
         """Create a Topics environment."""
-        super().__init__(rating_frequency, num_init_ratings, memory_length, user_dist_choice)
+        super().__init__(rating_frequency=rating_frequency,
+                         num_init_ratings=num_init_ratings,
+                         memory_length=memory_length,
+                         user_dist_choice=user_dist_choice,
+                         initial_sampling=initial_sampling)
         self._num_topics = num_topics
         self._num_users = num_users
         self._num_items = num_items
@@ -155,14 +165,18 @@ class Topics(environment.DictEnvironment):
         if self._user_bias_type == 'normal':
             self._user_biases = self._init_random.normal(loc=0., scale=0.5, size=self._num_users)
         elif self._user_bias_type == 'power':
-            self._user_biases = 1-self._init_random.power(5, size=self._num_users)
+            self._user_biases = 1 - self._init_random.power(5, size=self._num_users)
+        elif self._user_bias_type == 'none':
+            self._user_biases = np.zeros(self._num_users)
         else:
             print('User bias distribution is not supported')
 
         if self._item_bias_type == 'normal':
             self._item_biases = self._init_random.normal(loc=0., scale=0.5, size=self._num_items)
         elif self._item_bias_type == 'power':
-            self._item_biases = 1-self._init_random.power(5, size=self._num_users)
+            self._item_biases = 1 - self._init_random.power(5, size=self._num_users)
+        elif self._item_bias_type == 'none':
+            self._item_biases = np.zeros(self._num_items)
         else:
             print('Item bias distribution is not supported')
 
@@ -178,17 +192,17 @@ class Topics(environment.DictEnvironment):
     def _update_state(self):  # noqa: D102
         if (self._timestep + 1) % self._shift_steps == 0:
             # Apply preference and bias shift to a fraction of users.
-
             shifted_users = self._dynamics_random.choice(
                 self._num_users, int(self._num_users * self._shift_frequency))
-
             new_preferences = self._init_random.uniform(low=0.5, high=5.5,
                                                         size=(len(shifted_users), self._num_topics))
             if self._user_bias_type == 'normal':
                 new_user_biases = self._init_random.normal(loc=0, scale=0.5,
                                                            size=len(shifted_users))
             elif self._user_bias_type == 'power':
-                new_user_biases = 1-self._init_random.power(5, size=len(shifted_users))
+                new_user_biases = 1 - self._init_random.power(5, size=len(shifted_users))
+            elif self._user_bias_type == 'none':
+                new_user_biases = np.zeros(self._num_users)
             else:
                 print('User bias distribution is not supported')
 

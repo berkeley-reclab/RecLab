@@ -142,8 +142,8 @@ class DictEnvironment(Environment):
     num_init_ratings : int
         The number of ratings available from the start. User-item pairs are selected according
         to initial_sampling. If initial_sampling is an array this parameter is ignored.
-    memory : int
-        The number of recent items a user remembers which affect the rating
+    memory_length : int
+        The number of recent items a user remembers which affect the rating.
     user_dist_choice : str
         The choice of user distribution for selecting online users. By default, the subset of
         online users is chosen from a uniform distribution. Can be 'normal', 'lognormal',

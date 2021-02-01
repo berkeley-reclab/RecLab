@@ -211,16 +211,16 @@ class DictEnvironment(Environment):
         if isinstance(self._initial_sampling, str):
             item_idx = np.random.permutation(num_items)
             if self._initial_sampling == 'uniform':
-                item_probs = 1.0 / num_items
+                item_probs = np.ones(num_items) / num_items
             elif self._initial_sampling == 'powerlaw':
                 item_probs = scipy.stats.powerlaw.pdf(item_idx, 1, scale=num_items, loc=-1)
-        # Normalize the item probabilities to convert from continuous to discrete distributions.
-        item_probs /= item_probs.sum()
-        idx_1d = self._init_random.choice(num_users * num_items, self._num_init_ratings,
-                                          replace=False,
-                                          p=np.outer(self._user_prob, item_probs).flatten())
-        user_ids = idx_1d // num_items
-        item_ids = idx_1d % num_items
+            # Normalize the item probabilities to convert from continuous to discrete distributions.
+            item_probs /= item_probs.sum()
+            idx_1d = self._init_random.choice(num_users * num_items, self._num_init_ratings,
+                                              replace=False,
+                                              p=np.outer(self._user_prob, item_probs).flatten())
+            user_ids = idx_1d // num_items
+            item_ids = idx_1d % num_items
         else:
             user_ids, item_ids = zip(*self._initial_sampling)
 

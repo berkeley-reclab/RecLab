@@ -207,21 +207,24 @@ class DictEnvironment(Environment):
         self._dense_ratings = None
 
 
-        # Fill the rating dict with initial data.
-        if self._initial_sampling == 'uniform':
-            idx_1d = self._init_random.choice(num_users * num_items, self._num_init_ratings,
-                                              replace=False,
-                                              p=np.repeat(self._user_prob, num_items) / num_items)
-            user_ids = idx_1d // num_items
-            item_ids = idx_1d % num_items
-        elif self._initial_sampling == 'powerlaw':
-            ranked_items = np.random.permutation(num_items)
-            user_probs = power_func(num_users, scaling=1.0)
-            item_probs = power_func(num_items, scaling=1.0)
-
+        # Sample initial observed user-item pairs.
+        if isinstance(self._initial_sampling, str):
+            item_idx = np.random.permutation(num_items)
+            if self._initial_sampling == 'uniform':
+                item_probs = 1.0 / num_items
+            elif self._initial_sampling == 'powerlaw':
+                item_probs = scipy.stats.powerlaw.pdf(item_idx, 1, scale=num_items, loc=-1)
+        # Normalize the item probabilities to convert from continuous to discrete distributions.
+        item_probs /= item_probs.sum()
+        idx_1d = self._init_random.choice(num_users * num_items, self._num_init_ratings,
+                                          replace=False,
+                                          p=np.outer(self._user_prob, item_probs).flatten())
+        user_ids = idx_1d // num_items
+        item_ids = idx_1d % num_items
         else:
             user_ids, item_ids = zip(*self._initial_sampling)
 
+        # Fill the rating dict with initial data.
         self._ratings = {}
         for user_id, item_id in zip(user_ids, item_ids):
             # TODO: This is a hack, but I don't think we should necessarily put the burden
@@ -496,7 +499,7 @@ class DictEnvironment(Environment):
         elif dist_choice == 'lognormal':
             user_dist = scipy.stats.lognorm.pdf(idx, 1, scale=num_users / 7, loc=-1)
         elif dist_choice == 'powerlaw':
-            user_dist = scipy.stats.powerlaw.pdf(idx, 1, scale=num_users / 1e4, loc=-1)
+            user_dist = scipy.stats.powerlaw.pdf(idx, 1, scale=num_users, loc=-1)
         else:
             raise ValueError('user distribution name not recognized')
 

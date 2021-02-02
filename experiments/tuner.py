@@ -1,4 +1,5 @@
 """Implements ModelTuner, a class that automatically tunes a model's hyperparameters."""
+import collections
 import datetime
 import os
 
@@ -144,10 +145,20 @@ class ModelTuner:
                             dcg += relevance / np.log2(rank+1)
                     return dcg
 
-                cutoff = int(len(true_ratings) / 5)
-                idcg = get_dcg(get_ranks(true_ratings), true_ratings, cutoff=cutoff)
-                dcg = get_dcg(get_ranks(predicted_ratings), true_ratings, cutoff=cutoff)
-                ndcg = dcg / idcg
+                cutoff = 20
+                user_true = collections.defaultdict(list)
+                user_predicted = collections.defaultdict(list)
+                for i in range(len(ratings_to_predict)):
+                    user_id = ratings_to_predict[i][0]
+                    user_true[user_id].append(true_ratings[i])
+                    user_predicted[user_id].append(predicted_ratings[i])
+                ndcgs = []
+                for user_id in user_true:
+                    idcg = get_dcg(get_ranks(user_true[user_id]), user_true[user_id], cutoff=cutoff)
+                    dcg = get_dcg(get_ranks(user_predicted[user_id]), user_true[user_id], cutoff=cutoff)
+                    ndcg = dcg / idcg
+                    ndcgs.append(ndcg)
+                ndcg = np.mean(ndcgs)
                 if self.verbose:
                     print('dcg={}, ndcg={}'.format(dcg, ndcg))
                 metrics.append(ndcg)

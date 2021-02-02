@@ -213,7 +213,13 @@ class DictEnvironment(Environment):
             if self._initial_sampling == 'uniform':
                 item_probs = np.ones(num_items) / num_items
             elif self._initial_sampling == 'powerlaw':
-                item_probs = scipy.stats.powerlaw.pdf(item_idx, 1, scale=num_items, loc=-1)
+                # Sample according to a powerlaw-like beta distribution,
+                # parameters were fit to MovieLens 100k.
+                item_probs = scipy.stats.beta.pdf(item_idx,
+                                                  a=0.75431,
+                                                  b=3.22225,
+                                                  loc=-1,
+                                                  scale=num_items + 1)
             # Normalize the item probabilities to convert from continuous to discrete distributions.
             item_probs /= item_probs.sum()
             idx_1d = self._init_random.choice(num_users * num_items, self._num_init_ratings,
@@ -499,7 +505,13 @@ class DictEnvironment(Environment):
         elif dist_choice == 'lognormal':
             user_dist = scipy.stats.lognorm.pdf(idx, 1, scale=num_users / 7, loc=-1)
         elif dist_choice == 'powerlaw':
-            user_dist = scipy.stats.powerlaw.pdf(idx, 1, scale=num_users, loc=-1)
+            # Sample according to a powerlaw-like beta distribution,
+            # parameters were fit to MovieLens 100k.
+            user_dist = scipy.stats.beta.pdf(idx,
+                                             a=0.70384,
+                                             b=1.83271,
+                                             loc=-1,
+                                             scale=num_users + 1)
         else:
             raise ValueError('user distribution name not recognized')
 

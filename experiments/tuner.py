@@ -69,15 +69,14 @@ class ModelTuner:
         self.overwrite = overwrite
         self.num_evaluations = 0
         self.use_mse = use_mse
-
-        if bucket_name is not None:
+        self.bucket_name = bucket_name
+        if self.bucket_name is not None:
             if self.data_dir is None:
                 raise ValueError('data_dir can not be None when bucket_name is not None.')
             if self.environment_name is None:
                 raise ValueError('environment_name can not be None when bucket_name is not None.')
             if self.recommender_name is None:
                 raise ValueError('recommender_name can not be None when bucket_name is not None.')
-            self.bucket_name = bucket_name
 
         self._generate_n_folds(n_fold)
 

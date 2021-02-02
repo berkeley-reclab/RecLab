@@ -80,7 +80,8 @@ def test_topics_shift():
                  user_dist_choice='uniform',
                  shift_steps=2,
                  shift_frequency=1,
-                 shift_weight=0.5)
+                 shift_weight=0.5,
+                 user_bias_type='normal')
 
     _test_dimension_consistency(env)
     env.reset()

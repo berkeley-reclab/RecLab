@@ -2,7 +2,9 @@
 import collections
 import copy
 
+import deepdish as dd
 import numpy as np
+import scipy.stats
 import tqdm.autonotebook
 
 import s3
@@ -21,6 +23,65 @@ def get_env_dataset(environment):
     """
     environment.seed((INIT_SEED, 0))
     return environment.reset()
+
+
+def sample_ratings(environment, low_ratings):
+    if low_ratings:
+        name = 'dataset-low'
+    else:
+        name = 'dataset-high'
+    try:
+        j = dd.io.load(name)
+        return j['users'], j['items'], j['ratings']
+    except:
+        pass
+    num_users = environment._num_users
+    num_items = environment._num_items
+    environment.seed((INIT_SEED, 0))
+    num_init_ratings = environment._num_init_ratings
+    environment._num_init_ratings = num_users * num_items
+    users, items, ratings = environment.reset()
+
+    # Turn all ratings into a numpy array.
+    all_ratings = np.zeros((num_users, num_items))
+    excluded = set()
+    for user_id, item_id in ratings:
+        rating = ratings[user_id, item_id][0]
+        all_ratings[user_id, item_id] = ratings[user_id, item_id][0]
+
+    # Compute the rating probabilities (fit to MovieLens 100k).
+    rating_probs = scipy.stats.beta.pdf(all_ratings,
+                                        a=3.60948,
+                                        b=2.57175,
+                                        loc=0,
+                                        scale=6)
+    if low_ratings:
+        rating_probs = 1.0 - rating_probs
+    user_probs = scipy.stats.beta.pdf(np.arange(num_users),
+                                      a=0.70384,
+                                      b=1.83271,
+                                      loc=-1,
+                                      scale=num_users + 1)
+    rating_probs /= rating_probs.sum(axis=1)[:, np.newaxis]
+    user_probs /= user_probs.sum()
+    rating_probs *= user_probs[:, np.newaxis]
+
+    # Sample the user-item pairs we want.
+    random_state = np.random.RandomState()
+    idx_1d = random_state.choice(num_users * num_items,
+                                 num_init_ratings,
+                                 replace=False,
+                                 p=rating_probs.flatten())
+    user_ids = idx_1d // num_items
+    item_ids = idx_1d % num_items
+
+    final_ratings = {}
+    for user_id, item_id in zip(user_ids, item_ids):
+        final_ratings[user_id, item_id] = ratings[user_id, item_id]
+
+    dd.io.save(name, {'users': users, 'items': items, 'ratings': final_ratings})
+
+    return users, items, final_ratings
 
 
 def run_env_experiment(environments,

@@ -30,7 +30,7 @@ class TopPop(recommender.PredictRecommender):
         summed_item_ratings = self._ratings.sum(0)
         num_times_rated = binary_ratings.sum(0)
 
-        item_vector = -np.inf * np.ones(num_times_rated.shape)
+        item_vector = np.mean(self._ratings) * np.ones(num_times_rated.shape)
         idx_rated = np.where(num_times_rated > 0)
         item_vector[idx_rated] = summed_item_ratings[idx_rated] / num_times_rated[idx_rated]
 

@@ -18,6 +18,19 @@ NAMED_ENV_DICT = {
              boredom_threshold=0,
              boredom_penalty=0)
     ),
+    'topics-static-v1-small': (
+        Topics,
+        dict(num_topics=19,
+             num_users=100,
+             num_items=170,
+             rating_frequency=0.2,
+             num_init_ratings=5000,
+             noise=0.5,
+             topic_change=0,
+             memory_length=0,
+             boredom_threshold=0,
+             boredom_penalty=0)
+    ),
     'topics-dynamic-v1': (
         Topics,
         dict(num_topics=19,

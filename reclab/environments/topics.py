@@ -210,7 +210,6 @@ class Topics(environment.DictEnvironment):
                 self._shift_weight * self._user_preferences[shifted_users] +
                 (1 - self._shift_weight) * new_preferences)
 
-            print(shifted_users, self._shift_weight, new_user_biases)
             self._user_biases[shifted_users] = (
                 self._shift_weight * self._user_biases[shifted_users] +
                 (1 - self._shift_weight) * new_user_biases[shifted_users])

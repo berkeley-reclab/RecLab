@@ -55,7 +55,7 @@ class BetaRank(environment.DictEnvironment):
 
     def _rate_items(self, user_id, item_ids):  # noqa: D102
         # Compute the user's known values for each items and sort them accordingly.
-        means = self._item_preferences[item_ids] @ self._user_preferences[user_id]
+        means = self._item_preferences[item_ids] @ self._user_preferences[user_id].T
         values = self._beta_prime(means)
         known = self._beta_prime(self._known_mean, size=len(item_ids))
         sorted_idxs = reversed(
@@ -75,6 +75,6 @@ class BetaRank(environment.DictEnvironment):
         return ratings
 
     def _beta_prime(self, mean, std_dev=1e-5, size=None):
-        alpha = ((1 - mean) / std_dev ** 2 - 1 / mean) * mean ** 2
+        alpha = ((1 - mean) / std_dev ** 2 - 1 / mean) * mean ** 2 + 1e-6
         beta = alpha * (1 / mean - 1)
         return self._dynamics_random.beta(alpha, beta, size=size)

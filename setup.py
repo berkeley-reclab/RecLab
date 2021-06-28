@@ -3,12 +3,12 @@ from setuptools import find_packages, setup
 
 setup(
     name='RecLab',
-    version='0.1.1',
+    version='0.1.2',
     author='Karl Krauth',
     author_email='karl.krauth@gmail.com',
     description='A simulation framework for recommender systems.',
     license='MIT',
-    download_url= 'https://github.com/berkeley-reclab/RecLab/archive/v0.1.1.tar.gz',
+    download_url= 'https://github.com/berkeley-reclab/RecLab/archive/v0.1.2.tar.gz',
     packages=find_packages(),
     include_package_data=True,
     url='https://berkeley-reclab.github.io/',

@@ -47,6 +47,12 @@ class Topics(environment.DictEnvironment):
         penalty.
     boredom_penalty : float
         The penalty on the rating when a user is bored
+    satiation_factor: float
+        The extent to which satiation affects user ratings.
+    satiation_decay: float
+        A number between 0 and 1 that indicates how quickly satiation decays.
+    satiation_noise: float
+        The standard deviation of the noise influencing satiation at each timestep.
     user_dist_choice : str
         The choice of user distribution for selecting online users. By default, the subset of
         online users is chosen from a uniform distribution. Currently supports normal and lognormal.
@@ -84,6 +90,9 @@ class Topics(environment.DictEnvironment):
                  memory_length=0,
                  boredom_threshold=0,
                  boredom_penalty=0.0,
+                 satiation_factor=0.0,
+                 satiation_decay=0.0,
+                 satiation_noise=0.0,
                  user_dist_choice='uniform',
                  initial_sampling='uniform',
                  shift_steps=1,
@@ -106,6 +115,10 @@ class Topics(environment.DictEnvironment):
         self._item_topics = None
         self._boredom_threshold = boredom_threshold
         self._boredom_penalty = boredom_penalty
+        self._satiation_factor = satiation_factor
+        self._satiation_decay = satiation_decay
+        self._satiation_noise = satiation_noise
+        self._satiations = None
         self._shift_steps = shift_steps
         self._shift_frequency = shift_frequency
         self._shift_weight = shift_weight
@@ -124,6 +137,7 @@ class Topics(environment.DictEnvironment):
         for item_id in range(self._num_items):
             topic = self._item_topics[item_id]
             ratings[:, item_id] = (self._user_preferences[:, topic] +
+                                   self._satiation_factor * self._satiations[:, topic] +
                                    np.full((self._num_users), self._item_biases[item_id]) +
                                    self._user_biases + np.full((self._num_users), self._offset))
 
@@ -139,8 +153,9 @@ class Topics(environment.DictEnvironment):
 
     def _get_rating(self, user_id, item_id):  # noqa: D102
         topic = self._item_topics[item_id]
-        rating = (self._user_preferences[user_id, topic] + self._user_biases[user_id] +
-                  self._item_biases[item_id] + self._offset)
+        rating = (self._user_preferences[user_id, topic] +
+                  self._satiation_factor * self._satiations[user_id, topic] +
+                  self._user_biases[user_id] + self._item_biases[item_id] + self._offset)
         recent_topics = [self._item_topics[item] for item in self._user_histories[user_id]]
         if recent_topics.count(topic) > self._boredom_threshold:
             rating -= self._boredom_penalty
@@ -151,8 +166,15 @@ class Topics(environment.DictEnvironment):
         # TODO: Add support for slates of size greater than 1.
         item_id = [item_ids[0]]
         rating = self._get_rating(user_id, item_id)
-        # Updating underlying preference
         topic = self._item_topics[item_id]
+
+        # Update satiation.
+        recommended = np.zeros(self._num_topics)
+        recommended[topic] = 1
+        self._satiations = (self._satiation_decay * (self._satiations + recommended) +
+                            np.random.randn(self._num_topics) * self._satiation_noise)
+
+        # Update underlying preference.
         preference = self._user_preferences[user_id, topic]
         if preference <= 5:
             self._user_preferences[user_id, topic] += self._topic_change
@@ -181,6 +203,7 @@ class Topics(environment.DictEnvironment):
             print('Item bias distribution is not supported')
 
         self._offset = 0
+        self._satiations = np.zeros((self._num_users, self._num_topics))
         self._user_preferences = self._init_random.uniform(low=0.5, high=5.5,
                                                            size=(self._num_users, self._num_topics))
         self._item_topics = self._init_random.choice(self._num_topics, size=self._num_items)

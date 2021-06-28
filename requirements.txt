@@ -62,7 +62,7 @@ threadpoolctl==2.1.0
 toml==0.10.1
 torch==1.5.1
 typed-ast==1.4.1
-urllib3==1.25.9
+urllib3==1.26.5
 wcwidth==0.2.5
 Werkzeug==1.0.1
 wpyfm==0.1.9

@@ -157,6 +157,8 @@ class Topics(environment.DictEnvironment):
                   self._satiation_factor * self._satiations[user_id, topic] +
                   self._user_biases[user_id] + self._item_biases[item_id] + self._offset)
         recent_topics = [self._item_topics[item] for item in self._user_histories[user_id]]
+        if len(recent_topics) > 0:
+            recent_topics = list(np.concatenate(recent_topics))
         if recent_topics.count(topic) > self._boredom_threshold:
             rating -= self._boredom_penalty
         rating = np.clip(rating + self._dynamics_random.randn() * self._noise, 1, 5)
@@ -181,6 +183,7 @@ class Topics(environment.DictEnvironment):
             not_topic = np.arange(self._num_topics) != topic
             self._user_preferences[user_id, not_topic] -= (
                 self._topic_change / (self._num_topics - 1))
+
         return rating
 
     def _reset_state(self):  # noqa: D102

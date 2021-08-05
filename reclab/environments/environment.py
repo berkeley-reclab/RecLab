@@ -156,8 +156,14 @@ class DictEnvironment(Environment):
 
     """
 
-    def __init__(self, rating_frequency=0.02, num_init_ratings=0, memory_length=0,
-                 user_dist_choice='uniform', initial_sampling='uniform'):
+    def __init__(
+        self,
+        rating_frequency=0.02,
+        num_init_ratings=0,
+        memory_length=0,
+        user_dist_choice="uniform",
+        initial_sampling="uniform",
+    ):
         """Create a new DictEnvironment."""
         self._timestep = -1
         # The RandomState to use while initializing the environment.
@@ -206,29 +212,34 @@ class DictEnvironment(Environment):
         # We will lazily compute dense ratings.
         self._dense_ratings = None
 
-
         # Sample initial observed user-item pairs.
         if isinstance(self._initial_sampling, str):
             item_idx = np.random.permutation(num_items)
-            if self._initial_sampling == 'uniform':
+            if self._initial_sampling == "uniform":
                 item_probs = np.ones(num_items) / num_items
-            elif self._initial_sampling == 'powerlaw':
+            elif self._initial_sampling == "powerlaw":
                 # Sample according to a powerlaw-like beta distribution,
                 # parameters were fit to MovieLens 100k.
-                item_probs = scipy.stats.beta.pdf(item_idx,
-                                                  a=0.75431,
-                                                  b=3.22225,
-                                                  loc=-1,
-                                                  scale=num_items + 1)
+                item_probs = scipy.stats.beta.pdf(
+                    item_idx, a=0.75431, b=3.22225, loc=-1, scale=num_items + 1
+                )
             # Normalize the item probabilities to convert from continuous to discrete distributions.
             item_probs /= item_probs.sum()
-            idx_1d = self._init_random.choice(num_users * num_items, self._num_init_ratings,
-                                              replace=False,
-                                              p=np.outer(self._user_prob, item_probs).flatten())
+            idx_1d = self._init_random.choice(
+                num_users * num_items,
+                self._num_init_ratings,
+                replace=False,
+                p=np.outer(self._user_prob, item_probs).flatten(),
+            )
             user_ids = idx_1d // num_items
             item_ids = idx_1d % num_items
         else:
-            user_ids, item_ids = zip(*self._initial_sampling)
+            if len(self._initial_sampling) > 0:
+                user_ids, item_ids = zip(*self._initial_sampling)
+            else:
+                user_ids, item_ids = [], []
+
+            user_ids, item_ids = np.array(user_ids), np.array(item_ids)
 
         # Fill the rating dict with initial data.
         self._ratings = {}
@@ -239,8 +250,10 @@ class DictEnvironment(Environment):
             # than doing this though.
             temp_random = self._dynamics_random
             self._dynamics_random = self._init_random
-            self._ratings[user_id, item_id] = (self._rate_items(user_id, np.array([item_id]))[0],
-                                               self._rating_context(user_id))
+            self._ratings[user_id, item_id] = (
+                self._rate_items(user_id, np.array([item_id]))[0],
+                self._rating_context(user_id),
+            )
             self._dynamics_random = temp_random
 
         # Finally, set the users that will be online for the first step.
@@ -298,9 +311,7 @@ class DictEnvironment(Environment):
         self._ratings.update(ratings)
 
         # Create the info dict.
-        info = {'users': self._users,
-                'items': self._items,
-                'ratings': self._ratings}
+        info = {"users": self._users, "items": self._items, "ratings": self._ratings}
 
         # Update the user and item state.
         new_users, new_items = self._update_state()
@@ -498,22 +509,22 @@ class DictEnvironment(Environment):
         num_users = len(self._users)
 
         idx = np.random.permutation(num_users)
-        if dist_choice == 'uniform':
+        if dist_choice == "uniform":
             user_dist = np.ones(num_users) / num_users
-        elif dist_choice == 'norm':
-            user_dist  = scipy.stats.norm.pdf(idx[i], scale=num_users / 7, loc=num_users / 2)
-        elif dist_choice == 'lognormal':
+        elif dist_choice == "norm":
+            user_dist = scipy.stats.norm.pdf(
+                idx[i], scale=num_users / 7, loc=num_users / 2
+            )
+        elif dist_choice == "lognormal":
             user_dist = scipy.stats.lognorm.pdf(idx, 1, scale=num_users / 7, loc=-1)
-        elif dist_choice == 'powerlaw':
+        elif dist_choice == "powerlaw":
             # Sample according to a powerlaw-like beta distribution,
             # parameters were fit to MovieLens 100k.
-            user_dist = scipy.stats.beta.pdf(idx,
-                                             a=0.70384,
-                                             b=1.83271,
-                                             loc=-1,
-                                             scale=num_users + 1)
+            user_dist = scipy.stats.beta.pdf(
+                idx, a=0.70384, b=1.83271, loc=-1, scale=num_users + 1
+            )
         else:
-            raise ValueError('user distribution name not recognized')
+            raise ValueError("user distribution name not recognized")
 
         # Normalize user_dist to convert from continuous to discrete distributions.
         user_dist /= user_dist.sum()
@@ -530,5 +541,6 @@ class DictEnvironment(Environment):
         """
         user_ids = list(self._users.keys())
         num_online = int(self._rating_frequency * len(self._users))
-        return self._dynamics_random.choice(user_ids, size=num_online,
-                                            replace=False, p=self._user_prob)
+        return self._dynamics_random.choice(
+            user_ids, size=num_online, replace=False, p=self._user_prob
+        )

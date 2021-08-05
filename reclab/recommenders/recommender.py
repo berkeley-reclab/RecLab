@@ -95,6 +95,8 @@ class PredictRecommender(Recommender):
 
     Parameters
     ----------
+    exclude: iterable, optional
+        The set of user-item pairs to never recommend.
     strategy_dict : dict, optional
         The item selection strategy to use.
         Valid strategies are:
@@ -106,7 +108,7 @@ class PredictRecommender(Recommender):
 
     """
 
-    def __init__(self, **strategy_dict):
+    def __init__(self, exclude=None, **strategy_dict):
         """Create a new PredictRecommender object."""
         # The features associated with each user.
         self._users = []
@@ -129,6 +131,8 @@ class PredictRecommender(Recommender):
         # The cached dense predictions, reset to None each time update is called.
         self._dense_predictions = None
         self._hyperparameters = self._strategy_dict
+        self._exclude = exclude
+        self._exclude_dict = None
 
     @property
     def hyperparameters(self):
@@ -244,6 +248,14 @@ class PredictRecommender(Recommender):
                 assert inner_uid < len(self._users)
                 assert inner_iid < len(self._items)
 
+        # Initialize the exclude dict.
+        self._exclude_dict = collections.defaultdict(list)
+        if self._exclude is not None:
+            for user_id, item_id in self._exclude:
+                inner_uid = self._outer_to_inner_uid[user_id]
+                inner_iid = self._outer_to_inner_iid[item_id]
+                self._exclude_dict[inner_uid].append(inner_iid)
+
     def recommend(self, user_contexts, num_recommendations):
         """Recommend items to users.
 
@@ -275,6 +287,7 @@ class PredictRecommender(Recommender):
             inner_uid = self._outer_to_inner_uid[user_id]
             item_ids = self._ratings[inner_uid].nonzero()[1]
             item_ids = np.setdiff1d(np.arange(len(self._items)), item_ids)
+            item_ids = np.setdiff1d(item_ids, self._exclude_dict[inner_uid])
             user_ids = inner_uid * np.ones(len(item_ids), dtype=np.int)
             contexts = len(item_ids) * [user_contexts[user_id]]
             ratings_to_predict += list(zip(user_ids, item_ids, contexts))
@@ -295,9 +308,10 @@ class PredictRecommender(Recommender):
         # Pick items according to the strategy, along with their predicted ratings.
         all_recs = []
         all_predicted_ratings = []
-        # TODO: Right now items with the same ratings will be sorted in a deterministic order.
-        # This probably shouldn't be the case.
         for item_ids, predictions in zip(all_item_ids, all_predictions):
+            perm = np.random.permutation(len(item_ids))
+            item_ids = item_ids[perm]
+            predictions = predictions[perm]
             recs, predicted_ratings = self._select_item(item_ids, predictions,
                                                         num_recommendations)
             # Convert the recommendations to outer item ids.

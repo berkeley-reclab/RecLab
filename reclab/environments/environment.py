@@ -311,7 +311,8 @@ class DictEnvironment(Environment):
         self._ratings.update(ratings)
 
         # Create the info dict.
-        info = {"users": self._users, "items": self._items, "ratings": self._ratings}
+        info = {"users": self._users,
+                "items": self._items, "ratings": self._ratings}
 
         # Update the user and item state.
         new_users, new_items = self._update_state()
@@ -516,7 +517,8 @@ class DictEnvironment(Environment):
                 idx[i], scale=num_users / 7, loc=num_users / 2
             )
         elif dist_choice == "lognormal":
-            user_dist = scipy.stats.lognorm.pdf(idx, 1, scale=num_users / 7, loc=-1)
+            user_dist = scipy.stats.lognorm.pdf(
+                idx, 1, scale=num_users / 7, loc=-1)
         elif dist_choice == "powerlaw":
             # Sample according to a powerlaw-like beta distribution,
             # parameters were fit to MovieLens 100k.

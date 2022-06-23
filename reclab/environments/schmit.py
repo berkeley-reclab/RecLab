@@ -112,12 +112,16 @@ class Schmit(environment.DictEnvironment):
         self.item_bias = self._init_random.randn(self._num_items, 1) / 1.5
         self.user_bias = self._init_random.randn(self._num_users, 1) / 3
 
-        self.U = self._init_random.randn(self._num_users, self.rank) / np.sqrt(self.rank)
-        self.V = self._init_random.randn(self._num_items, self.rank) / np.sqrt(self.rank)
-        self.X = self._init_random.randn(self._num_users, self.rank) / np.sqrt(self.rank)
-        self.Y = self._init_random.randn(self._num_items, self.rank) / np.sqrt(self.rank)
+        self.U = self._init_random.randn(
+            self._num_users, self.rank) / np.sqrt(self.rank)
+        self.V = self._init_random.randn(
+            self._num_items, self.rank) / np.sqrt(self.rank)
+        self.X = self._init_random.randn(
+            self._num_users, self.rank) / np.sqrt(self.rank)
+        self.Y = self._init_random.randn(
+            self._num_items, self.rank) / np.sqrt(self.rank)
 
-    def _rate_item(self, user_id, item_id):
+    def _rate_items(self, user_id, item_id):
         return self.value(user_id, item_id)
 
     def _get_dense_ratings(self):
@@ -135,5 +139,6 @@ class Schmit(environment.DictEnvironment):
         dense_ratings = np.zeros([self._num_users, self._num_items])
         for u in range(self._num_users):
             for i in range(self._num_items):
-                dense_ratings[u, i] = self.true_score(u, i) + self.X[u] @ self.Y[i].T + 3
+                dense_ratings[u, i] = self.true_score(
+                    u, i) + self.X[u] @ self.Y[i].T + 3
         return dense_ratings

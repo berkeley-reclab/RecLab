@@ -143,11 +143,14 @@ class Topics(environment.DictEnvironment):
 
         # Account for boredom.
         for user_id in range(self._num_users):
-            recent_topics = [self._item_topics[item] for item in self._user_histories[user_id]]
-            recent_topics, counts = np.unique(recent_topics, return_counts=True)
+            recent_topics = [self._item_topics[item]
+                             for item in self._user_histories[user_id]]
+            recent_topics, counts = np.unique(
+                recent_topics, return_counts=True)
             recent_topics = recent_topics[counts > self._boredom_threshold]
             for topic_id in recent_topics:
-                ratings[user_id, self._item_topics == topic_id] -= self._boredom_penalty
+                ratings[user_id, self._item_topics ==
+                        topic_id] -= self._boredom_penalty
 
         return ratings
 
@@ -156,12 +159,14 @@ class Topics(environment.DictEnvironment):
         rating = (self._user_preferences[user_id, topic] +
                   self._satiation_factor * self._satiations[user_id, topic] +
                   self._user_biases[user_id] + self._item_biases[item_id] + self._offset)
-        recent_topics = [self._item_topics[item] for item in self._user_histories[user_id]]
+        recent_topics = [self._item_topics[item]
+                         for item in self._user_histories[user_id]]
         if len(recent_topics) > 0:
             recent_topics = list(np.concatenate(recent_topics))
         if recent_topics.count(topic) > self._boredom_threshold:
             rating -= self._boredom_penalty
-        rating = np.clip(rating + self._dynamics_random.randn() * self._noise, 1, 5)
+        rating = np.clip(rating + self._dynamics_random.randn()
+                         * self._noise, 1, 5)
         return rating
 
     def _rate_items(self, user_id, item_ids):  # noqa: D102
@@ -175,6 +180,7 @@ class Topics(environment.DictEnvironment):
         recommended[topic] = 1
         self._satiations = (self._satiation_decay * (self._satiations + recommended) +
                             np.random.randn(self._num_topics) * self._satiation_noise)
+        # print(self._satiations)
 
         # Update underlying preference.
         preference = self._user_preferences[user_id, topic]
@@ -183,23 +189,28 @@ class Topics(environment.DictEnvironment):
             not_topic = np.arange(self._num_topics) != topic
             self._user_preferences[user_id, not_topic] -= (
                 self._topic_change / (self._num_topics - 1))
-
+        print(str(user_id) + "\t" + str(item_id[0]) +
+              "\t" + str(topic[0]) + "\t" + str(rating[0]) + "\t" + str(self._satiations[user_id][0]))
         return rating
 
     def _reset_state(self):  # noqa: D102
         if self._user_bias_type == 'normal':
-            self._user_biases = self._init_random.normal(loc=0., scale=0.5, size=self._num_users)
+            self._user_biases = self._init_random.normal(
+                loc=0., scale=0.5, size=self._num_users)
         elif self._user_bias_type == 'power':
-            self._user_biases = 1 - self._init_random.power(5, size=self._num_users)
+            self._user_biases = 1 - \
+                self._init_random.power(5, size=self._num_users)
         elif self._user_bias_type == 'none':
             self._user_biases = np.zeros(self._num_users)
         else:
             print('User bias distribution is not supported')
 
         if self._item_bias_type == 'normal':
-            self._item_biases = self._init_random.normal(loc=0., scale=0.5, size=self._num_items)
+            self._item_biases = self._init_random.normal(
+                loc=0., scale=0.5, size=self._num_items)
         elif self._item_bias_type == 'power':
-            self._item_biases = 1 - self._init_random.power(5, size=self._num_users)
+            self._item_biases = 1 - \
+                self._init_random.power(5, size=self._num_users)
         elif self._item_bias_type == 'none':
             self._item_biases = np.zeros(self._num_items)
         else:
@@ -209,7 +220,8 @@ class Topics(environment.DictEnvironment):
         self._satiations = np.zeros((self._num_users, self._num_topics))
         self._user_preferences = self._init_random.uniform(low=0.5, high=5.5,
                                                            size=(self._num_users, self._num_topics))
-        self._item_topics = self._init_random.choice(self._num_topics, size=self._num_items)
+        self._item_topics = self._init_random.choice(
+            self._num_topics, size=self._num_items)
         self._users = collections.OrderedDict((user_id, np.zeros(0))
                                               for user_id in range(self._num_users))
         self._items = collections.OrderedDict((item_id, np.zeros(0))
@@ -226,7 +238,8 @@ class Topics(environment.DictEnvironment):
                 new_user_biases = self._init_random.normal(loc=0, scale=0.5,
                                                            size=len(shifted_users))
             elif self._user_bias_type == 'power':
-                new_user_biases = 1 - self._init_random.power(5, size=len(shifted_users))
+                new_user_biases = 1 - \
+                    self._init_random.power(5, size=len(shifted_users))
             elif self._user_bias_type == 'none':
                 new_user_biases = np.zeros(self._num_users)
             else:

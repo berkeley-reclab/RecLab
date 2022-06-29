@@ -115,8 +115,10 @@ class LibFM(recommender.PredictRecommender):
         self._train_data = wpyfm.Data(rating_inputs, rating_outputs, has_xt=self._has_xt)
         super().reset(users, items, ratings)
 
-    def update(self, users=None, items=None, ratings=None):  # noqa: D102
+    def update(self, users=None, items=None, ratings=None, retrain=True):  # noqa: D102
         super().update(users, items, ratings)
+        self._retrain = retrain
+
         if ratings is not None:
             data = []
             row_col = [[], []]
@@ -191,10 +193,11 @@ class LibFM(recommender.PredictRecommender):
                                               shape=(len(user_item), self._num_features))
         test_data = wpyfm.Data(test_inputs, np.zeros(test_inputs.shape[0]), has_xt=self._has_xt)
 
-        if self._has_xt:
-            self._model.train(self._train_data, test=test_data)
-        else:
-            self._model.train(self._train_data)
+        if self._retrain:
+            if self._has_xt:
+                self._model.train(self._train_data, test=test_data)
+            else:
+                self._model.train(self._train_data)
         predictions = self._model.predict(test_data)
 
         return predictions

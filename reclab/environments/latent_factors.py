@@ -214,7 +214,7 @@ class DatasetLatentFactor(LatentFactorBehavior):
                  max_num_users=np.inf, max_num_items=np.inf, **kwargs):
         """Create a ML100K Latent Factor environment."""
         self.dataset_name = name
-        modelpath = os.path.join(os.path.dirname(__file__), '../../models')
+        modelpath = datapath
         if name == 'ml-100k':
             self.datapath = os.path.expanduser(os.path.join(datapath, 'ml-100k'))
             self.modelpath = os.path.join(modelpath, 'ml-100k')

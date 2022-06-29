@@ -10,7 +10,7 @@ import scipy.sparse
 
 DATA_DIR = os.environ.get('RECLAB_DATA_PATH')
 if DATA_DIR is None:
-    DATA_DIR = os.path.expanduser('~/recsys/data/')
+    DATA_DIR = os.path.dirname(__file__)
 
 def read_dataset(name, shuffle=True, seed=0):
     """Read a dataset as specified by name.

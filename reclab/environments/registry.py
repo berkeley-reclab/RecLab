@@ -105,13 +105,13 @@ NAMED_ENV_DICT = {
     ),
     'beta-rank-v1': (
         BetaRank,
-        dict(num_users=1000,
-             num_items=1700,
-             num_topics=19,
-             rating_frequency=0.2,
-             num_init_ratings=100000,
-             known_weight=0.98,
-             beta_var=1e-05)
+        dict(
+            dimension=19,
+            num_users=1000,
+            num_items=1700,
+            rating_frequency=0.2,
+            num_init_ratings=100000,
+            known_mean=0.98)
     ),
 }
 

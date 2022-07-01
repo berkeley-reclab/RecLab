@@ -134,6 +134,7 @@ class Topics(environment.DictEnvironment):
 
     def _get_dense_ratings(self):  # noqa: D102
         ratings = np.zeros([self._num_users, self._num_items])
+        print(self._satiations)
         for item_id in range(self._num_items):
             topic = self._item_topics[item_id]
             ratings[:, item_id] = (self._user_preferences[:, topic] +
@@ -174,12 +175,13 @@ class Topics(environment.DictEnvironment):
         item_id = [item_ids[0]]
         rating = self._get_rating(user_id, item_id)
         topic = self._item_topics[item_id]
+        curr_sat = self._satiations[user_id][0]
 
         # Update satiation.
         recommended = np.zeros(self._num_topics)
         recommended[topic] = 1
-        self._satiations = (self._satiation_decay * (self._satiations + recommended) +
-                            np.random.randn(self._num_topics) * self._satiation_noise)
+        self._satiations[user_id] = (self._satiation_decay * (self._satiations[user_id] + recommended) +
+                                     np.random.randn(self._num_topics) * self._satiation_noise)
         # print(self._satiations)
 
         # Update underlying preference.
@@ -189,8 +191,9 @@ class Topics(environment.DictEnvironment):
             not_topic = np.arange(self._num_topics) != topic
             self._user_preferences[user_id, not_topic] -= (
                 self._topic_change / (self._num_topics - 1))
+
         print(str(user_id) + "\t" + str(item_id[0]) +
-              "\t" + str(topic[0]) + "\t" + str(rating[0]) + "\t" + str(self._satiations[user_id][0]))
+              "\t" + str(topic[0]) + "\t" + str(rating[0]) + "\t" + str(curr_sat))
         return rating
 
     def _reset_state(self):  # noqa: D102

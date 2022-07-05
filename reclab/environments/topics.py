@@ -174,7 +174,6 @@ class Topics(environment.DictEnvironment):
         item_id = [item_ids[0]]
         rating = self._get_rating(user_id, item_id)
         topic = self._item_topics[item_id]
-        curr_sat = self._satiations[user_id][0]
 
         # Update satiation.
         recommended = np.zeros(self._num_topics)

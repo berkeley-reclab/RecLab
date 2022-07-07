@@ -2,7 +2,7 @@
 from keras.layers import Input, Dropout, Lambda, add
 from keras.models import Model
 import keras.regularizers
-from keras.optimizers import Adam
+from tensorflow.keras.optimizers import Adam
 import numpy as np
 
 from .cfnade_lib.nade import NADE

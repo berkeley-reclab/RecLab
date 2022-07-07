@@ -243,6 +243,7 @@ class DictEnvironment(Environment):
 
         # Fill the rating dict with initial data.
         self._ratings = {}
+        self._rated_items = collections.defaultdict(set)
         for user_id, item_id in zip(user_ids, item_ids):
             # TODO: This is a hack, but I don't think we should necessarily put the burden
             # of having to implement a version of _rate_item that knows whether it's being called
@@ -255,6 +256,7 @@ class DictEnvironment(Environment):
                 self._rating_context(user_id),
             )
             self._dynamics_random = temp_random
+            self._rated_items[user_id].add(item_id)
 
         # Finally, set the users that will be online for the first step.
         self._online_users = self._select_online_users()
@@ -303,6 +305,7 @@ class DictEnvironment(Environment):
                 # If a rating is NaN the user did not rate the item.
                 if not np.isnan(rating):
                     ratings[user_id, item_id] = (rating, user_context)
+                    self._rated_items[user_id].add(item_id)
             self._user_histories[user_id].append(item_ids)
             if len(self._user_histories[user_id]) == self._memory_length + 1:
                 self._user_histories[user_id].pop(0)
@@ -541,8 +544,9 @@ class DictEnvironment(Environment):
             The ids of all users that are online.
 
         """
-        user_ids = list(self._users.keys())
+        user_ids = [user_id for user_id in self._users.keys() if
+                    len(self._rated_items[user_id]) < len(self._items)]
         num_online = int(self._rating_frequency * len(self._users))
         return self._dynamics_random.choice(
-            user_ids, size=num_online, replace=False, p=self._user_prob
+            user_ids, size=num_online, replace=False, p=self._user_prob[user_ids] / self._user_prob[user_ids].sum()
         )

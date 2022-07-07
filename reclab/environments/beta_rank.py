@@ -36,12 +36,12 @@ class BetaRank(environment.DictEnvironment):
         return 'beta-rank'
 
     def _get_dense_ratings(self):  # noqa: D102
-        return self._user_preferences @ self._item_preferences.T
+        return np.clip(np.round(20 * (self._user_preferences @ self._item_preferences.T) + 1), 1, 5)
 
     def _reset_state(self):  # noqa: D102
         # TODO: We should probably pass the magic numbers below as parameters.
         self._user_preferences = self._init_random.dirichlet(
-            10 * self._init_random.dirichlet(np.ones(self._dimension)),
+            100 * self._init_random.dirichlet(np.ones(self._dimension)),
             size=self._num_users
         )
         self._item_preferences = self._init_random.dirichlet(
@@ -72,7 +72,7 @@ class BetaRank(environment.DictEnvironment):
         ratings = np.ones(len(item_ids)) * np.nan
         if chosen_idx is not None:
             ratings[chosen_idx] = values[chosen_idx]
-        return ratings
+        return np.clip(np.round((ratings).flatten() * 20 + 1), 1, 5)
 
     def _beta_prime(self, mean, std_dev=1e-5, size=None):
         alpha = ((1 - mean) / std_dev ** 2 - 1 / mean) * mean ** 2 + 1e-6

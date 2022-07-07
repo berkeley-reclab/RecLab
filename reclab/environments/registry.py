@@ -85,9 +85,9 @@ NAMED_ENV_DICT = {
     'ml-100k-v1': (
         DatasetLatentFactor,
         dict(name='ml-100k',
-             latent_dim=100,
-             rating_frequency=0.2,
-             num_init_ratings=100000,
+             latent_dim=0,
+             rating_frequency=0.00107,
+             num_init_ratings=0,
              noise=0.5,
              affinity_change=0,
              memory_length=0,
@@ -105,13 +105,30 @@ NAMED_ENV_DICT = {
     ),
     'beta-rank-v1': (
         BetaRank,
-        dict(
-            dimension=19,
-            num_users=1000,
-            num_items=1700,
-            rating_frequency=0.2,
-            num_init_ratings=100000,
-            known_mean=0.98)
+        dict(num_users=1000,
+             num_items=1700,
+             dimension=19,
+             rating_frequency=0.001,
+             num_init_ratings=0,
+             known_mean=0.98)
+    ),
+    'beta-rank-lowdata-v1': (
+        BetaRank,
+        dict(num_users=1000,
+             num_items=1700,
+             dimension=19,
+             rating_frequency=0.001,
+             num_init_ratings=0,
+             known_mean=0.98)
+    ),
+    'beta-rank-small-v1': (
+        BetaRank,
+        dict(num_users=100,
+             num_items=170,
+             dimension=19,
+             rating_frequency=0.01,
+             num_init_ratings=0,
+             known_mean=0.98)
     ),
 }
 

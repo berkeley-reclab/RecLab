@@ -11,6 +11,7 @@ import itertools
 
 import numpy as np
 import scipy
+import scipy.special
 
 
 class Recommender(abc.ABC):
@@ -157,9 +158,7 @@ class PredictRecommender(Recommender):
             if (eps < 0) or (eps > 1):
                 raise ValueError('eps must be in [0, 1].')
         elif strategy_type == 'thompson':
-            power = new_strategy['power']
-            if not power.is_integer() or power < 0:
-                raise ValueError('power must be a non-negative integer.')
+            temperature = new_strategy['temperature']
         elif strategy_type != 'greedy':
             raise ValueError('Invalid strategy type.')
 
@@ -399,9 +398,8 @@ class PredictRecommender(Recommender):
                                                 if x not in exploit_indices], num_explore)
             selected_indices = np.concatenate((exploit_indices, explore_indices))
         elif strategy_type == 'thompson':
-            power = int(float(self._strategy_dict.get('power')))
-            selection_probs = np.power(predictions/sum(predictions), power)
-            selection_probs = selection_probs/sum(selection_probs)
+            temperature = float(self._strategy_dict.get('temperature'))
+            selection_probs = scipy.special.softmax(predictions / temperature)
             selected_indices = np.random.choice(range(0, num_items),
                                                 num_recommendations, p=selection_probs)
         selected_indices = selected_indices.astype('int')

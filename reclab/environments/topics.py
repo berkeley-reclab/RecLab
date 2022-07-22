@@ -156,7 +156,7 @@ class Topics(environment.DictEnvironment):
 
     def _get_rating(self, user_id, item_id):  # noqa: D102
         topic = self._item_topics[item_id]
-        rating = (self._user_preferences[user_id, topic] +
+        rating = (self._user_preferences[user_id, topic] -
                   self._satiation_factor * self._satiations[user_id, topic] +
                   self._user_biases[user_id] + self._item_biases[item_id] + self._offset)
         recent_topics = [self._item_topics[item]

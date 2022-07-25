@@ -56,6 +56,19 @@ NAMED_ENV_DICT = {
              satiation_decay=0.5,
              satiation_noise=0.1)
     ),
+    'topics-sensitization-v1': (
+        Topics,
+        dict(num_topics=19,
+             num_users=1000,
+             num_items=1700,
+             rating_frequency=0.2,
+             num_init_ratings=100000,
+             noise=0.5,
+             satiation_factor=3,
+             satiation_decay=(0.1, 0.5),
+             satiation_noise=0.1,
+             switch_probability=(0.05, 0.2))
+    ),
     'latent-static-v1': (
         LatentFactorBehavior,
         dict(latent_dim=100,

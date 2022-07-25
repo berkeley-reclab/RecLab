@@ -47,12 +47,18 @@ class Topics(environment.DictEnvironment):
         penalty.
     boredom_penalty : float
         The penalty on the rating when a user is bored
-    satiation_factor: float
+    satiation_factor : float
         The extent to which satiation affects user ratings.
-    satiation_decay: float
-        A number between 0 and 1 that indicates how quickly satiation decays.
-    satiation_noise: float
+    satiation_decay : float or tuple
+        A number between 0 and 1 that indicates how quickly satiation decays. 
+        If a tuple, the decay will alternate between the two values depending on the user's 
+        sensitization state
+    satiation_noise : float
         The standard deviation of the noise influencing satiation at each timestep.
+    switch_probability : tuple
+        Represents a probability matrix where index 0 is the conditional probability of a user 
+        switching from a state of sensitization (S) to a state of boredom (B): P(B | S). 
+        Similarly, index 1 is P(S | B). The probability of staying in a state is 1 - P(switching)
     user_dist_choice : str
         The choice of user distribution for selecting online users. By default, the subset of
         online users is chosen from a uniform distribution. Currently supports normal and lognormal.
@@ -93,6 +99,7 @@ class Topics(environment.DictEnvironment):
                  satiation_factor=0.0,
                  satiation_decay=0.0,
                  satiation_noise=0.0,
+                 switch_probability=(0.0, 0.0),
                  user_dist_choice='uniform',
                  initial_sampling='uniform',
                  shift_steps=1,
@@ -119,6 +126,8 @@ class Topics(environment.DictEnvironment):
         self._satiation_decay = satiation_decay
         self._satiation_noise = satiation_noise
         self._satiations = None
+        self._switch_probability = switch_probability
+        self._sensitization_state = None
         self._shift_steps = shift_steps
         self._shift_frequency = shift_frequency
         self._shift_weight = shift_weight
@@ -156,7 +165,7 @@ class Topics(environment.DictEnvironment):
 
     def _get_rating(self, user_id, item_id):  # noqa: D102
         topic = self._item_topics[item_id]
-        rating = (self._user_preferences[user_id, topic] +
+        rating = (self._user_preferences[user_id, topic] -
                   self._satiation_factor * self._satiations[user_id, topic] +
                   self._user_biases[user_id] + self._item_biases[item_id] + self._offset)
         recent_topics = [self._item_topics[item]
@@ -175,10 +184,29 @@ class Topics(environment.DictEnvironment):
         rating = self._get_rating(user_id, item_id)
         topic = self._item_topics[item_id]
 
+        # Determine satiation decay based on sensitization state.
+        if type(self._satiation_decay) is tuple or type(self._satiation_decay) is list:
+
+            # State transition function for sensitization v boredom.
+            # The user's state for all topics (not just the one recommended)
+            # switches based on self._switch_probability.
+            sensitized = np.where(self._sensitization_state[user_id] == 0)
+            bored = np.where(self._sensitization_state[user_id] == 1)
+            self._sensitization_state[user_id, sensitized] = np.random.choice(
+                [0, 1], size=len(sensitized), p=[1 - self._switch_probability[0], self._switch_probability[0]])
+            self._sensitization_state[user_id, bored] = np.random.choice(
+                [0, 1], size=len(bored), p=[self._switch_probability[1], 1 - self._switch_probability[1]])
+
+            decay = self._satiation_decay[int(
+                self._sensitization_state[user_id, topic])]
+
+        else:
+            decay = self._satiation_decay
+
         # Update satiation.
         recommended = np.zeros(self._num_topics)
         recommended[topic] = 1
-        self._satiations[user_id] = (self._satiation_decay * (self._satiations[user_id] + recommended) +
+        self._satiations[user_id] = (decay * (self._satiations[user_id] + recommended) +
                                      np.random.randn(self._num_topics) * self._satiation_noise)
 
         # Update underlying preference.
@@ -216,25 +244,27 @@ class Topics(environment.DictEnvironment):
 
         self._offset = 0
         self._satiations = np.zeros((self._num_users, self._num_topics))
-        self._user_preferences = self._init_random.uniform(low=0.5, high=5.5,
-                                                           size=(self._num_users, self._num_topics))
+        self._sensitization_state = np.zeros(
+            (self._num_users, self._num_topics), dtype=int)
+        self._user_preferences = self._init_random.uniform(
+            low=0.5, high=5.5, size=(self._num_users, self._num_topics))
         self._item_topics = self._init_random.choice(
             self._num_topics, size=self._num_items)
-        self._users = collections.OrderedDict((user_id, np.zeros(0))
-                                              for user_id in range(self._num_users))
-        self._items = collections.OrderedDict((item_id, np.zeros(0))
-                                              for item_id in range(self._num_items))
+        self._users = collections.OrderedDict(
+            (user_id, np.zeros(0)) for user_id in range(self._num_users))
+        self._items = collections.OrderedDict(
+            (item_id, np.zeros(0)) for item_id in range(self._num_items))
 
     def _update_state(self):  # noqa: D102
         if (self._timestep + 1) % self._shift_steps == 0:
             # Apply preference and bias shift to a fraction of users.
             shifted_users = self._dynamics_random.choice(
                 self._num_users, int(self._num_users * self._shift_frequency))
-            new_preferences = self._init_random.uniform(low=0.5, high=5.5,
-                                                        size=(len(shifted_users), self._num_topics))
+            new_preferences = self._init_random.uniform(
+                low=0.5, high=5.5, size=(len(shifted_users), self._num_topics))
             if self._user_bias_type == 'normal':
-                new_user_biases = self._init_random.normal(loc=0, scale=0.5,
-                                                           size=len(shifted_users))
+                new_user_biases = self._init_random.normal(
+                    loc=0, scale=0.5, size=len(shifted_users))
             elif self._user_bias_type == 'power':
                 new_user_biases = 1 - \
                     self._init_random.power(5, size=len(shifted_users))
